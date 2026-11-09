@@ -1,0 +1,19 @@
+# Gradle / Android Studio
+.gradle/
+build/
+/local.properties
+/.idea/
+*.iml
+.DS_Store
+/captures
+.externalNativeBuild
+.cxx
+.kotlin/
+
+# 서명 키 (절대 커밋 금지)
+*.jks
+*.keystore
+keystore.properties
+
+# 개인정보가 들어간 제출 서류 (접수양식, 동의서 등)
+/submission/

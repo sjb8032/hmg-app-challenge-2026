@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- TODO: 앱 이름이 정해지면 바꾼다 -->
+    <string name="app_name">팀 앱(가칭)</string>
+</resources>
