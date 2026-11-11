@@ -105,10 +105,27 @@ jobs:
               h = math.sin(dlat / 2) ** 2 + math.cos(math.radians(a_lat)) * math.cos(math.radians(b_lat)) * math.sin(dlon / 2) ** 2
               return 2 * r * math.asin(min(1.0, math.sqrt(h)))
 
-          # 같은 이름이 1km 안에 여러 번 있으면 하나만 남긴다 (노드와 면이 함께 있는 경우).
-          kept = []
+          aliases = {'부상': '부산'}  # OSM 이름 오타
           for a in areas:
-              if any(k['n'] == a['n'] and dist_km(k['lat'], k['lon'], a['lat'], a['lon']) < 1.0 for k in kept):
+              if a['dl'] in aliases:
+                  a['dl'] = aliases[a['dl']]
+
+          # 같은 시설이 면과 점으로 겹쳐 들어간 경우만 하나로 합친다.
+          # 양방향 휴게소는 이름이 같아도 서로 다른 위치이므로 남겨 둔다 (앱에서 진행 방향 쪽을 고른다).
+          def norm(n):
+              return re.sub(r'\s+', '', n)
+          shapes = [a for a in areas if not a['id'].startswith('n')]
+          points = [a for a in areas if a['id'].startswith('n')]
+          kept = []
+          for a in shapes:
+              if any(norm(k['n']) == norm(a['n']) and dist_km(k['lat'], k['lon'], a['lat'], a['lon']) < 0.08 for k in kept):
+                  continue
+              kept.append(a)
+          shape_count = len(kept)
+          for a in points:
+              if any(norm(k['n']) == norm(a['n']) and dist_km(k['lat'], k['lon'], a['lat'], a['lon']) < 0.6 for k in kept[:shape_count]):
+                  continue
+              if any(norm(k['n']) == norm(a['n']) and dist_km(k['lat'], k['lon'], a['lat'], a['lon']) < 0.08 for k in kept[shape_count:]):
                   continue
               kept.append(a)
 
