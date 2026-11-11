@@ -41,13 +41,26 @@
 3. Tools > Device Manager > **Create device** > Form Factor `Automotive` > `Pleos Connect v2.1.0` > Next
 4. **Advanced Settings**에서 Default boot를 `Cold`, RAM을 `4 GB`로 바꿉니다.
 5. System image에서 API 34의 `Pleos Connect v2.1.0 APIs`를 고르고 Finish를 누릅니다.
-6. 차량 값을 바꾸는 Virtual Console은 [공식 가이드](https://document.pleos.ai/docs/pleos-only/app-test-guide/virtual-console-guide)대로 설정합니다.
+6. Device Manager에서 ▶로 AVD를 켭니다. 첫 부팅은 몇 분 걸립니다.
+
+### Virtual Console (차량 값 바꾸기)
+
+1. 에뮬레이터를 켠 상태에서 터미널에 `adb forward tcp:8088 tcp:8088`을 실행합니다.
+   - `adb`를 못 찾으면 Android SDK 폴더의 `platform-tools` 안에 있습니다 (Mac: `~/Library/Android/sdk/platform-tools`, Windows: `%LOCALAPPDATA%\Android\Sdk\platform-tools`).
+2. PC 브라우저에서 `http://127.0.0.1:8088/`을 엽니다.
+3. Emulation Controls 왼쪽에서 도메인(Vehicle, Motion, ADAS, Convenience, Safety, Energy, Climate)을 고르고 카드의 값을 바꿉니다.
+   - 레스트메이트 확인에 쓰는 카드: Motion > Gear Selection·Steering Angle·Brake Pedal, Convenience > Turn Signal State·Ambient Brightness, Safety > Telltales, Climate > Target Temperature·Fan Speed
+4. 안 열리면: 에뮬레이터가 켜져 있는지 → `adb devices`에 잡히는지 → `adb forward`를 다시 → 8088 포트를 다른 프로그램이 쓰는지 → 브라우저 새로 고침 순서로 확인합니다.
+
+자세한 내용: [Virtual Console 연결](https://document.pleos.ai/docs/connect/guide/getting-started/application-development/use-vehicle-emulator), [Virtual Console 사용법](https://document.pleos.ai/docs/pleos-only/app-test-guide/virtual-console-guide)
 
 일반 기기나 기본 에뮬레이터 이미지에서는 Pleos SDK가 동작하지 않습니다. 꼭 Pleos Connect AVD를 씁니다.
 
 ## 4. 프로젝트 받아서 실행하기
 
-1. 저장소를 clone하고 Android Studio로 엽니다.
+빌드 없이 앱만 확인하려면: GitHub 저장소 > Actions에서 최근 성공한 'Android build' 실행을 열고, 아래 Artifacts의 `apks`를 받아 압축을 풉니다. `debug/app-debug.apk`를 에뮬레이터 화면에 끌어다 놓으면 설치됩니다.
+
+1. 저장소를 clone하고 Android Studio로 엽니다. 작업 중인 브랜치는 Git > Branches에서 Checkout합니다.
 2. Gradle Sync를 기다립니다. 처음 Sync할 때 Pleos Maven 저장소에서 SDK를 받습니다.
 3. Pleos Connect AVD를 켜고 Run(▶)을 누르거나 `./gradlew installDebug`를 실행합니다.
 4. 화면 오른쪽 상태 영역에서 '차량 SDK'와 '내비 SDK'가 모두 '연결됨'이면 세팅이 끝난 것입니다.
