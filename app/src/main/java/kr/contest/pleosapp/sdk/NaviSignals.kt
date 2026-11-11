@@ -99,12 +99,16 @@ class NaviSignals(context: Context, private val sink: Sink) {
         return try {
             if (routeActive) {
                 if (waypointAdded) helper.removeWaypoint(WaypointIndex.FIRST)
+                // POI ID가 없는 좌표 안내라 POI 관련 값은 빈 문자열로 넘긴다 (에뮬레이터에서 동작 확인 필요)
                 helper.addWaypoint(
                     RequestWaypointInfo(
                         latitude = area.position.lat,
                         longitude = area.position.lon,
                         poiName = area.name,
                         waypointIndex = WaypointIndex.FIRST,
+                        poiId = "",
+                        address = "",
+                        poiSubId = "",
                     ),
                 )
                 waypointAdded = true
@@ -114,6 +118,9 @@ class NaviSignals(context: Context, private val sink: Sink) {
                         latitude = area.position.lat,
                         longitude = area.position.lon,
                         poiName = area.name,
+                        poiId = "",
+                        address = "",
+                        poiSubId = "",
                     ),
                 )
                 waypointAdded = false
