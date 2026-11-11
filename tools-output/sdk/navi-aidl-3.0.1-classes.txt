@@ -1,0 +1,15 @@
+ai.pleos.playground.navi.ResponseParcel$CREATOR
+ai.pleos.playground.navi.ResponseParcel
+ai.pleos.playground.navi.INaviService$Default
+ai.pleos.playground.navi.INaviService$Stub$Proxy
+ai.pleos.playground.navi.INaviService$Stub
+ai.pleos.playground.navi.INaviService
+ai.pleos.playground.navi.INaviServiceCallback$Default
+ai.pleos.playground.navi.INaviServiceCallback$Stub$Proxy
+ai.pleos.playground.navi.INaviServiceCallback$Stub
+ai.pleos.playground.navi.INaviServiceCallback
+ai.pleos.playground.navi.INaviServiceCallbackV2$Default
+ai.pleos.playground.navi.INaviServiceCallbackV2$Stub$Proxy
+ai.pleos.playground.navi.INaviServiceCallbackV2$Stub
+ai.pleos.playground.navi.INaviServiceCallbackV2$_Parcel
+ai.pleos.playground.navi.INaviServiceCallbackV2

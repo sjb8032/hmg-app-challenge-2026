@@ -1,0 +1,160 @@
+Compiled from "IVehicleService.java"
+public class ai.pleos.playground.vehicle.IVehicleService$Default implements ai.pleos.playground.vehicle.IVehicleService {
+  public ai.pleos.playground.vehicle.IVehicleService$Default();
+  public java.lang.String getPermissionList() throws android.os.RemoteException;
+  public void registerPropertyCallback(java.lang.String, java.lang.String, int, ai.pleos.playground.vehicle.callback.IPropertyCallback) throws android.os.RemoteException;
+  public void unregisterPropertyCallback(java.lang.String, java.lang.String, int, ai.pleos.playground.vehicle.callback.IPropertyCallback) throws android.os.RemoteException;
+  public void getPropertyValue(java.lang.String, int, int, ai.pleos.playground.vehicle.callback.IGetPropertyResult) throws android.os.RemoteException;
+  public void setPropertyValue(java.lang.String, int, int, int, java.lang.String, ai.pleos.playground.vehicle.callback.ISetPropertyResult) throws android.os.RemoteException;
+  public void getCapabilityConfig(ai.pleos.playground.vehicle.callback.ICapabilityConfigResult) throws android.os.RemoteException;
+  public void setPropertyAsyncValue(java.lang.String, int, int, int, java.lang.String, ai.pleos.playground.vehicle.callback.ISetPropertyResult) throws android.os.RemoteException;
+  public void getCapabilityConfigByKey(java.lang.String, ai.pleos.playground.vehicle.callback.ICapabilityConfigResult) throws android.os.RemoteException;
+  public android.os.IBinder asBinder();
+}
+Compiled from "IVehicleService.java"
+class ai.pleos.playground.vehicle.IVehicleService$Stub$Proxy implements ai.pleos.playground.vehicle.IVehicleService {
+  public android.os.IBinder asBinder();
+  public java.lang.String getInterfaceDescriptor();
+  public java.lang.String getPermissionList() throws android.os.RemoteException;
+  public void registerPropertyCallback(java.lang.String, java.lang.String, int, ai.pleos.playground.vehicle.callback.IPropertyCallback) throws android.os.RemoteException;
+  public void unregisterPropertyCallback(java.lang.String, java.lang.String, int, ai.pleos.playground.vehicle.callback.IPropertyCallback) throws android.os.RemoteException;
+  public void getPropertyValue(java.lang.String, int, int, ai.pleos.playground.vehicle.callback.IGetPropertyResult) throws android.os.RemoteException;
+  public void setPropertyValue(java.lang.String, int, int, int, java.lang.String, ai.pleos.playground.vehicle.callback.ISetPropertyResult) throws android.os.RemoteException;
+  public void getCapabilityConfig(ai.pleos.playground.vehicle.callback.ICapabilityConfigResult) throws android.os.RemoteException;
+  public void setPropertyAsyncValue(java.lang.String, int, int, int, java.lang.String, ai.pleos.playground.vehicle.callback.ISetPropertyResult) throws android.os.RemoteException;
+  public void getCapabilityConfigByKey(java.lang.String, ai.pleos.playground.vehicle.callback.ICapabilityConfigResult) throws android.os.RemoteException;
+}
+Compiled from "IVehicleService.java"
+public abstract class ai.pleos.playground.vehicle.IVehicleService$Stub extends android.os.Binder implements ai.pleos.playground.vehicle.IVehicleService {
+  public ai.pleos.playground.vehicle.IVehicleService$Stub();
+  public static ai.pleos.playground.vehicle.IVehicleService asInterface(android.os.IBinder);
+  public android.os.IBinder asBinder();
+  public boolean onTransact(int, android.os.Parcel, android.os.Parcel, int) throws android.os.RemoteException;
+}
+Compiled from "IVehicleService.java"
+public interface ai.pleos.playground.vehicle.IVehicleService extends android.os.IInterface {
+  public static final java.lang.String DESCRIPTOR = "ai.pleos.playground.vehicle.IVehicleService";
+  public abstract java.lang.String getPermissionList() throws android.os.RemoteException;
+  public abstract void registerPropertyCallback(java.lang.String, java.lang.String, int, ai.pleos.playground.vehicle.callback.IPropertyCallback) throws android.os.RemoteException;
+  public abstract void unregisterPropertyCallback(java.lang.String, java.lang.String, int, ai.pleos.playground.vehicle.callback.IPropertyCallback) throws android.os.RemoteException;
+  public abstract void getPropertyValue(java.lang.String, int, int, ai.pleos.playground.vehicle.callback.IGetPropertyResult) throws android.os.RemoteException;
+  public abstract void setPropertyValue(java.lang.String, int, int, int, java.lang.String, ai.pleos.playground.vehicle.callback.ISetPropertyResult) throws android.os.RemoteException;
+  public abstract void getCapabilityConfig(ai.pleos.playground.vehicle.callback.ICapabilityConfigResult) throws android.os.RemoteException;
+  public abstract void setPropertyAsyncValue(java.lang.String, int, int, int, java.lang.String, ai.pleos.playground.vehicle.callback.ISetPropertyResult) throws android.os.RemoteException;
+  public abstract void getCapabilityConfigByKey(java.lang.String, ai.pleos.playground.vehicle.callback.ICapabilityConfigResult) throws android.os.RemoteException;
+}
+Compiled from "BuildConfig.java"
+public final class ai.pleos.playground.vehicle.aidl.BuildConfig {
+  public static final boolean DEBUG = false;
+  public static final java.lang.String LIBRARY_PACKAGE_NAME = "ai.pleos.playground.vehicle.aidl";
+  public static final java.lang.String BUILD_TYPE = "release";
+  public ai.pleos.playground.vehicle.aidl.BuildConfig();
+}
+Compiled from "ICapabilityConfigResult.java"
+public class ai.pleos.playground.vehicle.callback.ICapabilityConfigResult$Default implements ai.pleos.playground.vehicle.callback.ICapabilityConfigResult {
+  public ai.pleos.playground.vehicle.callback.ICapabilityConfigResult$Default();
+  public void onResult(java.lang.String) throws android.os.RemoteException;
+  public void onFailed(java.lang.String) throws android.os.RemoteException;
+  public android.os.IBinder asBinder();
+}
+Compiled from "ICapabilityConfigResult.java"
+class ai.pleos.playground.vehicle.callback.ICapabilityConfigResult$Stub$Proxy implements ai.pleos.playground.vehicle.callback.ICapabilityConfigResult {
+  public android.os.IBinder asBinder();
+  public java.lang.String getInterfaceDescriptor();
+  public void onResult(java.lang.String) throws android.os.RemoteException;
+  public void onFailed(java.lang.String) throws android.os.RemoteException;
+}
+Compiled from "ICapabilityConfigResult.java"
+public abstract class ai.pleos.playground.vehicle.callback.ICapabilityConfigResult$Stub extends android.os.Binder implements ai.pleos.playground.vehicle.callback.ICapabilityConfigResult {
+  public ai.pleos.playground.vehicle.callback.ICapabilityConfigResult$Stub();
+  public static ai.pleos.playground.vehicle.callback.ICapabilityConfigResult asInterface(android.os.IBinder);
+  public android.os.IBinder asBinder();
+  public boolean onTransact(int, android.os.Parcel, android.os.Parcel, int) throws android.os.RemoteException;
+}
+Compiled from "ICapabilityConfigResult.java"
+public interface ai.pleos.playground.vehicle.callback.ICapabilityConfigResult extends android.os.IInterface {
+  public static final java.lang.String DESCRIPTOR = "ai.pleos.playground.vehicle.callback.ICapabilityConfigResult";
+  public abstract void onResult(java.lang.String) throws android.os.RemoteException;
+  public abstract void onFailed(java.lang.String) throws android.os.RemoteException;
+}
+Compiled from "IGetPropertyResult.java"
+public class ai.pleos.playground.vehicle.callback.IGetPropertyResult$Default implements ai.pleos.playground.vehicle.callback.IGetPropertyResult {
+  public ai.pleos.playground.vehicle.callback.IGetPropertyResult$Default();
+  public void onResult(java.lang.String, int, java.lang.String) throws android.os.RemoteException;
+  public void onFailed(java.lang.String, int, java.lang.String) throws android.os.RemoteException;
+  public android.os.IBinder asBinder();
+}
+Compiled from "IGetPropertyResult.java"
+class ai.pleos.playground.vehicle.callback.IGetPropertyResult$Stub$Proxy implements ai.pleos.playground.vehicle.callback.IGetPropertyResult {
+  public android.os.IBinder asBinder();
+  public java.lang.String getInterfaceDescriptor();
+  public void onResult(java.lang.String, int, java.lang.String) throws android.os.RemoteException;
+  public void onFailed(java.lang.String, int, java.lang.String) throws android.os.RemoteException;
+}
+Compiled from "IGetPropertyResult.java"
+public abstract class ai.pleos.playground.vehicle.callback.IGetPropertyResult$Stub extends android.os.Binder implements ai.pleos.playground.vehicle.callback.IGetPropertyResult {
+  public ai.pleos.playground.vehicle.callback.IGetPropertyResult$Stub();
+  public static ai.pleos.playground.vehicle.callback.IGetPropertyResult asInterface(android.os.IBinder);
+  public android.os.IBinder asBinder();
+  public boolean onTransact(int, android.os.Parcel, android.os.Parcel, int) throws android.os.RemoteException;
+}
+Compiled from "IGetPropertyResult.java"
+public interface ai.pleos.playground.vehicle.callback.IGetPropertyResult extends android.os.IInterface {
+  public static final java.lang.String DESCRIPTOR = "ai.pleos.playground.vehicle.callback.IGetPropertyResult";
+  public abstract void onResult(java.lang.String, int, java.lang.String) throws android.os.RemoteException;
+  public abstract void onFailed(java.lang.String, int, java.lang.String) throws android.os.RemoteException;
+}
+Compiled from "IPropertyCallback.java"
+public class ai.pleos.playground.vehicle.callback.IPropertyCallback$Default implements ai.pleos.playground.vehicle.callback.IPropertyCallback {
+  public ai.pleos.playground.vehicle.callback.IPropertyCallback$Default();
+  public void onChangeEvent(java.lang.String, int, java.lang.String) throws android.os.RemoteException;
+  public void onErrorEvent(java.lang.String, java.lang.String) throws android.os.RemoteException;
+  public android.os.IBinder asBinder();
+}
+Compiled from "IPropertyCallback.java"
+class ai.pleos.playground.vehicle.callback.IPropertyCallback$Stub$Proxy implements ai.pleos.playground.vehicle.callback.IPropertyCallback {
+  public android.os.IBinder asBinder();
+  public java.lang.String getInterfaceDescriptor();
+  public void onChangeEvent(java.lang.String, int, java.lang.String) throws android.os.RemoteException;
+  public void onErrorEvent(java.lang.String, java.lang.String) throws android.os.RemoteException;
+}
+Compiled from "IPropertyCallback.java"
+public abstract class ai.pleos.playground.vehicle.callback.IPropertyCallback$Stub extends android.os.Binder implements ai.pleos.playground.vehicle.callback.IPropertyCallback {
+  public ai.pleos.playground.vehicle.callback.IPropertyCallback$Stub();
+  public static ai.pleos.playground.vehicle.callback.IPropertyCallback asInterface(android.os.IBinder);
+  public android.os.IBinder asBinder();
+  public boolean onTransact(int, android.os.Parcel, android.os.Parcel, int) throws android.os.RemoteException;
+}
+Compiled from "IPropertyCallback.java"
+public interface ai.pleos.playground.vehicle.callback.IPropertyCallback extends android.os.IInterface {
+  public static final java.lang.String DESCRIPTOR = "ai.pleos.playground.vehicle.callback.IPropertyCallback";
+  public abstract void onChangeEvent(java.lang.String, int, java.lang.String) throws android.os.RemoteException;
+  public abstract void onErrorEvent(java.lang.String, java.lang.String) throws android.os.RemoteException;
+}
+Compiled from "ISetPropertyResult.java"
+public class ai.pleos.playground.vehicle.callback.ISetPropertyResult$Default implements ai.pleos.playground.vehicle.callback.ISetPropertyResult {
+  public ai.pleos.playground.vehicle.callback.ISetPropertyResult$Default();
+  public void onResult(java.lang.String, int, java.lang.String) throws android.os.RemoteException;
+  public void onFailed(java.lang.String, int, java.lang.String) throws android.os.RemoteException;
+  public android.os.IBinder asBinder();
+}
+Compiled from "ISetPropertyResult.java"
+class ai.pleos.playground.vehicle.callback.ISetPropertyResult$Stub$Proxy implements ai.pleos.playground.vehicle.callback.ISetPropertyResult {
+  public android.os.IBinder asBinder();
+  public java.lang.String getInterfaceDescriptor();
+  public void onResult(java.lang.String, int, java.lang.String) throws android.os.RemoteException;
+  public void onFailed(java.lang.String, int, java.lang.String) throws android.os.RemoteException;
+}
+Compiled from "ISetPropertyResult.java"
+public abstract class ai.pleos.playground.vehicle.callback.ISetPropertyResult$Stub extends android.os.Binder implements ai.pleos.playground.vehicle.callback.ISetPropertyResult {
+  public ai.pleos.playground.vehicle.callback.ISetPropertyResult$Stub();
+  public static ai.pleos.playground.vehicle.callback.ISetPropertyResult asInterface(android.os.IBinder);
+  public android.os.IBinder asBinder();
+  public boolean onTransact(int, android.os.Parcel, android.os.Parcel, int) throws android.os.RemoteException;
+}
+Compiled from "ISetPropertyResult.java"
+public interface ai.pleos.playground.vehicle.callback.ISetPropertyResult extends android.os.IInterface {
+  public static final java.lang.String DESCRIPTOR = "ai.pleos.playground.vehicle.callback.ISetPropertyResult";
+  public abstract void onResult(java.lang.String, int, java.lang.String) throws android.os.RemoteException;
+  public abstract void onFailed(java.lang.String, int, java.lang.String) throws android.os.RemoteException;
+}

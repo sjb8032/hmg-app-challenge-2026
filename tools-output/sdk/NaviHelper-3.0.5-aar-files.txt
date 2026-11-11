@@ -1,0 +1,4 @@
+./AndroidManifest.xml
+./META-INF/com/android/build/gradle/aar-metadata.properties
+./R.txt
+./classes.jar

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="ai.pleos.playground.sdk.vehicle" >
+
+    <uses-sdk android:minSdkVersion="23" />
+
+    <uses-permission android:name="ai.pleos.playground.service.vehicle.VEHICLE_BINDING" />
+
+    <queries tools:node="merge" >
+        <intent>
+            <action android:name="ai.pleos.playground.vehicle.VEHICLE_START" />
+        </intent>
+    </queries>
+
+    <application>
+        <meta-data
+            android:name="ai.pleos.playground.service.vehicle.min_version_name"
+            android:value="2.3.13" />
+        <meta-data
+            android:name="ai.pleos.playground.service.vehicle.min_version_code"
+            android:value="65" />
+        <meta-data
+            android:name="ai.pleos.playground.sdk.vehicle.current_version_name"
+            android:value="2.3.2" />
+        <meta-data
+            android:name="ai.pleos.playground.sdk.vehicle.current_version_code"
+            android:value="73" />
+    </application>
+
+</manifest>

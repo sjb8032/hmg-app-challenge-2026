@@ -1,0 +1,864 @@
+Compiled from "ErrorCode.kt"
+public final class ai.pleos.playground.vehicle.constant.ErrorCode$Companion {
+  public final ai.pleos.playground.vehicle.constant.ErrorCode findById(int);
+  public ai.pleos.playground.vehicle.constant.ErrorCode$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "ErrorCode.kt"
+public final class ai.pleos.playground.vehicle.constant.ErrorCode extends java.lang.Enum<ai.pleos.playground.vehicle.constant.ErrorCode> {
+  public static final ai.pleos.playground.vehicle.constant.ErrorCode$Companion Companion;
+  public static final ai.pleos.playground.vehicle.constant.ErrorCode ERROR_INTERNAL_SERVICE;
+  public static final ai.pleos.playground.vehicle.constant.ErrorCode ERROR_SERVICE_CONNECTION_FAILURE;
+  public static final ai.pleos.playground.vehicle.constant.ErrorCode ERROR_DRIVING_RESTRICTED;
+  public static final ai.pleos.playground.vehicle.constant.ErrorCode ERROR_NOT_SUPPORTED_PROPERTY;
+  public static final ai.pleos.playground.vehicle.constant.ErrorCode ERROR_NOT_SUPPORTED_VALUE_TYPE;
+  public static final ai.pleos.playground.vehicle.constant.ErrorCode ERROR_NOT_SUPPORTED_AREA;
+  public static final ai.pleos.playground.vehicle.constant.ErrorCode ERROR_EMPTY_RESULT;
+  public static final ai.pleos.playground.vehicle.constant.ErrorCode ERROR_SECURITY_PERMISSION;
+  public static final ai.pleos.playground.vehicle.constant.ErrorCode ERROR_UNDEFINED;
+  public final int getId();
+  public static ai.pleos.playground.vehicle.constant.ErrorCode[] values();
+  public static ai.pleos.playground.vehicle.constant.ErrorCode valueOf(java.lang.String);
+  public static kotlin.enums.EnumEntries<ai.pleos.playground.vehicle.constant.ErrorCode> getEntries();
+}
+Compiled from "PleosPropertyIds.kt"
+public final class ai.pleos.playground.vehicle.constant.PleosPropertyIds extends java.lang.Enum<ai.pleos.playground.vehicle.constant.PleosPropertyIds> {
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds DRIVING_MODE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds DRIVING_SOUND_MODE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds DRIVING_SOUND_INTERNAL;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds DRIVING_SOUND_EXTERNAL;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds GLOVE_BOX_LOCK;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HUD_MODE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HUD_DISPLAY_INFO;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HUD_DISPLAY_BRIGHTNESS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds BUILTIN_CAM_VIEW_MODE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds PARKING_BRAKE_MALFUNCTION;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds BRAKE_MALFUNCTION;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds ESC_COLLISION;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds ESC_OFF_WARNING;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds ABS_COLLISION;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_AIRBAG_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds PASSENGER_SEAT_AIRBAG_OFF;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds POWER_DOWN_WARNING_INDICATOR;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_REGENERATIVE_BRAKING_COLLISION;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_BELT_NOT_BUCKLED_WARNING;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds LOW_BEAM_LIGHTS_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds LOW_BEAM_LIGHTS_SWITCH;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds TAIL_LAMP_LIGHTS_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds TAIL_LAMP_LIGHTS_SWITCH;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds VENDOR_SEAT_BACKREST_ANGLE_POS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds VENDOR_SEAT_BACKREST_ANGLE_MOVE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds DOOR_AUTO_MODE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds DOOR_WALK_AWAY_LOCK;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds WASHER_SWITCH;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HEAD_LAMP_COLLISION;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds CRUISE_CONTROL_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds STEERING_CONTROL_INDICATOR_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds BRAKE_PEDAL_STATUS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EXTERIOR_LIGHTS_MODE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds AUTO_HIGH_BEAM_LIGHTS_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds AUTO_HIGH_BEAM_LIGHTS_SWITCH;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds AUTO_HIGH_BEAM_LIGHTS_COLLISION;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HVAC_AUTO_RECIRC_UPON_WASHER_FLUID;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HVAC_AUTO_RECIRC_IN_TUNNEL;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HVAC_AUTO_RECIRC_UPON_AIR_POLLUTION;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HVAC_CABIN_OVERHEAT_PROTECTION_MODE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HVAC_AIR_CONDITIONER_AUTO_DRY_MODE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HVAC_REAR_CLIMATE_CONTROL_LOCK;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HVAC_AIR_CLEANER;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds WHEEL_SLIP_START;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds DRIVING_SOUND_INTERNAL_TONE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds DRIVING_SOUND_EXTERNAL_TONE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds AFS_COLLISION;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_BATTERY_LOW_VOLTAGE_WARNING;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_BATTERY_LOW_TEMPERATURE_WARNING;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds WELCOME_LIGHTS_SWITCH;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds STEERING_WHEEL_LIGHTS_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds STEERING_WHEEL_LIGHTS_SWITCH;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds AUTO_TURNSIGNAL_LIGHTS_SWITCH;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds AUTO_EMERGENCY_SIGNAL_LIGHTS_SWITCH;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds INTERIOR_LIGHTS_DOME_BRIGHTNESS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds INTERIOR_LIGHTS_AMBIENT_BRIGHTNESS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds INTERIOR_LIGHTS_DOOR_BRIGHTNESS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds INTERIOR_LIGHTS_AMBIENT_BRIGHTNESS_COLOR;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds AMBIENT_COLOR_AUTO_BY_DRIVE_MODE_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_BATTERY_ECONOMY_LEVEL;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_PRE_HEATING_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds PLAYING_AUDIO_SOUND_ATTR;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds LIGHTS_SHOW_SWITCH;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds LIGHTS_SHOW_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds TURN_SIGNAL_MODE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_CHARGE_PORT_LOCK;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds TRUNK_MOTION_OPEN_MODE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds LIGHT_SHOW_ACTION;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds INVALID;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds INFO_VIN;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds INFO_MAKE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds INFO_MODEL;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds INFO_MODEL_YEAR;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds INFO_FUEL_CAPACITY;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds INFO_FUEL_TYPE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds INFO_EV_BATTERY_CAPACITY;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds INFO_EV_CONNECTOR_TYPE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds INFO_FUEL_DOOR_LOCATION;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds INFO_EV_PORT_LOCATION;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds INFO_MULTI_EV_PORT_LOCATIONS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds INFO_DRIVER_SEAT;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds INFO_EXTERIOR_DIMENSIONS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds PERF_ODOMETER;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds PERF_VEHICLE_SPEED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds PERF_VEHICLE_SPEED_DISPLAY;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds PERF_STEERING_ANGLE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds PERF_REAR_STEERING_ANGLE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds ENGINE_COOLANT_TEMP;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds ENGINE_OIL_LEVEL;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds ENGINE_OIL_TEMP;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds ENGINE_RPM;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds WHEEL_TICK;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds FUEL_LEVEL;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds FUEL_DOOR_OPEN;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_BATTERY_LEVEL;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_CHARGE_PORT_OPEN;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_CHARGE_PORT_CONNECTED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_BATTERY_INSTANTANEOUS_CHARGE_RATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds RANGE_REMAINING;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds TIRE_PRESSURE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds CRITICALLY_LOW_TIRE_PRESSURE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds GEAR_SELECTION;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds CURRENT_GEAR;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds PARKING_BRAKE_ON;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds PARKING_BRAKE_AUTO_APPLY;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds FUEL_LEVEL_LOW;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds NIGHT_MODE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds TURN_SIGNAL_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds IGNITION_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds ABS_ACTIVE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds TRACTION_CONTROL_ACTIVE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HVAC_FAN_SPEED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HVAC_FAN_DIRECTION;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HVAC_TEMPERATURE_CURRENT;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HVAC_TEMPERATURE_SET;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HVAC_TEMPERATURE_VALUE_SUGGESTION;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HVAC_DEFROSTER;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HVAC_AC_ON;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HVAC_MAX_AC_ON;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HVAC_MAX_DEFROST_ON;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HVAC_RECIRC_ON;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HVAC_DUAL_ON;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HVAC_AUTO_ON;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HVAC_SEAT_TEMPERATURE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HVAC_SIDE_MIRROR_HEAT;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HVAC_STEERING_WHEEL_HEAT;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HVAC_TEMPERATURE_DISPLAY_UNITS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HVAC_ACTUAL_FAN_SPEED_RPM;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HVAC_POWER_ON;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HVAC_FAN_DIRECTION_AVAILABLE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HVAC_AUTO_RECIRC_ON;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HVAC_SEAT_VENTILATION;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HVAC_ELECTRIC_DEFROSTER_ON;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds DISTANCE_DISPLAY_UNITS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds FUEL_VOLUME_DISPLAY_UNITS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds TIRE_PRESSURE_DISPLAY_UNITS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_BATTERY_DISPLAY_UNITS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds VEHICLE_SPEED_DISPLAY_UNITS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds FUEL_CONSUMPTION_UNITS_DISTANCE_OVER_VOLUME;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds ENV_OUTSIDE_TEMPERATURE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds AP_POWER_STATE_REQ;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds AP_POWER_STATE_REPORT;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds AP_POWER_BOOTUP_REASON;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds DISPLAY_BRIGHTNESS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HW_KEY_INPUT;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds DOOR_POS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds DOOR_MOVE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds DOOR_LOCK;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds MIRROR_Z_POS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds MIRROR_Z_MOVE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds MIRROR_Y_POS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds MIRROR_Y_MOVE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds MIRROR_LOCK;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds MIRROR_FOLD;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_MEMORY_SELECT;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_MEMORY_SET;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_BELT_BUCKLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_BELT_HEIGHT_POS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_BELT_HEIGHT_MOVE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_FORE_AFT_POS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_FORE_AFT_MOVE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_BACKREST_ANGLE_1_POS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_BACKREST_ANGLE_1_MOVE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_BACKREST_ANGLE_2_POS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_BACKREST_ANGLE_2_MOVE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_HEIGHT_POS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_HEIGHT_MOVE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_DEPTH_POS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_DEPTH_MOVE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_TILT_POS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_TILT_MOVE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_LUMBAR_FORE_AFT_POS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_LUMBAR_FORE_AFT_MOVE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_LUMBAR_SIDE_SUPPORT_POS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_LUMBAR_SIDE_SUPPORT_MOVE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_HEADREST_HEIGHT_POS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_HEADREST_HEIGHT_MOVE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_HEADREST_ANGLE_POS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_HEADREST_ANGLE_MOVE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_HEADREST_FORE_AFT_POS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_HEADREST_FORE_AFT_MOVE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_OCCUPANCY;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds WINDOW_POS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds WINDOW_MOVE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds WINDOW_LOCK;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds VEHICLE_MAP_SERVICE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds OBD2_LIVE_FRAME;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds OBD2_FREEZE_FRAME;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds OBD2_FREEZE_FRAME_INFO;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds OBD2_FREEZE_FRAME_CLEAR;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HEADLIGHTS_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HIGH_BEAM_LIGHTS_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds FOG_LIGHTS_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HAZARD_LIGHTS_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HEADLIGHTS_SWITCH;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HIGH_BEAM_LIGHTS_SWITCH;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds FOG_LIGHTS_SWITCH;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HAZARD_LIGHTS_SWITCH;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds CABIN_LIGHTS_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds CABIN_LIGHTS_SWITCH;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds READING_LIGHTS_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds READING_LIGHTS_SWITCH;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds INITIAL_USER_INFO;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SWITCH_USER;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds CREATE_USER;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds REMOVE_USER;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds USER_IDENTIFICATION_ASSOCIATION;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds POWER_POLICY_REQ;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds POWER_POLICY_GROUP_REQ;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds CURRENT_POWER_POLICY;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds WATCHDOG_ALIVE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds WATCHDOG_TERMINATED_PROCESS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds VHAL_HEARTBEAT;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds CLUSTER_SWITCH_UI;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds CLUSTER_DISPLAY_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds CLUSTER_REPORT_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds CLUSTER_REQUEST_DISPLAY;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds CLUSTER_NAVIGATION_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EPOCH_TIME;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds ELECTRONIC_TOLL_COLLECTION_CARD_TYPE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds ELECTRONIC_TOLL_COLLECTION_CARD_STATUS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds ETCS_VOICE_GUIDANCE_VOLUME;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds FRONT_FOG_LIGHTS_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds FRONT_FOG_LIGHTS_SWITCH;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds REAR_FOG_LIGHTS_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds REAR_FOG_LIGHTS_SWITCH;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_CHARGE_CURRENT_DRAW_LIMIT;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_CHARGE_PERCENT_LIMIT;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_CHARGE_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_CHARGE_SWITCH;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_CHARGE_TIME_REMAINING;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_REGENERATIVE_BRAKING_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds VEHICLE_CURB_WEIGHT;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds TRAILER_PRESENT;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds GENERAL_SAFETY_REGULATION_COMPLIANCE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds INFO_CRN;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds ENGINE_IDLE_AUTO_STOP_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_CURRENT_BATTERY_CAPACITY;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_BRAKE_REGENERATION_LEVEL;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_STOPPING_MODE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds PER_DISPLAY_BRIGHTNESS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds DOOR_CHILD_LOCK_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds MIRROR_AUTO_FOLD_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds MIRROR_AUTO_TILT_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds GLOVE_BOX_DOOR_POS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds GLOVE_BOX_LOCKED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_HEADREST_HEIGHT_POS_V2;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_FOOTWELL_LIGHTS_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_FOOTWELL_LIGHTS_SWITCH;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_EASY_ACCESS_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_CUSHION_SIDE_SUPPORT_POS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_CUSHION_SIDE_SUPPORT_MOVE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_LUMBAR_VERTICAL_POS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_LUMBAR_VERTICAL_MOVE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_WALK_IN_POS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds WINDSHIELD_WIPERS_PERIOD;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds WINDSHIELD_WIPERS_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds WINDSHIELD_WIPERS_SWITCH;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds STEERING_WHEEL_DEPTH_POS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds STEERING_WHEEL_DEPTH_MOVE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds STEERING_WHEEL_HEIGHT_POS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds STEERING_WHEEL_HEIGHT_MOVE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds STEERING_WHEEL_THEFT_LOCK_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds STEERING_WHEEL_LOCKED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds STEERING_WHEEL_EASY_ACCESS_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds LOCATION_CHARACTERIZATION;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds AUTOMATIC_EMERGENCY_BRAKING_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds AUTOMATIC_EMERGENCY_BRAKING_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds FORWARD_COLLISION_WARNING_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds FORWARD_COLLISION_WARNING_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds BLIND_SPOT_WARNING_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds BLIND_SPOT_WARNING_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds LANE_DEPARTURE_WARNING_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds LANE_DEPARTURE_WARNING_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds LANE_KEEP_ASSIST_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds LANE_KEEP_ASSIST_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds LANE_CENTERING_ASSIST_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds LANE_CENTERING_ASSIST_COMMAND;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds LANE_CENTERING_ASSIST_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EMERGENCY_LANE_KEEP_ASSIST_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EMERGENCY_LANE_KEEP_ASSIST_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds CRUISE_CONTROL_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds CRUISE_CONTROL_TYPE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds CRUISE_CONTROL_COMMAND;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds CRUISE_CONTROL_TARGET_SPEED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds ADAPTIVE_CRUISE_CONTROL_TARGET_TIME_GAP;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds ADAPTIVE_CRUISE_CONTROL_LEAD_VEHICLE_MEASURED_DISTANCE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HANDS_ON_DETECTION_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HANDS_ON_DETECTION_DRIVER_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HANDS_ON_DETECTION_WARNING;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EMERGENCY_CALL_MALFUNCTION;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds IMMOBILIZER_WARNING;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds DIESEL_GLOW_PLUG_ACTIVE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds REAR_VIEW_MIRROR_PRESENCE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds VENDOR_GEAR_SELECTION;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds DMS_DISTRACTION_WARNING;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds DMS_MOBILEPHONE_USAGE_DETECTED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds DMS_DROWSINESS_WARNING;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds AD_TAKE_OVER_REQUEST_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds AD_LANE_CHANGE_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds REMOTE_PARKING_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds AD_COLLISION_WARNING_LEVEL;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds ENGINE_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_SYSTEM_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds MOTOR_POWER_STEERING_SYSTEM_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds DPF_GPF_SYSTEM_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HYDROGEN_LEAKAGE_SYSTEM_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EXTERIOR_LIGHTS_SYSTEM_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HVAC_AIR_VENT_ANGLE_POS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds PARKING_BRAKE_AUTO_HOLD;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds DOOR_APPROACH_UNLOCK;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds WELCOME_SIDE_MIRROR;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds WASHER_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds BUILTIN_CAM_MODE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds LIGHTS_WALK_AWAY_OFF;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds TURN_SIGNAL_LIGHTS_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds STOP_LIGHTS_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds INTERIOR_LIGHTS_AMBIENT_BRIGHTNESS_VISUALIZER;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds AD_PLANNING_MODE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_BATTERY_MANAGEMENT_SYSTEM_VERSION;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_BATTERY_MIN_TEMPERATURE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_BATTERY_WINTER_MODE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds AD_DISTANCE_LEVEL;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds PEPS_USER_PAIRING_REQ;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds PEPS_USER_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds PEPS_PAIRED_USER_IDENTIFICATION;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds PEPS_CONNECTED_USER_IDENTIFICATION;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds ADAPTIVE_FRONT_LIGHTING_SYSTEM_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds ELECTRONIC_STABILITY_CONTROL_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds REGENERATIVE_BRAKING_SYSTEM_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds ELECTRONIC_PARKING_BRAKE_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds ANTI_LOCK_BRAKING_SYSTEM_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds PARKING_BRAKE_AUTO_HOLD_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds OPTIMAL_TIRE_PRESSURE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds TIRE_PRESSURE_MONITORING_SYSTEM_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_AIRBAGS_DEPLOYED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds BRAKE_FLUID_LEVEL;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds TRANSMISSION_OIL_LEVEL;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds WASHER_FLUID_LOW;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds AD_FEEDBACK;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds AD_SPEED_LIMIT_FOLLOW_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds AD_SPEED_LIMIT_FOLLOW_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds AD_TARGET_SPEED_RELATIVE_OFFSET;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds AUTO_HOLD_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds AUTO_HOLD_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds BLACKBOX_MODE_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds BLIND_SPOT_COLLISION_AVOIDANCE_ASSIST_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds AUTO_PARKING_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds DOOR_LIGHTS_SWITCH;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds DOOR_LIGHTS_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds DOOR_WALK_AWAY_LOCK_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds DRIVE_ACCELERATION_LEVEL;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds DRIVE_STEERING_WEIGHT_LEVEL;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds DRIVER_MONITORING_SYSTEM_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds ELECTRONIC_STABILITY_CONTROL_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds ESCORT_LIGHTS_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_BATTERY_SOC;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds FUEL_PERCENT;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_CHARGE_CURRENT;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_CHARGE_INLET_LOCK;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_CHARGE_INLET_LOCK_MODE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_CHARGE_VOLTAGE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_CHARGING_MODE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_CHARGING_SPEED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_CUMULATIVE_CHARGE_ENERGY;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds EV_POWER_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds CURRENT_EV_EFFICIENCY;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds CURRENT_FUEL_ECONOMY;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HANDS_FREE_SMART_TRUNK_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HVAC_AIR_VENT_MODE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds HVAC_AUTO_LEVEL;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds INFO_RELEASE_COUNTRY;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds INFO_SERVICE_ENVIRONMENT;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds INFO_USER_PROFILE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds INFO_VEHICLE_CELLULAR_SIGNAL_STRENGTH;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds INSIDE_AIR_QUALITY_LEVEL;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds INTERIOR_LIGHTS_AMBIENT_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds INTERIOR_LIGHTS_AMBIENT_SWITCH;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds LANE_CHANGE_ASSIST_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds LANE_CHANGE_ASSIST_TYPE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds LANE_CHANGE_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds LIGHT_SHOW_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds LIGHT_SHOW_SWITCH;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds LIGHTS_FAULT_WARNING;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds LIGHTS_WALK_AWAY_OFF_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds NFC_KEY_AUTH_STATUS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds RECOMMENDED_TIRE_PRESSURE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SAFE_DRIVING_MODE_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SAFE_DRIVING_MODE_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SAFE_EXIT_ASSIST_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SAFE_EXIT_ASSIST_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SAFE_EXIT_WARNING_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds AFE_EXIT_WARNING_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_CENTER_CONSOLE_MOVE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_CENTER_CONSOLE_POS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SEAT_RELAX_SELECT;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SENTRY_MODE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SENTRY_MODE_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SUNROOF_SUNSHADE_MOVE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SUNROOF_SUNSHADE_POS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds TELLTALES;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds USER_IDENTIFICATION_KEY;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds VEHICLE_IN_ENTERTAINMENT_MODE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds VEHICLE_PRESET_MODE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds WASHER_FLUID_SPRAY_STATE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds WELCOME_LIGHTS_DOOR_UNLOCK_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds WELCOME_LIGHTS_DRIVER_APPROACH_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds WELCOME_LIGHTS_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds WELCOME_SIDE_MIRROR_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds WHEEL_SLIP_START_ENABLED;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds WINDOW_ROLLER_SHADE_MOVE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds WINDOW_ROLLER_SHADE_POS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds WINDOW_BLIND_MOVE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds WINDOW_BLIND_POS;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SMART_GLASS_LEVEL;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SMART_GLASS_ON;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SMART_GLASS_ZONE_ON;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SMART_GLASS_CONFIG;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds INSTANTANEOUS_EV_EFFICIENCY;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds INSTANTANEOUS_FUEL_ECONOMY;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SINCE_CHARGE_EV_EFFICIENCY;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds SINCE_REFUEL_FUEL_ECONOMY;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds CUMULATIVE_EV_EFFICIENCY;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds CUMULATIVE_FUEL_ECONOMY;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds TRIP_DRIVING_TIME;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds TRIP_DRIVING_DISTANCE;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds TRIP_EV_EFFICIENCY;
+  public static final ai.pleos.playground.vehicle.constant.PleosPropertyIds TRIP_FUEL_ECONOMY;
+  public static ai.pleos.playground.vehicle.constant.PleosPropertyIds[] values();
+  public static ai.pleos.playground.vehicle.constant.PleosPropertyIds valueOf(java.lang.String);
+  public static kotlin.enums.EnumEntries<ai.pleos.playground.vehicle.constant.PleosPropertyIds> getEntries();
+}
+Compiled from "PortLocationTypeValue.kt"
+public final class ai.pleos.playground.vehicle.constant.PortLocationTypeValue {
+  public static final ai.pleos.playground.vehicle.constant.PortLocationTypeValue INSTANCE;
+  public static final int UNKNOWN = 0;
+  public static final int FRONT_LEFT = 1;
+  public static final int FRONT_RIGHT = 2;
+  public static final int REAR_RIGHT = 3;
+  public static final int REAR_LEFT = 4;
+  public static final int FRONT = 5;
+  public static final int REAR = 6;
+}
+Compiled from "VehicleAreaCustomType.kt"
+public final class ai.pleos.playground.vehicle.constant.VehicleAreaCustomType {
+  public static final ai.pleos.playground.vehicle.constant.VehicleAreaCustomType INSTANCE;
+  public static final int VEHICLE_AREA_TYPE_GLOBAL = 0;
+  public static final int VEHICLE_AREA_TYPE_WINDOW = 2;
+  public static final int VEHICLE_AREA_TYPE_SEAT = 3;
+  public static final int VEHICLE_AREA_TYPE_DOOR = 4;
+  public static final int VEHICLE_AREA_TYPE_MIRROR = 5;
+  public static final int VEHICLE_AREA_TYPE_WHEEL = 6;
+}
+Compiled from "VehicleAreaValue.kt"
+public final class ai.pleos.playground.vehicle.constant.VehicleAreaValue$DoorConstant {
+  public static final ai.pleos.playground.vehicle.constant.VehicleAreaValue$DoorConstant INSTANCE;
+  public static final int ROW_1_LEFT = 1;
+  public static final int ROW_1_RIGHT = 4;
+  public static final int ROW_2_LEFT = 16;
+  public static final int ROW_2_RIGHT = 64;
+  public static final int ROW_3_LEFT = 256;
+  public static final int ROW_3_RIGHT = 1024;
+  public static final int HOOD = 268435456;
+  public static final int REAR = 536870912;
+}
+Compiled from "VehicleAreaValue.kt"
+public final class ai.pleos.playground.vehicle.constant.VehicleAreaValue$MirrorConstant {
+  public static final ai.pleos.playground.vehicle.constant.VehicleAreaValue$MirrorConstant INSTANCE;
+  public static final int DRIVER_LEFT = 1;
+  public static final int DRIVER_RIGHT = 2;
+  public static final int DRIVER_CENTER = 4;
+}
+Compiled from "VehicleAreaValue.kt"
+public final class ai.pleos.playground.vehicle.constant.VehicleAreaValue$SeatConstant {
+  public static final ai.pleos.playground.vehicle.constant.VehicleAreaValue$SeatConstant INSTANCE;
+  public static final int ROW_1_LEFT = 1;
+  public static final int ROW_1_CENTER = 2;
+  public static final int ROW_1_RIGHT = 4;
+  public static final int ROW_2_LEFT = 16;
+  public static final int ROW_2_CENTER = 32;
+  public static final int ROW_2_RIGHT = 64;
+  public static final int ROW_3_LEFT = 256;
+  public static final int ROW_3_CENTER = 512;
+  public static final int ROW_3_RIGHT = 1024;
+}
+Compiled from "VehicleAreaValue.kt"
+public final class ai.pleos.playground.vehicle.constant.VehicleAreaValue$TurnSignalConstant {
+  public static final ai.pleos.playground.vehicle.constant.VehicleAreaValue$TurnSignalConstant INSTANCE;
+  public static final int NONE = 0;
+  public static final int RIGHT = 1;
+  public static final int LEFT = 2;
+}
+Compiled from "VehicleAreaValue.kt"
+public final class ai.pleos.playground.vehicle.constant.VehicleAreaValue$WheelConstant {
+  public static final ai.pleos.playground.vehicle.constant.VehicleAreaValue$WheelConstant INSTANCE;
+  public static final int UNKNOWN = 0;
+  public static final int LEFT_FRONT = 1;
+  public static final int RIGHT_FRONT = 2;
+  public static final int LEFT_REAR = 4;
+  public static final int RIGHT_REAR = 8;
+}
+Compiled from "VehicleAreaValue.kt"
+public final class ai.pleos.playground.vehicle.constant.VehicleAreaValue$WindowConstant {
+  public static final ai.pleos.playground.vehicle.constant.VehicleAreaValue$WindowConstant INSTANCE;
+  public static final int FRONT_WINDSHIELD = 1;
+  public static final int REAR_WINDSHIELD = 2;
+  public static final int ROW_1_LEFT = 16;
+  public static final int ROW_1_RIGHT = 64;
+  public static final int ROW_2_LEFT = 256;
+  public static final int ROW_2_RIGHT = 1024;
+  public static final int ROW_3_LEFT = 4096;
+  public static final int ROW_3_RIGHT = 16384;
+  public static final int ROOF_TOP_1 = 65536;
+  public static final int ROOF_TOP_2 = 131072;
+}
+Compiled from "VehicleAreaValue.kt"
+public final class ai.pleos.playground.vehicle.constant.VehicleAreaValue {
+  public static final ai.pleos.playground.vehicle.constant.VehicleAreaValue INSTANCE;
+  public static final int INVALID = -1;
+  public static final int DEFAULT = 0;
+}
+Compiled from "VehicleCameraViewValue.kt"
+public final class ai.pleos.playground.vehicle.constant.VehicleCameraViewValue {
+  public static final ai.pleos.playground.vehicle.constant.VehicleCameraViewValue INSTANCE;
+  public static final int OFF = 0;
+  public static final int ALL = 1;
+  public static final int FRONT = 2;
+  public static final int REAR = 3;
+  public static final int LEFT = 4;
+  public static final int RIGHT = 5;
+}
+Compiled from "VehicleCapabilityValueType.kt"
+public final class ai.pleos.playground.vehicle.constant.VehicleCapabilityValueType {
+  public static final ai.pleos.playground.vehicle.constant.VehicleCapabilityValueType INSTANCE;
+  public static final int SUNROOF = 16;
+  public static final int AMBIENT_LIGHT = 32;
+}
+Compiled from "VehicleCruiseControlValue.kt"
+public final class ai.pleos.playground.vehicle.constant.VehicleCruiseControlValue {
+  public static final ai.pleos.playground.vehicle.constant.VehicleCruiseControlValue INSTANCE;
+  public static final int OTHER_ID = 0;
+  public static final int ENABLED_ID = 1;
+  public static final int ACTIVATED_ID = 2;
+  public static final int USER_OVERRIDE_ID = 3;
+  public static final int SUSPENDED_ID = 4;
+  public static final int FORCED_DEACTIVATION_WARNING_ID = 5;
+}
+Compiled from "VehicleDrivingModeValue.kt"
+public final class ai.pleos.playground.vehicle.constant.VehicleDrivingModeValue {
+  public static final ai.pleos.playground.vehicle.constant.VehicleDrivingModeValue INSTANCE;
+  public static final int NORMAL = 0;
+  public static final int ECO = 1;
+  public static final int SPORT = 2;
+}
+Compiled from "VehicleEVChargeStateValue.kt"
+public final class ai.pleos.playground.vehicle.constant.VehicleEVChargeStateValue {
+  public static final ai.pleos.playground.vehicle.constant.VehicleEVChargeStateValue INSTANCE;
+  public static final int UNKNOWN = 0;
+  public static final int CHARGING = 1;
+  public static final int FULLY_CHARGED = 2;
+  public static final int NOT_CHARGING = 3;
+  public static final int ERROR = 4;
+}
+Compiled from "VehicleEVRegenerativeBrakingStateValue.kt"
+public final class ai.pleos.playground.vehicle.constant.VehicleEVRegenerativeBrakingStateValue {
+  public static final ai.pleos.playground.vehicle.constant.VehicleEVRegenerativeBrakingStateValue INSTANCE;
+  public static final int UNKNOWN = 0;
+  public static final int DISABLED = 1;
+  public static final int PARTIALLY_ENABLED = 2;
+  public static final int FULLY_ENABLED = 3;
+}
+Compiled from "VehicleEvChargingConnectorType.kt"
+public final class ai.pleos.playground.vehicle.constant.VehicleEvChargingConnectorType {
+  public static final ai.pleos.playground.vehicle.constant.VehicleEvChargingConnectorType INSTANCE;
+  public static final int UNKNOWN = 0;
+  public static final int IEC_TYPE_1_AC = 1;
+  public static final int IEC_TYPE_2_AC = 2;
+  public static final int IEC_TYPE_3_AC = 3;
+  public static final int IEC_TYPE_4_DC = 4;
+  public static final int IEC_TYPE_1_CCS_DC = 5;
+  public static final int IEC_TYPE_2_CCS_DC = 6;
+  public static final int TESLA_ROADSTER = 7;
+  public static final int TESLA_HPWC = 8;
+  public static final int TESLA_SUPERCHARGER = 9;
+  public static final int GBT_AC = 10;
+  public static final int GBT_DC = 11;
+  public static final int OTHER = 101;
+}
+Compiled from "VehicleExteriorLightsValue.kt"
+public final class ai.pleos.playground.vehicle.constant.VehicleExteriorLightsValue {
+  public static final ai.pleos.playground.vehicle.constant.VehicleExteriorLightsValue INSTANCE;
+  public static final int OFF = 0;
+  public static final int AUTO = 256;
+  public static final int TAIL_LAMP = 1;
+  public static final int LOW_BEAM = 2;
+}
+Compiled from "VehicleFanDirectionTypeValue.kt"
+public final class ai.pleos.playground.vehicle.constant.VehicleFanDirectionTypeValue {
+  public static final ai.pleos.playground.vehicle.constant.VehicleFanDirectionTypeValue INSTANCE;
+  public static final int UNKNOWN = 0;
+  public static final int FACE = 1;
+  public static final int FLOOR = 2;
+  public static final int FACE_AND_FLOOR = 3;
+  public static final int DEFROST = 4;
+  public static final int FACE_DEFROST = 5;
+  public static final int FLOOR_DEFROST = 6;
+  public static final int FLOOR_DEFROST_FACE = 7;
+}
+Compiled from "VehicleFuelTypeValue.kt"
+public final class ai.pleos.playground.vehicle.constant.VehicleFuelTypeValue {
+  public static final ai.pleos.playground.vehicle.constant.VehicleFuelTypeValue INSTANCE;
+  public static final int UNKNOWN = 0;
+  public static final int UNLEADED = 1;
+  public static final int LEADED = 2;
+  public static final int DIESEL_1 = 3;
+  public static final int DIESEL_2 = 4;
+  public static final int BIODIESEL = 5;
+  public static final int E85 = 6;
+  public static final int LPG = 7;
+  public static final int CNG = 8;
+  public static final int LNG = 9;
+  public static final int ELECTRIC = 10;
+  public static final int HYDROGEN = 11;
+  public static final int OTHER = 12;
+}
+Compiled from "VehicleGearValue.kt"
+public final class ai.pleos.playground.vehicle.constant.VehicleGearValue {
+  public static final ai.pleos.playground.vehicle.constant.VehicleGearValue INSTANCE;
+  public static final int GEAR_UNKNOWN = 0;
+  public static final int GEAR_NEUTRAL = 1;
+  public static final int GEAR_REVERSE = 2;
+  public static final int GEAR_PARK = 4;
+  public static final int GEAR_DRIVE = 8;
+  public static final int GEAR_1 = 16;
+  public static final int GEAR_2 = 32;
+  public static final int GEAR_3 = 64;
+  public static final int GEAR_4 = 128;
+  public static final int GEAR_5 = 256;
+  public static final int GEAR_6 = 512;
+  public static final int GEAR_7 = 1024;
+  public static final int GEAR_8 = 2048;
+  public static final int GEAR_9 = 4096;
+}
+Compiled from "VehicleGsrComplianceTypeValue.kt"
+public final class ai.pleos.playground.vehicle.constant.VehicleGsrComplianceTypeValue {
+  public static final ai.pleos.playground.vehicle.constant.VehicleGsrComplianceTypeValue INSTANCE;
+  public static final int GSR_COMPLIANCE_TYPE_NOT_REQUIRED = 0;
+  public static final int GSR_COMPLIANCE_TYPE_REQUIRED_V1 = 1;
+}
+Compiled from "VehicleHvacFanDirectionValue.kt"
+public final class ai.pleos.playground.vehicle.constant.VehicleHvacFanDirectionValue {
+  public static final ai.pleos.playground.vehicle.constant.VehicleHvacFanDirectionValue INSTANCE;
+  public static final int FACE = 1;
+  public static final int FLOOR = 2;
+  public static final int DEFROST = 4;
+}
+Compiled from "VehicleIgnitionStateValue.kt"
+public final class ai.pleos.playground.vehicle.constant.VehicleIgnitionStateValue {
+  public static final ai.pleos.playground.vehicle.constant.VehicleIgnitionStateValue INSTANCE;
+  public static final int UNDEFINED = 0;
+  public static final int LOCK = 1;
+  public static final int OFF = 2;
+  public static final int ACC = 3;
+  public static final int ON = 4;
+  public static final int START = 5;
+}
+Compiled from "VehicleLightStateValue.kt"
+public final class ai.pleos.playground.vehicle.constant.VehicleLightStateValue {
+  public static final ai.pleos.playground.vehicle.constant.VehicleLightStateValue INSTANCE;
+  public static final int OFF = 0;
+  public static final int ON = 1;
+  public static final int DAYTIME_RUNNING = 2;
+  public static void getDAYTIME_RUNNING$annotations();
+}
+Compiled from "VehicleLightSwitchValue.kt"
+public final class ai.pleos.playground.vehicle.constant.VehicleLightSwitchValue {
+  public static final ai.pleos.playground.vehicle.constant.VehicleLightSwitchValue INSTANCE;
+  public static final int OFF = 0;
+  public static final int ON = 1;
+  public static final int DAYTIME_RUNNING = 2;
+  public static final int AUTOMATIC = 256;
+  public static void getDAYTIME_RUNNING$annotations();
+  public static void getAUTOMATIC$annotations();
+}
+Compiled from "VehicleOilLevelValue.kt"
+public final class ai.pleos.playground.vehicle.constant.VehicleOilLevelValue {
+  public static final ai.pleos.playground.vehicle.constant.VehicleOilLevelValue INSTANCE;
+  public static final int CRITICALLY_LOW = 0;
+  public static final int LOW = 1;
+  public static final int NORMAL = 2;
+  public static final int HIGH = 3;
+  public static final int ERROR = 4;
+}
+Compiled from "VehicleSteeringControlValue.kt"
+public final class ai.pleos.playground.vehicle.constant.VehicleSteeringControlValue {
+  public static final ai.pleos.playground.vehicle.constant.VehicleSteeringControlValue INSTANCE;
+  public static final int OFF_ID = 0;
+  public static final int READY_ID = 1;
+  public static final int ACTIVE_ID = 2;
+}
+Compiled from "VehicleUnitValue.kt"
+public final class ai.pleos.playground.vehicle.constant.VehicleUnitValue {
+  public static final ai.pleos.playground.vehicle.constant.VehicleUnitValue INSTANCE;
+  public static final int SHOULD_NOT_USE = 0;
+  public static final int RPM = 2;
+  public static final int HERTZ = 3;
+  public static final int PERCENTILE = 16;
+  public static final int NANO_SECS = 80;
+  public static final int SECS = 83;
+  public static final int YEAR = 89;
+  public static final int MILLIAMPERE = 97;
+  public static final int MILLIVOLT = 98;
+  public static final int MILLIWATTS = 99;
+  public static final int DEGREES = 128;
+  public static final int MILLIMETER = 32;
+  public static final int METER = 33;
+  public static final int KILOMETER = 35;
+  public static final int MILE = 36;
+  public static final int CELSIUS = 48;
+  public static final int FAHRENHEIT = 49;
+  public static final int KELVIN = 50;
+  public static final int MILLILITER = 64;
+  public static final int LITER = 65;
+  public static final int US_GALLON = 66;
+  public static final int IMPERIAL_GALLON = 67;
+  public static final int WATT_HOUR = 96;
+  public static final int AMPERE_HOURS = 100;
+  public static final int KILOWATT_HOUR = 101;
+  public static final int KILOPASCAL = 112;
+  public static final int PSI = 113;
+  public static final int BAR = 114;
+  public static final int METER_PER_SEC = 1;
+  public static final int MILES_PER_HOUR = 144;
+  public static final int KILOMETERS_PER_HOUR = 145;
+}
+Compiled from "VehicleValueType.kt"
+public final class ai.pleos.playground.vehicle.constant.VehicleValueType {
+  public static final ai.pleos.playground.vehicle.constant.VehicleValueType INSTANCE;
+  public static final int UNKNOWN = 0;
+  public static final int STRING = 2;
+  public static final int INT = 4;
+  public static final int FLOAT = 8;
+  public static final int DOUBLE = 16;
+  public static final int LONG = 32;
+  public static final int BOOLEAN = 64;
+  public static final int INT_ARRAY = 128;
+  public static final int FLOAT_ARRAY = 256;
+  public static final int LONG_ARRAY = 512;
+}
+Compiled from "VehicleViewContentTypeValue.kt"
+public final class ai.pleos.playground.vehicle.constant.VehicleViewContentTypeValue {
+  public static final ai.pleos.playground.vehicle.constant.VehicleViewContentTypeValue INSTANCE;
+  public static final int SPEED = 0;
+  public static final int ROUTE_GUIDE = 1;
+  public static final int CRUISE_CONTROL = 2;
+}
+Compiled from "VehicleWiperStateValue.kt"
+public final class ai.pleos.playground.vehicle.constant.VehicleWiperStateValue {
+  public static final ai.pleos.playground.vehicle.constant.VehicleWiperStateValue INSTANCE;
+  public static final int OTHER = 0;
+  public static final int OFF = 1;
+  public static final int ON = 2;
+  public static final int SERVICE = 3;
+}
+Compiled from "VehicleWiperSwitchValue.kt"
+public final class ai.pleos.playground.vehicle.constant.VehicleWiperSwitchValue {
+  public static final ai.pleos.playground.vehicle.constant.VehicleWiperSwitchValue INSTANCE;
+  public static final int OTHER = 0;
+  public static final int OFF = 1;
+  public static final int MIST = 2;
+  public static final int INTERMITTENT_LEVEL_1 = 3;
+  public static final int INTERMITTENT_LEVEL_2 = 4;
+  public static final int INTERMITTENT_LEVEL_3 = 5;
+  public static final int INTERMITTENT_LEVEL_4 = 6;
+  public static final int INTERMITTENT_LEVEL_5 = 7;
+  public static final int CONTINUOUS_LEVEL_1 = 8;
+  public static final int CONTINUOUS_LEVEL_2 = 9;
+  public static final int CONTINUOUS_LEVEL_3 = 10;
+  public static final int CONTINUOUS_LEVEL_4 = 11;
+  public static final int CONTINUOUS_LEVEL_5 = 12;
+  public static final int AUTO = 13;
+  public static final int SERVICE = 14;
+}
+Compiled from "BuildConfig.java"
+public final class ai.pleos.playground.vehicle.data.BuildConfig {
+  public static final boolean DEBUG = false;
+  public static final java.lang.String LIBRARY_PACKAGE_NAME = "ai.pleos.playground.vehicle.data";
+  public static final java.lang.String BUILD_TYPE = "release";
+  public ai.pleos.playground.vehicle.data.BuildConfig();
+}
+Compiled from "CapabilityAreaConfig.kt"
+public final class ai.pleos.playground.vehicle.data.CapabilityAreaConfig<T> {
+  public ai.pleos.playground.vehicle.data.CapabilityAreaConfig(T, T, java.util.List<java.lang.String>);
+  public final T getMinValue();
+  public final T getMaxValue();
+  public final java.util.List<java.lang.String> getSupportedValues();
+  public final T component1();
+  public final T component2();
+  public final java.util.List<java.lang.String> component3();
+  public final ai.pleos.playground.vehicle.data.CapabilityAreaConfig<T> copy(T, T, java.util.List<java.lang.String>);
+  public static ai.pleos.playground.vehicle.data.CapabilityAreaConfig copy$default(ai.pleos.playground.vehicle.data.CapabilityAreaConfig, java.lang.Object, java.lang.Object, java.util.List, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+Compiled from "CapabilityConfig.kt"
+public final class ai.pleos.playground.vehicle.data.CapabilityConfig<T> {
+  public ai.pleos.playground.vehicle.data.CapabilityConfig(java.lang.Integer, java.lang.Integer, java.lang.Integer, java.util.ArrayList<java.lang.Integer>, java.lang.String, java.lang.Float, java.lang.Float, int, java.util.HashMap<java.lang.Integer, ai.pleos.playground.vehicle.data.CapabilityAreaConfig<T>>, java.lang.Class<T>);
+  public ai.pleos.playground.vehicle.data.CapabilityConfig(java.lang.Integer, java.lang.Integer, java.lang.Integer, java.util.ArrayList, java.lang.String, java.lang.Float, java.lang.Float, int, java.util.HashMap, java.lang.Class, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final java.lang.Integer getAreaType();
+  public final java.lang.Integer getAccess();
+  public final java.lang.Integer getChangeMode();
+  public final java.util.ArrayList<java.lang.Integer> getConfigArray();
+  public final java.lang.String getConfigString();
+  public final java.lang.Float getMaxSampleRate();
+  public final java.lang.Float getMinSampleRate();
+  public final int getPropertyId();
+  public final java.util.HashMap<java.lang.Integer, ai.pleos.playground.vehicle.data.CapabilityAreaConfig<T>> getSupportedAreas();
+  public final java.lang.Class<T> getType();
+  public final int[] getAreas();
+  public final boolean hasArea(int);
+  public final T getMinValue(int);
+  public final T getMaxValue(int);
+  public final java.util.List<java.lang.String> getSupportValueList(int);
+  public final java.lang.Integer component1();
+  public final java.lang.Integer component2();
+  public final java.lang.Integer component3();
+  public final java.util.ArrayList<java.lang.Integer> component4();
+  public final java.lang.String component5();
+  public final java.lang.Float component6();
+  public final java.lang.Float component7();
+  public final int component8();
+  public final java.util.HashMap<java.lang.Integer, ai.pleos.playground.vehicle.data.CapabilityAreaConfig<T>> component9();
+  public final java.lang.Class<T> component10();
+  public final ai.pleos.playground.vehicle.data.CapabilityConfig<T> copy(java.lang.Integer, java.lang.Integer, java.lang.Integer, java.util.ArrayList<java.lang.Integer>, java.lang.String, java.lang.Float, java.lang.Float, int, java.util.HashMap<java.lang.Integer, ai.pleos.playground.vehicle.data.CapabilityAreaConfig<T>>, java.lang.Class<T>);
+  public static ai.pleos.playground.vehicle.data.CapabilityConfig copy$default(ai.pleos.playground.vehicle.data.CapabilityConfig, java.lang.Integer, java.lang.Integer, java.lang.Integer, java.util.ArrayList, java.lang.String, java.lang.Float, java.lang.Float, int, java.util.HashMap, java.lang.Class, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}

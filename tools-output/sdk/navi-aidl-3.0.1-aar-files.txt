@@ -1,0 +1,6 @@
+./AndroidManifest.xml
+./META-INF/com/android/build/gradle/aar-metadata.properties
+./R.txt
+./aidl/ai/pleos/playground/navi/ResponseParcel.aidl
+./classes.jar
+./proguard.txt

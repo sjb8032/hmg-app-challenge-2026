@@ -1,0 +1,2018 @@
+Compiled from "BookmarkType.kt"
+final class ai.pleos.playground.navi.constants.BookmarkType$Companion$1 extends kotlin.jvm.internal.Lambda implements kotlin.jvm.functions.Function0<kotlinx.serialization.KSerializer<java.lang.Object>> {
+  public static final ai.pleos.playground.navi.constants.BookmarkType$Companion$1 INSTANCE;
+  public final kotlinx.serialization.KSerializer<java.lang.Object> invoke();
+  public java.lang.Object invoke();
+}
+Compiled from "BookmarkType.kt"
+public final class ai.pleos.playground.navi.constants.BookmarkType$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.constants.BookmarkType> serializer();
+  public ai.pleos.playground.navi.constants.BookmarkType$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "BookmarkType.kt"
+public final class ai.pleos.playground.navi.constants.BookmarkType extends java.lang.Enum<ai.pleos.playground.navi.constants.BookmarkType> {
+  public static final ai.pleos.playground.navi.constants.BookmarkType$Companion Companion;
+  public static final ai.pleos.playground.navi.constants.BookmarkType HOME;
+  public static final ai.pleos.playground.navi.constants.BookmarkType OFFICE;
+  public static final ai.pleos.playground.navi.constants.BookmarkType EV_CHARGING_STATION;
+  public static final ai.pleos.playground.navi.constants.BookmarkType DEFAULT;
+  public static ai.pleos.playground.navi.constants.BookmarkType[] values();
+  public static ai.pleos.playground.navi.constants.BookmarkType valueOf(java.lang.String);
+  public static kotlin.enums.EnumEntries<ai.pleos.playground.navi.constants.BookmarkType> getEntries();
+  public static final kotlin.Lazy access$get$cachedSerializer$delegate$cp();
+}
+Compiled from "CameraType.kt"
+final class ai.pleos.playground.navi.constants.CameraType$Companion$1 extends kotlin.jvm.internal.Lambda implements kotlin.jvm.functions.Function0<kotlinx.serialization.KSerializer<java.lang.Object>> {
+  public static final ai.pleos.playground.navi.constants.CameraType$Companion$1 INSTANCE;
+  public final kotlinx.serialization.KSerializer<java.lang.Object> invoke();
+  public java.lang.Object invoke();
+}
+Compiled from "CameraType.kt"
+public final class ai.pleos.playground.navi.constants.CameraType$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.constants.CameraType> serializer();
+  public ai.pleos.playground.navi.constants.CameraType$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "CameraType.kt"
+public final class ai.pleos.playground.navi.constants.CameraType extends java.lang.Enum<ai.pleos.playground.navi.constants.CameraType> {
+  public static final ai.pleos.playground.navi.constants.CameraType$Companion Companion;
+  public static final ai.pleos.playground.navi.constants.CameraType SPEED_CAMERA_FIX;
+  public static final ai.pleos.playground.navi.constants.CameraType SPEED_CAMERA_MOV;
+  public static final ai.pleos.playground.navi.constants.CameraType SPEED_CAMERA_SECTION_START;
+  public static final ai.pleos.playground.navi.constants.CameraType SECTION_SPEED_ALERT;
+  public static final ai.pleos.playground.navi.constants.CameraType SPEED_CAMERA_SECTION_END;
+  public static final ai.pleos.playground.navi.constants.CameraType SPEED_CAMERA_TRAFFIC_LIGHT;
+  public static final ai.pleos.playground.navi.constants.CameraType SPEED_CAMERA_REAR;
+  public static final ai.pleos.playground.navi.constants.CameraType VARIABLE_SPEED_CAMERA;
+  public static final ai.pleos.playground.navi.constants.CameraType SPEED_CAMERA_SCHOOL_ZONE;
+  public static final ai.pleos.playground.navi.constants.CameraType SPEED_CAMERA_SCHOOL_ZONE_TRAFFIC_LIGHT;
+  public static ai.pleos.playground.navi.constants.CameraType[] values();
+  public static ai.pleos.playground.navi.constants.CameraType valueOf(java.lang.String);
+  public static kotlin.enums.EnumEntries<ai.pleos.playground.navi.constants.CameraType> getEntries();
+  public static final kotlin.Lazy access$get$cachedSerializer$delegate$cp();
+}
+Compiled from "CautionPointType.kt"
+final class ai.pleos.playground.navi.constants.CautionPointType$Companion$1 extends kotlin.jvm.internal.Lambda implements kotlin.jvm.functions.Function0<kotlinx.serialization.KSerializer<java.lang.Object>> {
+  public static final ai.pleos.playground.navi.constants.CautionPointType$Companion$1 INSTANCE;
+  public final kotlinx.serialization.KSerializer<java.lang.Object> invoke();
+  public java.lang.Object invoke();
+}
+Compiled from "CautionPointType.kt"
+public final class ai.pleos.playground.navi.constants.CautionPointType$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.constants.CautionPointType> serializer();
+  public ai.pleos.playground.navi.constants.CautionPointType$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "CautionPointType.kt"
+public final class ai.pleos.playground.navi.constants.CautionPointType extends java.lang.Enum<ai.pleos.playground.navi.constants.CautionPointType> {
+  public static final ai.pleos.playground.navi.constants.CautionPointType$Companion Companion;
+  public static final ai.pleos.playground.navi.constants.CautionPointType SPEED_BUMP;
+  public static final ai.pleos.playground.navi.constants.CautionPointType SCHOOL_ZONE;
+  public static final ai.pleos.playground.navi.constants.CautionPointType ACCIDENT_PRONE_AREA;
+  public static final ai.pleos.playground.navi.constants.CautionPointType RAILROAD_CROSSING;
+  public static final ai.pleos.playground.navi.constants.CautionPointType FOG_AREA;
+  public static final ai.pleos.playground.navi.constants.CautionPointType FALLING_ROCK_AREA;
+  public static final ai.pleos.playground.navi.constants.CautionPointType DOWNHILL_CAUTION_AREA;
+  public static final ai.pleos.playground.navi.constants.CautionPointType WILDLIFE_CROSSING;
+  public static final ai.pleos.playground.navi.constants.CautionPointType NARROW_ROAD;
+  public static final ai.pleos.playground.navi.constants.CautionPointType HIGHWAY_CONSTRUCTION;
+  public static final ai.pleos.playground.navi.constants.CautionPointType TRAFFIC_INFO_COLLECTION;
+  public static final ai.pleos.playground.navi.constants.CautionPointType NO_PARKING_ZONE;
+  public static final ai.pleos.playground.navi.constants.CautionPointType TRAFFIC_LIGHT_VIOLATION_ENFORCEMENT;
+  public static final ai.pleos.playground.navi.constants.CautionPointType BUS_LANE_VIOLATION_ENFORCEMENT;
+  public static final ai.pleos.playground.navi.constants.CautionPointType CUT_IN_VIOLATION_ENFORCEMENT;
+  public static final ai.pleos.playground.navi.constants.CautionPointType BLOCK_INTERSECTION_ENFORCEMENT;
+  public static final ai.pleos.playground.navi.constants.CautionPointType LANE_CHANGE_CAMERA_ALERT;
+  public static final ai.pleos.playground.navi.constants.CautionPointType SLIPPERY_ROAD_ALERT;
+  public static final ai.pleos.playground.navi.constants.CautionPointType ROAD_DAMAGE_ALERT;
+  public static final ai.pleos.playground.navi.constants.CautionPointType WRONG_WAY_DRIVING_ALERT;
+  public static final ai.pleos.playground.navi.constants.CautionPointType BUS_LANE_UNAVAILABLE_NOTICE;
+  public static final ai.pleos.playground.navi.constants.CautionPointType BUS_LANE_AVAILABLE_NOTICE;
+  public static final ai.pleos.playground.navi.constants.CautionPointType SIGN_MALFUNCION;
+  public static ai.pleos.playground.navi.constants.CautionPointType[] values();
+  public static ai.pleos.playground.navi.constants.CautionPointType valueOf(java.lang.String);
+  public static kotlin.enums.EnumEntries<ai.pleos.playground.navi.constants.CautionPointType> getEntries();
+  public static final kotlin.Lazy access$get$cachedSerializer$delegate$cp();
+}
+Compiled from "NaviErrorCode.kt"
+final class ai.pleos.playground.navi.constants.NaviErrorCode$Companion$1 extends kotlin.jvm.internal.Lambda implements kotlin.jvm.functions.Function0<kotlinx.serialization.KSerializer<java.lang.Object>> {
+  public static final ai.pleos.playground.navi.constants.NaviErrorCode$Companion$1 INSTANCE;
+  public final kotlinx.serialization.KSerializer<java.lang.Object> invoke();
+  public java.lang.Object invoke();
+}
+Compiled from "NaviErrorCode.kt"
+public final class ai.pleos.playground.navi.constants.NaviErrorCode$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.constants.NaviErrorCode> serializer();
+  public ai.pleos.playground.navi.constants.NaviErrorCode$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "NaviErrorCode.kt"
+public final class ai.pleos.playground.navi.constants.NaviErrorCode extends java.lang.Enum<ai.pleos.playground.navi.constants.NaviErrorCode> {
+  public static final ai.pleos.playground.navi.constants.NaviErrorCode$Companion Companion;
+  public static final ai.pleos.playground.navi.constants.NaviErrorCode CAUSE_LOW_BATTERY;
+  public static final ai.pleos.playground.navi.constants.NaviErrorCode CAUSE_SEARCH_ROUTE_OVER_DISTANCE;
+  public static final ai.pleos.playground.navi.constants.NaviErrorCode CAUSE_SEARCH_ROUTE;
+  public static final ai.pleos.playground.navi.constants.NaviErrorCode CAUSE_SEARCH_ROUTE_TOO_SHORT_DISTANCE;
+  public static final ai.pleos.playground.navi.constants.NaviErrorCode CAUSE_SEARCH_TRIP;
+  public static ai.pleos.playground.navi.constants.NaviErrorCode[] values();
+  public static ai.pleos.playground.navi.constants.NaviErrorCode valueOf(java.lang.String);
+  public static kotlin.enums.EnumEntries<ai.pleos.playground.navi.constants.NaviErrorCode> getEntries();
+  public static final kotlin.Lazy access$get$cachedSerializer$delegate$cp();
+}
+Compiled from "NaviMode.kt"
+final class ai.pleos.playground.navi.constants.NaviMode$Companion$1 extends kotlin.jvm.internal.Lambda implements kotlin.jvm.functions.Function0<kotlinx.serialization.KSerializer<java.lang.Object>> {
+  public static final ai.pleos.playground.navi.constants.NaviMode$Companion$1 INSTANCE;
+  public final kotlinx.serialization.KSerializer<java.lang.Object> invoke();
+  public java.lang.Object invoke();
+}
+Compiled from "NaviMode.kt"
+public final class ai.pleos.playground.navi.constants.NaviMode$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.constants.NaviMode> serializer();
+  public ai.pleos.playground.navi.constants.NaviMode$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "NaviMode.kt"
+public final class ai.pleos.playground.navi.constants.NaviMode extends java.lang.Enum<ai.pleos.playground.navi.constants.NaviMode> {
+  public static final ai.pleos.playground.navi.constants.NaviMode$Companion Companion;
+  public static final ai.pleos.playground.navi.constants.NaviMode NOT_WORKING;
+  public static final ai.pleos.playground.navi.constants.NaviMode SAFE_GUIDING;
+  public static final ai.pleos.playground.navi.constants.NaviMode ROUTE_GUIDING;
+  public static final ai.pleos.playground.navi.constants.NaviMode SIMULATION_GUIDING;
+  public static ai.pleos.playground.navi.constants.NaviMode[] values();
+  public static ai.pleos.playground.navi.constants.NaviMode valueOf(java.lang.String);
+  public static kotlin.enums.EnumEntries<ai.pleos.playground.navi.constants.NaviMode> getEntries();
+  public static final kotlin.Lazy access$get$cachedSerializer$delegate$cp();
+}
+Compiled from "NavigationStatus.kt"
+final class ai.pleos.playground.navi.constants.NavigationStatus$Companion$1 extends kotlin.jvm.internal.Lambda implements kotlin.jvm.functions.Function0<kotlinx.serialization.KSerializer<java.lang.Object>> {
+  public static final ai.pleos.playground.navi.constants.NavigationStatus$Companion$1 INSTANCE;
+  public final kotlinx.serialization.KSerializer<java.lang.Object> invoke();
+  public java.lang.Object invoke();
+}
+Compiled from "NavigationStatus.kt"
+public final class ai.pleos.playground.navi.constants.NavigationStatus$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.constants.NavigationStatus> serializer();
+  public ai.pleos.playground.navi.constants.NavigationStatus$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "NavigationStatus.kt"
+public final class ai.pleos.playground.navi.constants.NavigationStatus extends java.lang.Enum<ai.pleos.playground.navi.constants.NavigationStatus> {
+  public static final ai.pleos.playground.navi.constants.NavigationStatus$Companion Companion;
+  public static final ai.pleos.playground.navi.constants.NavigationStatus INACTIVE;
+  public static final ai.pleos.playground.navi.constants.NavigationStatus INITIALIZING;
+  public static final ai.pleos.playground.navi.constants.NavigationStatus FREE_DRIVE;
+  public static final ai.pleos.playground.navi.constants.NavigationStatus ROUTE_DRIVE;
+  public static ai.pleos.playground.navi.constants.NavigationStatus[] values();
+  public static ai.pleos.playground.navi.constants.NavigationStatus valueOf(java.lang.String);
+  public static kotlin.enums.EnumEntries<ai.pleos.playground.navi.constants.NavigationStatus> getEntries();
+  public static final kotlin.Lazy access$get$cachedSerializer$delegate$cp();
+}
+Compiled from "RouteOption.kt"
+final class ai.pleos.playground.navi.constants.RouteOption$Companion$1 extends kotlin.jvm.internal.Lambda implements kotlin.jvm.functions.Function0<kotlinx.serialization.KSerializer<java.lang.Object>> {
+  public static final ai.pleos.playground.navi.constants.RouteOption$Companion$1 INSTANCE;
+  public final kotlinx.serialization.KSerializer<java.lang.Object> invoke();
+  public java.lang.Object invoke();
+}
+Compiled from "RouteOption.kt"
+public final class ai.pleos.playground.navi.constants.RouteOption$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.constants.RouteOption> serializer();
+  public ai.pleos.playground.navi.constants.RouteOption$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "RouteOption.kt"
+public final class ai.pleos.playground.navi.constants.RouteOption extends java.lang.Enum<ai.pleos.playground.navi.constants.RouteOption> {
+  public static final ai.pleos.playground.navi.constants.RouteOption$Companion Companion;
+  public static final ai.pleos.playground.navi.constants.RouteOption RECOMMENDED;
+  public static final ai.pleos.playground.navi.constants.RouteOption SHORT_DISTANCE;
+  public static final ai.pleos.playground.navi.constants.RouteOption SHORT_TIME;
+  public static final ai.pleos.playground.navi.constants.RouteOption FREE;
+  public static final ai.pleos.playground.navi.constants.RouteOption HIGHWAY;
+  public static final ai.pleos.playground.navi.constants.RouteOption COMFORTABLE;
+  public static final ai.pleos.playground.navi.constants.RouteOption SCHOOL_ZONE;
+  public static ai.pleos.playground.navi.constants.RouteOption[] values();
+  public static ai.pleos.playground.navi.constants.RouteOption valueOf(java.lang.String);
+  public static kotlin.enums.EnumEntries<ai.pleos.playground.navi.constants.RouteOption> getEntries();
+  public static final kotlin.Lazy access$get$cachedSerializer$delegate$cp();
+}
+Compiled from "RoutePointPoiType.kt"
+final class ai.pleos.playground.navi.constants.RoutePointPoiType$Companion$1 extends kotlin.jvm.internal.Lambda implements kotlin.jvm.functions.Function0<kotlinx.serialization.KSerializer<java.lang.Object>> {
+  public static final ai.pleos.playground.navi.constants.RoutePointPoiType$Companion$1 INSTANCE;
+  public final kotlinx.serialization.KSerializer<java.lang.Object> invoke();
+  public java.lang.Object invoke();
+}
+Compiled from "RoutePointPoiType.kt"
+public final class ai.pleos.playground.navi.constants.RoutePointPoiType$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.constants.RoutePointPoiType> serializer();
+  public ai.pleos.playground.navi.constants.RoutePointPoiType$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "RoutePointPoiType.kt"
+public final class ai.pleos.playground.navi.constants.RoutePointPoiType extends java.lang.Enum<ai.pleos.playground.navi.constants.RoutePointPoiType> {
+  public static final ai.pleos.playground.navi.constants.RoutePointPoiType$Companion Companion;
+  public static final ai.pleos.playground.navi.constants.RoutePointPoiType NORMAL;
+  public static final ai.pleos.playground.navi.constants.RoutePointPoiType EV_CHARGING;
+  public static ai.pleos.playground.navi.constants.RoutePointPoiType[] values();
+  public static ai.pleos.playground.navi.constants.RoutePointPoiType valueOf(java.lang.String);
+  public static kotlin.enums.EnumEntries<ai.pleos.playground.navi.constants.RoutePointPoiType> getEntries();
+  public static final kotlin.Lazy access$get$cachedSerializer$delegate$cp();
+}
+Compiled from "RoutePointSettingType.kt"
+final class ai.pleos.playground.navi.constants.RoutePointSettingType$Companion$1 extends kotlin.jvm.internal.Lambda implements kotlin.jvm.functions.Function0<kotlinx.serialization.KSerializer<java.lang.Object>> {
+  public static final ai.pleos.playground.navi.constants.RoutePointSettingType$Companion$1 INSTANCE;
+  public final kotlinx.serialization.KSerializer<java.lang.Object> invoke();
+  public java.lang.Object invoke();
+}
+Compiled from "RoutePointSettingType.kt"
+public final class ai.pleos.playground.navi.constants.RoutePointSettingType$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.constants.RoutePointSettingType> serializer();
+  public ai.pleos.playground.navi.constants.RoutePointSettingType$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "RoutePointSettingType.kt"
+public final class ai.pleos.playground.navi.constants.RoutePointSettingType extends java.lang.Enum<ai.pleos.playground.navi.constants.RoutePointSettingType> {
+  public static final ai.pleos.playground.navi.constants.RoutePointSettingType$Companion Companion;
+  public static final ai.pleos.playground.navi.constants.RoutePointSettingType AUTO;
+  public static final ai.pleos.playground.navi.constants.RoutePointSettingType MANUAL;
+  public static ai.pleos.playground.navi.constants.RoutePointSettingType[] values();
+  public static ai.pleos.playground.navi.constants.RoutePointSettingType valueOf(java.lang.String);
+  public static kotlin.enums.EnumEntries<ai.pleos.playground.navi.constants.RoutePointSettingType> getEntries();
+  public static final kotlin.Lazy access$get$cachedSerializer$delegate$cp();
+}
+Compiled from "RoutePointType.kt"
+final class ai.pleos.playground.navi.constants.RoutePointType$Companion$1 extends kotlin.jvm.internal.Lambda implements kotlin.jvm.functions.Function0<kotlinx.serialization.KSerializer<java.lang.Object>> {
+  public static final ai.pleos.playground.navi.constants.RoutePointType$Companion$1 INSTANCE;
+  public final kotlinx.serialization.KSerializer<java.lang.Object> invoke();
+  public java.lang.Object invoke();
+}
+Compiled from "RoutePointType.kt"
+public final class ai.pleos.playground.navi.constants.RoutePointType$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.constants.RoutePointType> serializer();
+  public ai.pleos.playground.navi.constants.RoutePointType$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "RoutePointType.kt"
+public final class ai.pleos.playground.navi.constants.RoutePointType extends java.lang.Enum<ai.pleos.playground.navi.constants.RoutePointType> {
+  public static final ai.pleos.playground.navi.constants.RoutePointType$Companion Companion;
+  public static final ai.pleos.playground.navi.constants.RoutePointType ORIGIN;
+  public static final ai.pleos.playground.navi.constants.RoutePointType WAYPOINT;
+  public static final ai.pleos.playground.navi.constants.RoutePointType DESTINATION;
+  public static ai.pleos.playground.navi.constants.RoutePointType[] values();
+  public static ai.pleos.playground.navi.constants.RoutePointType valueOf(java.lang.String);
+  public static kotlin.enums.EnumEntries<ai.pleos.playground.navi.constants.RoutePointType> getEntries();
+  public static final kotlin.Lazy access$get$cachedSerializer$delegate$cp();
+}
+Compiled from "TrafficCongestionType.kt"
+final class ai.pleos.playground.navi.constants.TrafficCongestionType$Companion$1 extends kotlin.jvm.internal.Lambda implements kotlin.jvm.functions.Function0<kotlinx.serialization.KSerializer<java.lang.Object>> {
+  public static final ai.pleos.playground.navi.constants.TrafficCongestionType$Companion$1 INSTANCE;
+  public final kotlinx.serialization.KSerializer<java.lang.Object> invoke();
+  public java.lang.Object invoke();
+}
+Compiled from "TrafficCongestionType.kt"
+public final class ai.pleos.playground.navi.constants.TrafficCongestionType$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.constants.TrafficCongestionType> serializer();
+  public ai.pleos.playground.navi.constants.TrafficCongestionType$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "TrafficCongestionType.kt"
+public final class ai.pleos.playground.navi.constants.TrafficCongestionType extends java.lang.Enum<ai.pleos.playground.navi.constants.TrafficCongestionType> {
+  public static final ai.pleos.playground.navi.constants.TrafficCongestionType$Companion Companion;
+  public static final ai.pleos.playground.navi.constants.TrafficCongestionType UNKNOWN;
+  public static final ai.pleos.playground.navi.constants.TrafficCongestionType FAST;
+  public static final ai.pleos.playground.navi.constants.TrafficCongestionType MODERATE;
+  public static final ai.pleos.playground.navi.constants.TrafficCongestionType SLOW;
+  public static final ai.pleos.playground.navi.constants.TrafficCongestionType HEAVY;
+  public static ai.pleos.playground.navi.constants.TrafficCongestionType[] values();
+  public static ai.pleos.playground.navi.constants.TrafficCongestionType valueOf(java.lang.String);
+  public static kotlin.enums.EnumEntries<ai.pleos.playground.navi.constants.TrafficCongestionType> getEntries();
+  public static final kotlin.Lazy access$get$cachedSerializer$delegate$cp();
+}
+Compiled from "TrafficEventType.kt"
+final class ai.pleos.playground.navi.constants.TrafficEventType$Companion$1 extends kotlin.jvm.internal.Lambda implements kotlin.jvm.functions.Function0<kotlinx.serialization.KSerializer<java.lang.Object>> {
+  public static final ai.pleos.playground.navi.constants.TrafficEventType$Companion$1 INSTANCE;
+  public final kotlinx.serialization.KSerializer<java.lang.Object> invoke();
+  public java.lang.Object invoke();
+}
+Compiled from "TrafficEventType.kt"
+public final class ai.pleos.playground.navi.constants.TrafficEventType$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.constants.TrafficEventType> serializer();
+  public ai.pleos.playground.navi.constants.TrafficEventType$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "TrafficEventType.kt"
+public final class ai.pleos.playground.navi.constants.TrafficEventType extends java.lang.Enum<ai.pleos.playground.navi.constants.TrafficEventType> {
+  public static final ai.pleos.playground.navi.constants.TrafficEventType$Companion Companion;
+  public static final ai.pleos.playground.navi.constants.TrafficEventType ETC;
+  public static final ai.pleos.playground.navi.constants.TrafficEventType ACCIDENT;
+  public static final ai.pleos.playground.navi.constants.TrafficEventType ROAD_DAMAGE;
+  public static final ai.pleos.playground.navi.constants.TrafficEventType REPAIRING;
+  public static final ai.pleos.playground.navi.constants.TrafficEventType EVENT;
+  public static final ai.pleos.playground.navi.constants.TrafficEventType DISASTER;
+  public static ai.pleos.playground.navi.constants.TrafficEventType[] values();
+  public static ai.pleos.playground.navi.constants.TrafficEventType valueOf(java.lang.String);
+  public static kotlin.enums.EnumEntries<ai.pleos.playground.navi.constants.TrafficEventType> getEntries();
+  public static final kotlin.Lazy access$get$cachedSerializer$delegate$cp();
+}
+Compiled from "TurnType.kt"
+final class ai.pleos.playground.navi.constants.TurnType$Companion$1 extends kotlin.jvm.internal.Lambda implements kotlin.jvm.functions.Function0<kotlinx.serialization.KSerializer<java.lang.Object>> {
+  public static final ai.pleos.playground.navi.constants.TurnType$Companion$1 INSTANCE;
+  public final kotlinx.serialization.KSerializer<java.lang.Object> invoke();
+  public java.lang.Object invoke();
+}
+Compiled from "TurnType.kt"
+public final class ai.pleos.playground.navi.constants.TurnType$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.constants.TurnType> serializer();
+  public ai.pleos.playground.navi.constants.TurnType$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "TurnType.kt"
+public final class ai.pleos.playground.navi.constants.TurnType extends java.lang.Enum<ai.pleos.playground.navi.constants.TurnType> {
+  public static final ai.pleos.playground.navi.constants.TurnType$Companion Companion;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_UNKNOWN;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_STRAIGHT;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_RIGHT;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_LEFT;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_KEEP_R;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_KEEP_L;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_SHARP_R;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_SHARP_L;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_UTURN;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_ENTER_IC_R;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_ENTER_IC_L;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_ENTER_IC_C;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_EXIT_IC_R;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_EXIT_IC_L;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_EXIT_IC_C;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_ENTER_UNDER_R;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_ENTER_UNDER_L;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_ENTER_UNDER_C;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_AVOID_UNDER_R;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_AVOID_UNDER_L;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_AVOID_UNDER_C;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_ENTER_OVER_R;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_ENTER_OVER_L;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_ENTER_OVER_C;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_AVOID_OVER_R;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_AVOID_OVER_L;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_AVOID_OVER_C;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_ENTER_ROUNDABOUT_02;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_ENTER_ROUNDABOUT_03;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_ENTER_ROUNDABOUT_04;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_ENTER_ROUNDABOUT_06;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_ENTER_ROUNDABOUT_08;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_ENTER_ROUNDABOUT_09;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_ENTER_ROUNDABOUT_10;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_ENTER_ROUNDABOUT_12;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_EXIT_ROUNDABOUT;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_WAY;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_ARRIVE;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_TUNNEL;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_DEVIDE_MERGE;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_TOLL;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_ENTER_SERVICEAREA;
+  public static final ai.pleos.playground.navi.constants.TurnType TURN_RESTAREA;
+  public final long getValue();
+  public static ai.pleos.playground.navi.constants.TurnType[] values();
+  public static ai.pleos.playground.navi.constants.TurnType valueOf(java.lang.String);
+  public static kotlin.enums.EnumEntries<ai.pleos.playground.navi.constants.TurnType> getEntries();
+  public static final kotlin.Lazy access$get$cachedSerializer$delegate$cp();
+}
+Compiled from "WaypointCmdType.kt"
+final class ai.pleos.playground.navi.constants.WaypointCmdType$Companion$1 extends kotlin.jvm.internal.Lambda implements kotlin.jvm.functions.Function0<kotlinx.serialization.KSerializer<java.lang.Object>> {
+  public static final ai.pleos.playground.navi.constants.WaypointCmdType$Companion$1 INSTANCE;
+  public final kotlinx.serialization.KSerializer<java.lang.Object> invoke();
+  public java.lang.Object invoke();
+}
+Compiled from "WaypointCmdType.kt"
+public final class ai.pleos.playground.navi.constants.WaypointCmdType$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.constants.WaypointCmdType> serializer();
+  public ai.pleos.playground.navi.constants.WaypointCmdType$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "WaypointCmdType.kt"
+public final class ai.pleos.playground.navi.constants.WaypointCmdType extends java.lang.Enum<ai.pleos.playground.navi.constants.WaypointCmdType> {
+  public static final ai.pleos.playground.navi.constants.WaypointCmdType$Companion Companion;
+  public static final ai.pleos.playground.navi.constants.WaypointCmdType ADD;
+  public static final ai.pleos.playground.navi.constants.WaypointCmdType REMOVE;
+  public static ai.pleos.playground.navi.constants.WaypointCmdType[] values();
+  public static ai.pleos.playground.navi.constants.WaypointCmdType valueOf(java.lang.String);
+  public static kotlin.enums.EnumEntries<ai.pleos.playground.navi.constants.WaypointCmdType> getEntries();
+  public static final kotlin.Lazy access$get$cachedSerializer$delegate$cp();
+}
+Compiled from "WaypointIndex.kt"
+final class ai.pleos.playground.navi.constants.WaypointIndex$Companion$1 extends kotlin.jvm.internal.Lambda implements kotlin.jvm.functions.Function0<kotlinx.serialization.KSerializer<java.lang.Object>> {
+  public static final ai.pleos.playground.navi.constants.WaypointIndex$Companion$1 INSTANCE;
+  public final kotlinx.serialization.KSerializer<java.lang.Object> invoke();
+  public java.lang.Object invoke();
+}
+Compiled from "WaypointIndex.kt"
+public final class ai.pleos.playground.navi.constants.WaypointIndex$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.constants.WaypointIndex> serializer();
+  public ai.pleos.playground.navi.constants.WaypointIndex$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "WaypointIndex.kt"
+public final class ai.pleos.playground.navi.constants.WaypointIndex extends java.lang.Enum<ai.pleos.playground.navi.constants.WaypointIndex> {
+  public static final ai.pleos.playground.navi.constants.WaypointIndex$Companion Companion;
+  public static final ai.pleos.playground.navi.constants.WaypointIndex FIRST;
+  public static final ai.pleos.playground.navi.constants.WaypointIndex SECOND;
+  public static final ai.pleos.playground.navi.constants.WaypointIndex ALL;
+  public static ai.pleos.playground.navi.constants.WaypointIndex[] values();
+  public static ai.pleos.playground.navi.constants.WaypointIndex valueOf(java.lang.String);
+  public static kotlin.enums.EnumEntries<ai.pleos.playground.navi.constants.WaypointIndex> getEntries();
+  public static final kotlin.Lazy access$get$cachedSerializer$delegate$cp();
+}
+Compiled from "BookmarkInfo.kt"
+public final class ai.pleos.playground.navi.data.BookmarkInfo$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.BookmarkInfo> {
+  public static final ai.pleos.playground.navi.data.BookmarkInfo$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.BookmarkInfo deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.BookmarkInfo);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "BookmarkInfo.kt"
+public final class ai.pleos.playground.navi.data.BookmarkInfo$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.BookmarkInfo> serializer();
+  public ai.pleos.playground.navi.data.BookmarkInfo$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "BookmarkInfo.kt"
+public final class ai.pleos.playground.navi.data.BookmarkInfo {
+  public static final ai.pleos.playground.navi.data.BookmarkInfo$Companion Companion;
+  public ai.pleos.playground.navi.data.BookmarkInfo(double, double, java.lang.Double, java.lang.Double, java.lang.String, java.lang.String, java.lang.String, java.lang.String, ai.pleos.playground.navi.constants.BookmarkType, java.lang.String);
+  public ai.pleos.playground.navi.data.BookmarkInfo(double, double, java.lang.Double, java.lang.Double, java.lang.String, java.lang.String, java.lang.String, java.lang.String, ai.pleos.playground.navi.constants.BookmarkType, java.lang.String, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final double getLatitude();
+  public final double getLongitude();
+  public final java.lang.Double getDisplayLatitude();
+  public final java.lang.Double getDisplayLongitude();
+  public final java.lang.String getName();
+  public final java.lang.String getPoiId();
+  public final java.lang.String getPoiSubId();
+  public final java.lang.String getAddress();
+  public final ai.pleos.playground.navi.constants.BookmarkType getCategory();
+  public final java.lang.String getPoiProvider();
+  public final double component1();
+  public final double component2();
+  public final java.lang.Double component3();
+  public final java.lang.Double component4();
+  public final java.lang.String component5();
+  public final java.lang.String component6();
+  public final java.lang.String component7();
+  public final java.lang.String component8();
+  public final ai.pleos.playground.navi.constants.BookmarkType component9();
+  public final java.lang.String component10();
+  public final ai.pleos.playground.navi.data.BookmarkInfo copy(double, double, java.lang.Double, java.lang.Double, java.lang.String, java.lang.String, java.lang.String, java.lang.String, ai.pleos.playground.navi.constants.BookmarkType, java.lang.String);
+  public static ai.pleos.playground.navi.data.BookmarkInfo copy$default(ai.pleos.playground.navi.data.BookmarkInfo, double, double, java.lang.Double, java.lang.Double, java.lang.String, java.lang.String, java.lang.String, java.lang.String, ai.pleos.playground.navi.constants.BookmarkType, java.lang.String, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.BookmarkInfo, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.BookmarkInfo(int, double, double, java.lang.Double, java.lang.Double, java.lang.String, java.lang.String, java.lang.String, java.lang.String, ai.pleos.playground.navi.constants.BookmarkType, java.lang.String, kotlinx.serialization.internal.SerializationConstructorMarker);
+  public static final kotlinx.serialization.KSerializer[] access$get$childSerializers$cp();
+}
+Compiled from "CameraAlert.kt"
+public final class ai.pleos.playground.navi.data.CameraAlert$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.CameraAlert> {
+  public static final ai.pleos.playground.navi.data.CameraAlert$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.CameraAlert deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.CameraAlert);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "CameraAlert.kt"
+public final class ai.pleos.playground.navi.data.CameraAlert$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.CameraAlert> serializer();
+  public ai.pleos.playground.navi.data.CameraAlert$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "CameraAlert.kt"
+public final class ai.pleos.playground.navi.data.CameraAlert {
+  public static final ai.pleos.playground.navi.data.CameraAlert$Companion Companion;
+  public ai.pleos.playground.navi.data.CameraAlert(java.lang.String, ai.pleos.playground.navi.constants.CameraType, boolean, int, int, int, boolean, boolean);
+  public ai.pleos.playground.navi.data.CameraAlert(java.lang.String, ai.pleos.playground.navi.constants.CameraType, boolean, int, int, int, boolean, boolean, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final java.lang.String getId();
+  public final ai.pleos.playground.navi.constants.CameraType getType();
+  public final boolean getStatus();
+  public final int getSpeedLimit();
+  public final int getRemainDistance();
+  public final int getSectionAvrSpeed();
+  public final boolean isOverSpeed();
+  public final boolean isOverSectionAvrSpeed();
+  public final java.lang.String component1();
+  public final ai.pleos.playground.navi.constants.CameraType component2();
+  public final boolean component3();
+  public final int component4();
+  public final int component5();
+  public final int component6();
+  public final boolean component7();
+  public final boolean component8();
+  public final ai.pleos.playground.navi.data.CameraAlert copy(java.lang.String, ai.pleos.playground.navi.constants.CameraType, boolean, int, int, int, boolean, boolean);
+  public static ai.pleos.playground.navi.data.CameraAlert copy$default(ai.pleos.playground.navi.data.CameraAlert, java.lang.String, ai.pleos.playground.navi.constants.CameraType, boolean, int, int, int, boolean, boolean, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.CameraAlert, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.CameraAlert(int, java.lang.String, ai.pleos.playground.navi.constants.CameraType, boolean, int, int, int, boolean, boolean, kotlinx.serialization.internal.SerializationConstructorMarker);
+  public static final kotlinx.serialization.KSerializer[] access$get$childSerializers$cp();
+}
+Compiled from "CautionPoint.kt"
+public final class ai.pleos.playground.navi.data.CautionPoint$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.CautionPoint> {
+  public static final ai.pleos.playground.navi.data.CautionPoint$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.CautionPoint deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.CautionPoint);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "CautionPoint.kt"
+public final class ai.pleos.playground.navi.data.CautionPoint$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.CautionPoint> serializer();
+  public ai.pleos.playground.navi.data.CautionPoint$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "CautionPoint.kt"
+public final class ai.pleos.playground.navi.data.CautionPoint {
+  public static final ai.pleos.playground.navi.data.CautionPoint$Companion Companion;
+  public ai.pleos.playground.navi.data.CautionPoint(java.lang.String, ai.pleos.playground.navi.constants.CautionPointType, int);
+  public final java.lang.String getId();
+  public final ai.pleos.playground.navi.constants.CautionPointType getType();
+  public final int getRemainDistance();
+  public final java.lang.String component1();
+  public final ai.pleos.playground.navi.constants.CautionPointType component2();
+  public final int component3();
+  public final ai.pleos.playground.navi.data.CautionPoint copy(java.lang.String, ai.pleos.playground.navi.constants.CautionPointType, int);
+  public static ai.pleos.playground.navi.data.CautionPoint copy$default(ai.pleos.playground.navi.data.CautionPoint, java.lang.String, ai.pleos.playground.navi.constants.CautionPointType, int, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.CautionPoint, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.CautionPoint(int, java.lang.String, ai.pleos.playground.navi.constants.CautionPointType, int, kotlinx.serialization.internal.SerializationConstructorMarker);
+  public static final kotlinx.serialization.KSerializer[] access$get$childSerializers$cp();
+}
+Compiled from "ChargerOperator.kt"
+public final class ai.pleos.playground.navi.data.ChargerOperator$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.ChargerOperator> {
+  public static final ai.pleos.playground.navi.data.ChargerOperator$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.ChargerOperator deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.ChargerOperator);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "ChargerOperator.kt"
+public final class ai.pleos.playground.navi.data.ChargerOperator$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.ChargerOperator> serializer();
+  public ai.pleos.playground.navi.data.ChargerOperator$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "ChargerOperator.kt"
+public final class ai.pleos.playground.navi.data.ChargerOperator {
+  public static final ai.pleos.playground.navi.data.ChargerOperator$Companion Companion;
+  public ai.pleos.playground.navi.data.ChargerOperator(java.lang.String, java.lang.String);
+  public final java.lang.String getId();
+  public final java.lang.String getName();
+  public final java.lang.String component1();
+  public final java.lang.String component2();
+  public final ai.pleos.playground.navi.data.ChargerOperator copy(java.lang.String, java.lang.String);
+  public static ai.pleos.playground.navi.data.ChargerOperator copy$default(ai.pleos.playground.navi.data.ChargerOperator, java.lang.String, java.lang.String, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.ChargerOperator, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.ChargerOperator(int, java.lang.String, java.lang.String, kotlinx.serialization.internal.SerializationConstructorMarker);
+}
+Compiled from "ChargingPlan.kt"
+public final class ai.pleos.playground.navi.data.ChargingPlan$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.ChargingPlan> {
+  public static final ai.pleos.playground.navi.data.ChargingPlan$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.ChargingPlan deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.ChargingPlan);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "ChargingPlan.kt"
+public final class ai.pleos.playground.navi.data.ChargingPlan$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.ChargingPlan> serializer();
+  public ai.pleos.playground.navi.data.ChargingPlan$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "ChargingPlan.kt"
+public final class ai.pleos.playground.navi.data.ChargingPlan {
+  public static final ai.pleos.playground.navi.data.ChargingPlan$Companion Companion;
+  public ai.pleos.playground.navi.data.ChargingPlan(int, int, int);
+  public ai.pleos.playground.navi.data.ChargingPlan(int, int, int, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final int getDuration();
+  public final int getStartSoc();
+  public final int getEndSoc();
+  public final int component1();
+  public final int component2();
+  public final int component3();
+  public final ai.pleos.playground.navi.data.ChargingPlan copy(int, int, int);
+  public static ai.pleos.playground.navi.data.ChargingPlan copy$default(ai.pleos.playground.navi.data.ChargingPlan, int, int, int, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.ChargingPlan, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.ChargingPlan(int, int, int, int, kotlinx.serialization.internal.SerializationConstructorMarker);
+  public ai.pleos.playground.navi.data.ChargingPlan();
+}
+Compiled from "CurrentLocationInfo.kt"
+public final class ai.pleos.playground.navi.data.CurrentLocationInfo$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.CurrentLocationInfo> {
+  public static final ai.pleos.playground.navi.data.CurrentLocationInfo$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.CurrentLocationInfo deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.CurrentLocationInfo);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "CurrentLocationInfo.kt"
+public final class ai.pleos.playground.navi.data.CurrentLocationInfo$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.CurrentLocationInfo> serializer();
+  public ai.pleos.playground.navi.data.CurrentLocationInfo$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "CurrentLocationInfo.kt"
+public final class ai.pleos.playground.navi.data.CurrentLocationInfo {
+  public static final ai.pleos.playground.navi.data.CurrentLocationInfo$Companion Companion;
+  public ai.pleos.playground.navi.data.CurrentLocationInfo(double, double, double, java.lang.String, java.lang.String, java.lang.Integer);
+  public ai.pleos.playground.navi.data.CurrentLocationInfo(double, double, double, java.lang.String, java.lang.String, java.lang.Integer, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final double getLatitude();
+  public final double getLongitude();
+  public final double getHeading();
+  public final java.lang.String getAddress();
+  public final java.lang.String getRouteId();
+  public final java.lang.Integer getCurrentRouteIndex();
+  public final double component1();
+  public final double component2();
+  public final double component3();
+  public final java.lang.String component4();
+  public final java.lang.String component5();
+  public final java.lang.Integer component6();
+  public final ai.pleos.playground.navi.data.CurrentLocationInfo copy(double, double, double, java.lang.String, java.lang.String, java.lang.Integer);
+  public static ai.pleos.playground.navi.data.CurrentLocationInfo copy$default(ai.pleos.playground.navi.data.CurrentLocationInfo, double, double, double, java.lang.String, java.lang.String, java.lang.Integer, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.CurrentLocationInfo, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.CurrentLocationInfo(int, double, double, double, java.lang.String, java.lang.String, java.lang.Integer, kotlinx.serialization.internal.SerializationConstructorMarker);
+}
+Compiled from "DestinationArrivedInfo.kt"
+public final class ai.pleos.playground.navi.data.DestinationArrivedInfo$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.DestinationArrivedInfo> {
+  public static final ai.pleos.playground.navi.data.DestinationArrivedInfo$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.DestinationArrivedInfo deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.DestinationArrivedInfo);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "DestinationArrivedInfo.kt"
+public final class ai.pleos.playground.navi.data.DestinationArrivedInfo$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.DestinationArrivedInfo> serializer();
+  public ai.pleos.playground.navi.data.DestinationArrivedInfo$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "DestinationArrivedInfo.kt"
+public final class ai.pleos.playground.navi.data.DestinationArrivedInfo {
+  public static final ai.pleos.playground.navi.data.DestinationArrivedInfo$Companion Companion;
+  public ai.pleos.playground.navi.data.DestinationArrivedInfo(int, int, java.lang.String, java.lang.String);
+  public final int getDuration();
+  public final int getDistance();
+  public final java.lang.String getName();
+  public final java.lang.String getAddress();
+  public final int component1();
+  public final int component2();
+  public final java.lang.String component3();
+  public final java.lang.String component4();
+  public final ai.pleos.playground.navi.data.DestinationArrivedInfo copy(int, int, java.lang.String, java.lang.String);
+  public static ai.pleos.playground.navi.data.DestinationArrivedInfo copy$default(ai.pleos.playground.navi.data.DestinationArrivedInfo, int, int, java.lang.String, java.lang.String, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.DestinationArrivedInfo, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.DestinationArrivedInfo(int, int, int, java.lang.String, java.lang.String, kotlinx.serialization.internal.SerializationConstructorMarker);
+}
+Compiled from "DestinationInfo.kt"
+public final class ai.pleos.playground.navi.data.DestinationInfo$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.DestinationInfo> {
+  public static final ai.pleos.playground.navi.data.DestinationInfo$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.DestinationInfo deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.DestinationInfo);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "DestinationInfo.kt"
+public final class ai.pleos.playground.navi.data.DestinationInfo$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.DestinationInfo> serializer();
+  public ai.pleos.playground.navi.data.DestinationInfo$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "DestinationInfo.kt"
+public final class ai.pleos.playground.navi.data.DestinationInfo {
+  public static final ai.pleos.playground.navi.data.DestinationInfo$Companion Companion;
+  public ai.pleos.playground.navi.data.DestinationInfo(double, double, java.lang.Double, java.lang.Double, java.lang.String, java.lang.String, int, int, int, java.lang.String, java.lang.String, java.lang.String);
+  public ai.pleos.playground.navi.data.DestinationInfo(double, double, java.lang.Double, java.lang.Double, java.lang.String, java.lang.String, int, int, int, java.lang.String, java.lang.String, java.lang.String, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final double getLatitude();
+  public final double getLongitude();
+  public final java.lang.Double getDisplayLatitude();
+  public final java.lang.Double getDisplayLongitude();
+  public final java.lang.String getName();
+  public final java.lang.String getAddress();
+  public final int getRemainDistance();
+  public final int getRemainTime();
+  public final int getTollFare();
+  public final java.lang.String getPoiId();
+  public final java.lang.String getPoiSubId();
+  public final java.lang.String getPoiProvider();
+  public final double component1();
+  public final double component2();
+  public final java.lang.Double component3();
+  public final java.lang.Double component4();
+  public final java.lang.String component5();
+  public final java.lang.String component6();
+  public final int component7();
+  public final int component8();
+  public final int component9();
+  public final java.lang.String component10();
+  public final java.lang.String component11();
+  public final java.lang.String component12();
+  public final ai.pleos.playground.navi.data.DestinationInfo copy(double, double, java.lang.Double, java.lang.Double, java.lang.String, java.lang.String, int, int, int, java.lang.String, java.lang.String, java.lang.String);
+  public static ai.pleos.playground.navi.data.DestinationInfo copy$default(ai.pleos.playground.navi.data.DestinationInfo, double, double, java.lang.Double, java.lang.Double, java.lang.String, java.lang.String, int, int, int, java.lang.String, java.lang.String, java.lang.String, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.DestinationInfo, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.DestinationInfo(int, double, double, java.lang.Double, java.lang.Double, java.lang.String, java.lang.String, int, int, int, java.lang.String, java.lang.String, java.lang.String, kotlinx.serialization.internal.SerializationConstructorMarker);
+}
+Compiled from "DrivingInfo.kt"
+public final class ai.pleos.playground.navi.data.DrivingInfo$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.DrivingInfo> {
+  public static final ai.pleos.playground.navi.data.DrivingInfo$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.DrivingInfo deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.DrivingInfo);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "DrivingInfo.kt"
+public final class ai.pleos.playground.navi.data.DrivingInfo$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.DrivingInfo> serializer();
+  public ai.pleos.playground.navi.data.DrivingInfo$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "DrivingInfo.kt"
+public final class ai.pleos.playground.navi.data.DrivingInfo {
+  public static final ai.pleos.playground.navi.data.DrivingInfo$Companion Companion;
+  public ai.pleos.playground.navi.data.DrivingInfo(ai.pleos.playground.navi.data.DrivingState, java.util.List<ai.pleos.playground.navi.data.DrivingState>);
+  public final ai.pleos.playground.navi.data.DrivingState getDestination();
+  public final java.util.List<ai.pleos.playground.navi.data.DrivingState> getWaypoints();
+  public final ai.pleos.playground.navi.data.DrivingState component1();
+  public final java.util.List<ai.pleos.playground.navi.data.DrivingState> component2();
+  public final ai.pleos.playground.navi.data.DrivingInfo copy(ai.pleos.playground.navi.data.DrivingState, java.util.List<ai.pleos.playground.navi.data.DrivingState>);
+  public static ai.pleos.playground.navi.data.DrivingInfo copy$default(ai.pleos.playground.navi.data.DrivingInfo, ai.pleos.playground.navi.data.DrivingState, java.util.List, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.DrivingInfo, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.DrivingInfo(int, ai.pleos.playground.navi.data.DrivingState, java.util.List, kotlinx.serialization.internal.SerializationConstructorMarker);
+  public static final kotlinx.serialization.KSerializer[] access$get$childSerializers$cp();
+}
+Compiled from "DrivingState.kt"
+public final class ai.pleos.playground.navi.data.DrivingState$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.DrivingState> {
+  public static final ai.pleos.playground.navi.data.DrivingState$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.DrivingState deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.DrivingState);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "DrivingState.kt"
+public final class ai.pleos.playground.navi.data.DrivingState$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.DrivingState> serializer();
+  public ai.pleos.playground.navi.data.DrivingState$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "DrivingState.kt"
+public final class ai.pleos.playground.navi.data.DrivingState {
+  public static final ai.pleos.playground.navi.data.DrivingState$Companion Companion;
+  public ai.pleos.playground.navi.data.DrivingState(java.lang.String, int, int, int, boolean, boolean, int, int, int, ai.pleos.playground.navi.data.ChargingPlan);
+  public ai.pleos.playground.navi.data.DrivingState(java.lang.String, int, int, int, boolean, boolean, int, int, int, ai.pleos.playground.navi.data.ChargingPlan, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final java.lang.String getName();
+  public final int getDuration();
+  public final int getDistance();
+  public final int getRemainDestinationChargingValue();
+  public final boolean isChargingStation();
+  public final boolean isRecommendedChargingStation();
+  public final int getMaxChargingPower();
+  public final int getTargetSoc();
+  public final int getChargerCount();
+  public final ai.pleos.playground.navi.data.ChargingPlan getChargingPlan();
+  public final java.lang.String component1();
+  public final int component2();
+  public final int component3();
+  public final int component4();
+  public final boolean component5();
+  public final boolean component6();
+  public final int component7();
+  public final int component8();
+  public final int component9();
+  public final ai.pleos.playground.navi.data.ChargingPlan component10();
+  public final ai.pleos.playground.navi.data.DrivingState copy(java.lang.String, int, int, int, boolean, boolean, int, int, int, ai.pleos.playground.navi.data.ChargingPlan);
+  public static ai.pleos.playground.navi.data.DrivingState copy$default(ai.pleos.playground.navi.data.DrivingState, java.lang.String, int, int, int, boolean, boolean, int, int, int, ai.pleos.playground.navi.data.ChargingPlan, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.DrivingState, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.DrivingState(int, java.lang.String, int, int, int, boolean, boolean, int, int, int, ai.pleos.playground.navi.data.ChargingPlan, kotlinx.serialization.internal.SerializationConstructorMarker);
+}
+Compiled from "NavigationScreenRequest.kt"
+final class ai.pleos.playground.navi.data.NavigationScreenRequest$AddHomeFavorite$1 extends kotlin.jvm.internal.Lambda implements kotlin.jvm.functions.Function0<kotlinx.serialization.KSerializer<java.lang.Object>> {
+  public static final ai.pleos.playground.navi.data.NavigationScreenRequest$AddHomeFavorite$1 INSTANCE;
+  public final kotlinx.serialization.KSerializer<java.lang.Object> invoke();
+  public java.lang.Object invoke();
+}
+Compiled from "NavigationScreenRequest.kt"
+public final class ai.pleos.playground.navi.data.NavigationScreenRequest$AddHomeFavorite extends ai.pleos.playground.navi.data.NavigationScreenRequest {
+  public static final ai.pleos.playground.navi.data.NavigationScreenRequest$AddHomeFavorite INSTANCE;
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.NavigationScreenRequest$AddHomeFavorite> serializer();
+}
+Compiled from "NavigationScreenRequest.kt"
+final class ai.pleos.playground.navi.data.NavigationScreenRequest$AddWorkFavorite$1 extends kotlin.jvm.internal.Lambda implements kotlin.jvm.functions.Function0<kotlinx.serialization.KSerializer<java.lang.Object>> {
+  public static final ai.pleos.playground.navi.data.NavigationScreenRequest$AddWorkFavorite$1 INSTANCE;
+  public final kotlinx.serialization.KSerializer<java.lang.Object> invoke();
+  public java.lang.Object invoke();
+}
+Compiled from "NavigationScreenRequest.kt"
+public final class ai.pleos.playground.navi.data.NavigationScreenRequest$AddWorkFavorite extends ai.pleos.playground.navi.data.NavigationScreenRequest {
+  public static final ai.pleos.playground.navi.data.NavigationScreenRequest$AddWorkFavorite INSTANCE;
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.NavigationScreenRequest$AddWorkFavorite> serializer();
+}
+Compiled from "NavigationScreenRequest.kt"
+final class ai.pleos.playground.navi.data.NavigationScreenRequest$Companion$1 extends kotlin.jvm.internal.Lambda implements kotlin.jvm.functions.Function0<kotlinx.serialization.KSerializer<java.lang.Object>> {
+  public static final ai.pleos.playground.navi.data.NavigationScreenRequest$Companion$1 INSTANCE;
+  public final kotlinx.serialization.KSerializer<java.lang.Object> invoke();
+  public java.lang.Object invoke();
+}
+Compiled from "NavigationScreenRequest.kt"
+public final class ai.pleos.playground.navi.data.NavigationScreenRequest$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.NavigationScreenRequest> serializer();
+  public ai.pleos.playground.navi.data.NavigationScreenRequest$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "NavigationScreenRequest.kt"
+final class ai.pleos.playground.navi.data.NavigationScreenRequest$EditRoute$1 extends kotlin.jvm.internal.Lambda implements kotlin.jvm.functions.Function0<kotlinx.serialization.KSerializer<java.lang.Object>> {
+  public static final ai.pleos.playground.navi.data.NavigationScreenRequest$EditRoute$1 INSTANCE;
+  public final kotlinx.serialization.KSerializer<java.lang.Object> invoke();
+  public java.lang.Object invoke();
+}
+Compiled from "NavigationScreenRequest.kt"
+public final class ai.pleos.playground.navi.data.NavigationScreenRequest$EditRoute extends ai.pleos.playground.navi.data.NavigationScreenRequest {
+  public static final ai.pleos.playground.navi.data.NavigationScreenRequest$EditRoute INSTANCE;
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.NavigationScreenRequest$EditRoute> serializer();
+}
+Compiled from "NavigationScreenRequest.kt"
+final class ai.pleos.playground.navi.data.NavigationScreenRequest$FavoriteMain$1 extends kotlin.jvm.internal.Lambda implements kotlin.jvm.functions.Function0<kotlinx.serialization.KSerializer<java.lang.Object>> {
+  public static final ai.pleos.playground.navi.data.NavigationScreenRequest$FavoriteMain$1 INSTANCE;
+  public final kotlinx.serialization.KSerializer<java.lang.Object> invoke();
+  public java.lang.Object invoke();
+}
+Compiled from "NavigationScreenRequest.kt"
+public final class ai.pleos.playground.navi.data.NavigationScreenRequest$FavoriteMain extends ai.pleos.playground.navi.data.NavigationScreenRequest {
+  public static final ai.pleos.playground.navi.data.NavigationScreenRequest$FavoriteMain INSTANCE;
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.NavigationScreenRequest$FavoriteMain> serializer();
+}
+Compiled from "NavigationScreenRequest.kt"
+final class ai.pleos.playground.navi.data.NavigationScreenRequest$Foreground$1 extends kotlin.jvm.internal.Lambda implements kotlin.jvm.functions.Function0<kotlinx.serialization.KSerializer<java.lang.Object>> {
+  public static final ai.pleos.playground.navi.data.NavigationScreenRequest$Foreground$1 INSTANCE;
+  public final kotlinx.serialization.KSerializer<java.lang.Object> invoke();
+  public java.lang.Object invoke();
+}
+Compiled from "NavigationScreenRequest.kt"
+public final class ai.pleos.playground.navi.data.NavigationScreenRequest$Foreground extends ai.pleos.playground.navi.data.NavigationScreenRequest {
+  public static final ai.pleos.playground.navi.data.NavigationScreenRequest$Foreground INSTANCE;
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.NavigationScreenRequest$Foreground> serializer();
+}
+Compiled from "NavigationScreenRequest.kt"
+final class ai.pleos.playground.navi.data.NavigationScreenRequest$MoveToCurrentLocationOnMap$1 extends kotlin.jvm.internal.Lambda implements kotlin.jvm.functions.Function0<kotlinx.serialization.KSerializer<java.lang.Object>> {
+  public static final ai.pleos.playground.navi.data.NavigationScreenRequest$MoveToCurrentLocationOnMap$1 INSTANCE;
+  public final kotlinx.serialization.KSerializer<java.lang.Object> invoke();
+  public java.lang.Object invoke();
+}
+Compiled from "NavigationScreenRequest.kt"
+public final class ai.pleos.playground.navi.data.NavigationScreenRequest$MoveToCurrentLocationOnMap extends ai.pleos.playground.navi.data.NavigationScreenRequest {
+  public static final ai.pleos.playground.navi.data.NavigationScreenRequest$MoveToCurrentLocationOnMap INSTANCE;
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.NavigationScreenRequest$MoveToCurrentLocationOnMap> serializer();
+}
+Compiled from "NavigationScreenRequest.kt"
+final class ai.pleos.playground.navi.data.NavigationScreenRequest$NearbyChargingStations$1 extends kotlin.jvm.internal.Lambda implements kotlin.jvm.functions.Function0<kotlinx.serialization.KSerializer<java.lang.Object>> {
+  public static final ai.pleos.playground.navi.data.NavigationScreenRequest$NearbyChargingStations$1 INSTANCE;
+  public final kotlinx.serialization.KSerializer<java.lang.Object> invoke();
+  public java.lang.Object invoke();
+}
+Compiled from "NavigationScreenRequest.kt"
+public final class ai.pleos.playground.navi.data.NavigationScreenRequest$NearbyChargingStations extends ai.pleos.playground.navi.data.NavigationScreenRequest {
+  public static final ai.pleos.playground.navi.data.NavigationScreenRequest$NearbyChargingStations INSTANCE;
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.NavigationScreenRequest$NearbyChargingStations> serializer();
+}
+Compiled from "NavigationScreenRequest.kt"
+public final class ai.pleos.playground.navi.data.NavigationScreenRequest$OverviewRoute$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.NavigationScreenRequest$OverviewRoute> {
+  public static final ai.pleos.playground.navi.data.NavigationScreenRequest$OverviewRoute$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.NavigationScreenRequest$OverviewRoute deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.NavigationScreenRequest$OverviewRoute);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "NavigationScreenRequest.kt"
+public final class ai.pleos.playground.navi.data.NavigationScreenRequest$OverviewRoute$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.NavigationScreenRequest$OverviewRoute> serializer();
+  public ai.pleos.playground.navi.data.NavigationScreenRequest$OverviewRoute$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "NavigationScreenRequest.kt"
+public final class ai.pleos.playground.navi.data.NavigationScreenRequest$OverviewRoute extends ai.pleos.playground.navi.data.NavigationScreenRequest {
+  public static final ai.pleos.playground.navi.data.NavigationScreenRequest$OverviewRoute$Companion Companion;
+  public ai.pleos.playground.navi.data.NavigationScreenRequest$OverviewRoute(ai.pleos.playground.navi.data.RouteOverviewShowInfo);
+  public final ai.pleos.playground.navi.data.RouteOverviewShowInfo getInfo();
+  public final ai.pleos.playground.navi.data.RouteOverviewShowInfo component1();
+  public final ai.pleos.playground.navi.data.NavigationScreenRequest$OverviewRoute copy(ai.pleos.playground.navi.data.RouteOverviewShowInfo);
+  public static ai.pleos.playground.navi.data.NavigationScreenRequest$OverviewRoute copy$default(ai.pleos.playground.navi.data.NavigationScreenRequest$OverviewRoute, ai.pleos.playground.navi.data.RouteOverviewShowInfo, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.NavigationScreenRequest$OverviewRoute, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.NavigationScreenRequest$OverviewRoute(int, ai.pleos.playground.navi.data.RouteOverviewShowInfo, kotlinx.serialization.internal.SerializationConstructorMarker);
+}
+Compiled from "NavigationScreenRequest.kt"
+public final class ai.pleos.playground.navi.data.NavigationScreenRequest$POIDetailPopup$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.NavigationScreenRequest$POIDetailPopup> {
+  public static final ai.pleos.playground.navi.data.NavigationScreenRequest$POIDetailPopup$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.NavigationScreenRequest$POIDetailPopup deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.NavigationScreenRequest$POIDetailPopup);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "NavigationScreenRequest.kt"
+public final class ai.pleos.playground.navi.data.NavigationScreenRequest$POIDetailPopup$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.NavigationScreenRequest$POIDetailPopup> serializer();
+  public ai.pleos.playground.navi.data.NavigationScreenRequest$POIDetailPopup$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "NavigationScreenRequest.kt"
+public final class ai.pleos.playground.navi.data.NavigationScreenRequest$POIDetailPopup extends ai.pleos.playground.navi.data.NavigationScreenRequest {
+  public static final ai.pleos.playground.navi.data.NavigationScreenRequest$POIDetailPopup$Companion Companion;
+  public ai.pleos.playground.navi.data.NavigationScreenRequest$POIDetailPopup(java.lang.String, java.lang.String);
+  public ai.pleos.playground.navi.data.NavigationScreenRequest$POIDetailPopup(java.lang.String, java.lang.String, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final java.lang.String getPoiId();
+  public final java.lang.String getPoiProvider();
+  public final java.lang.String component1();
+  public final java.lang.String component2();
+  public final ai.pleos.playground.navi.data.NavigationScreenRequest$POIDetailPopup copy(java.lang.String, java.lang.String);
+  public static ai.pleos.playground.navi.data.NavigationScreenRequest$POIDetailPopup copy$default(ai.pleos.playground.navi.data.NavigationScreenRequest$POIDetailPopup, java.lang.String, java.lang.String, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.NavigationScreenRequest$POIDetailPopup, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.NavigationScreenRequest$POIDetailPopup(int, java.lang.String, java.lang.String, kotlinx.serialization.internal.SerializationConstructorMarker);
+}
+Compiled from "NavigationScreenRequest.kt"
+final class ai.pleos.playground.navi.data.NavigationScreenRequest$RecentDestinations$1 extends kotlin.jvm.internal.Lambda implements kotlin.jvm.functions.Function0<kotlinx.serialization.KSerializer<java.lang.Object>> {
+  public static final ai.pleos.playground.navi.data.NavigationScreenRequest$RecentDestinations$1 INSTANCE;
+  public final kotlinx.serialization.KSerializer<java.lang.Object> invoke();
+  public java.lang.Object invoke();
+}
+Compiled from "NavigationScreenRequest.kt"
+public final class ai.pleos.playground.navi.data.NavigationScreenRequest$RecentDestinations extends ai.pleos.playground.navi.data.NavigationScreenRequest {
+  public static final ai.pleos.playground.navi.data.NavigationScreenRequest$RecentDestinations INSTANCE;
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.NavigationScreenRequest$RecentDestinations> serializer();
+}
+Compiled from "NavigationScreenRequest.kt"
+final class ai.pleos.playground.navi.data.NavigationScreenRequest$RouteOptionList$1 extends kotlin.jvm.internal.Lambda implements kotlin.jvm.functions.Function0<kotlinx.serialization.KSerializer<java.lang.Object>> {
+  public static final ai.pleos.playground.navi.data.NavigationScreenRequest$RouteOptionList$1 INSTANCE;
+  public final kotlinx.serialization.KSerializer<java.lang.Object> invoke();
+  public java.lang.Object invoke();
+}
+Compiled from "NavigationScreenRequest.kt"
+public final class ai.pleos.playground.navi.data.NavigationScreenRequest$RouteOptionList extends ai.pleos.playground.navi.data.NavigationScreenRequest {
+  public static final ai.pleos.playground.navi.data.NavigationScreenRequest$RouteOptionList INSTANCE;
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.NavigationScreenRequest$RouteOptionList> serializer();
+}
+Compiled from "NavigationScreenRequest.kt"
+public final class ai.pleos.playground.navi.data.NavigationScreenRequest$SearchPlace$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.NavigationScreenRequest$SearchPlace> {
+  public static final ai.pleos.playground.navi.data.NavigationScreenRequest$SearchPlace$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.NavigationScreenRequest$SearchPlace deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.NavigationScreenRequest$SearchPlace);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "NavigationScreenRequest.kt"
+public final class ai.pleos.playground.navi.data.NavigationScreenRequest$SearchPlace$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.NavigationScreenRequest$SearchPlace> serializer();
+  public ai.pleos.playground.navi.data.NavigationScreenRequest$SearchPlace$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "NavigationScreenRequest.kt"
+public final class ai.pleos.playground.navi.data.NavigationScreenRequest$SearchPlace extends ai.pleos.playground.navi.data.NavigationScreenRequest {
+  public static final ai.pleos.playground.navi.data.NavigationScreenRequest$SearchPlace$Companion Companion;
+  public ai.pleos.playground.navi.data.NavigationScreenRequest$SearchPlace(java.lang.String);
+  public final java.lang.String getKeyword();
+  public final java.lang.String component1();
+  public final ai.pleos.playground.navi.data.NavigationScreenRequest$SearchPlace copy(java.lang.String);
+  public static ai.pleos.playground.navi.data.NavigationScreenRequest$SearchPlace copy$default(ai.pleos.playground.navi.data.NavigationScreenRequest$SearchPlace, java.lang.String, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.NavigationScreenRequest$SearchPlace, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.NavigationScreenRequest$SearchPlace(int, java.lang.String, kotlinx.serialization.internal.SerializationConstructorMarker);
+}
+Compiled from "NavigationScreenRequest.kt"
+final class ai.pleos.playground.navi.data.NavigationScreenRequest$Settings$1 extends kotlin.jvm.internal.Lambda implements kotlin.jvm.functions.Function0<kotlinx.serialization.KSerializer<java.lang.Object>> {
+  public static final ai.pleos.playground.navi.data.NavigationScreenRequest$Settings$1 INSTANCE;
+  public final kotlinx.serialization.KSerializer<java.lang.Object> invoke();
+  public java.lang.Object invoke();
+}
+Compiled from "NavigationScreenRequest.kt"
+public final class ai.pleos.playground.navi.data.NavigationScreenRequest$Settings extends ai.pleos.playground.navi.data.NavigationScreenRequest {
+  public static final ai.pleos.playground.navi.data.NavigationScreenRequest$Settings INSTANCE;
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.NavigationScreenRequest$Settings> serializer();
+}
+Compiled from "NavigationScreenRequest.kt"
+public abstract class ai.pleos.playground.navi.data.NavigationScreenRequest {
+  public static final ai.pleos.playground.navi.data.NavigationScreenRequest$Companion Companion;
+  public static final void write$Self(ai.pleos.playground.navi.data.NavigationScreenRequest, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.NavigationScreenRequest(int, kotlinx.serialization.internal.SerializationConstructorMarker);
+  public ai.pleos.playground.navi.data.NavigationScreenRequest(kotlin.jvm.internal.DefaultConstructorMarker);
+  public static final kotlin.Lazy access$get$cachedSerializer$delegate$cp();
+}
+Compiled from "OccupiedRegionRequest.kt"
+public final class ai.pleos.playground.navi.data.OccupiedRegionRequest$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.OccupiedRegionRequest> {
+  public static final ai.pleos.playground.navi.data.OccupiedRegionRequest$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.OccupiedRegionRequest deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.OccupiedRegionRequest);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "OccupiedRegionRequest.kt"
+public final class ai.pleos.playground.navi.data.OccupiedRegionRequest$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.OccupiedRegionRequest> serializer();
+  public ai.pleos.playground.navi.data.OccupiedRegionRequest$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "OccupiedRegionRequest.kt"
+public final class ai.pleos.playground.navi.data.OccupiedRegionRequest {
+  public static final ai.pleos.playground.navi.data.OccupiedRegionRequest$Companion Companion;
+  public ai.pleos.playground.navi.data.OccupiedRegionRequest(java.lang.String, ai.pleos.playground.navi.data.RegionInfo);
+  public final java.lang.String getApplicationId();
+  public final ai.pleos.playground.navi.data.RegionInfo getRegion();
+  public final java.lang.String component1();
+  public final ai.pleos.playground.navi.data.RegionInfo component2();
+  public final ai.pleos.playground.navi.data.OccupiedRegionRequest copy(java.lang.String, ai.pleos.playground.navi.data.RegionInfo);
+  public static ai.pleos.playground.navi.data.OccupiedRegionRequest copy$default(ai.pleos.playground.navi.data.OccupiedRegionRequest, java.lang.String, ai.pleos.playground.navi.data.RegionInfo, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.OccupiedRegionRequest, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.OccupiedRegionRequest(int, java.lang.String, ai.pleos.playground.navi.data.RegionInfo, kotlinx.serialization.internal.SerializationConstructorMarker);
+}
+Compiled from "RecentDestinationInfo.kt"
+public final class ai.pleos.playground.navi.data.RecentDestinationInfo$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.RecentDestinationInfo> {
+  public static final ai.pleos.playground.navi.data.RecentDestinationInfo$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.RecentDestinationInfo deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.RecentDestinationInfo);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "RecentDestinationInfo.kt"
+public final class ai.pleos.playground.navi.data.RecentDestinationInfo$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.RecentDestinationInfo> serializer();
+  public ai.pleos.playground.navi.data.RecentDestinationInfo$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "RecentDestinationInfo.kt"
+public final class ai.pleos.playground.navi.data.RecentDestinationInfo {
+  public static final ai.pleos.playground.navi.data.RecentDestinationInfo$Companion Companion;
+  public ai.pleos.playground.navi.data.RecentDestinationInfo(double, double, java.lang.Double, java.lang.Double, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String);
+  public ai.pleos.playground.navi.data.RecentDestinationInfo(double, double, java.lang.Double, java.lang.Double, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final double getLatitude();
+  public final double getLongitude();
+  public final java.lang.Double getDisplayLatitude();
+  public final java.lang.Double getDisplayLongitude();
+  public final java.lang.String getName();
+  public final java.lang.String getAddress();
+  public final java.lang.String getPoiId();
+  public final java.lang.String getPoiSubId();
+  public final java.lang.String getPoiProvider();
+  public final double component1();
+  public final double component2();
+  public final java.lang.Double component3();
+  public final java.lang.Double component4();
+  public final java.lang.String component5();
+  public final java.lang.String component6();
+  public final java.lang.String component7();
+  public final java.lang.String component8();
+  public final java.lang.String component9();
+  public final ai.pleos.playground.navi.data.RecentDestinationInfo copy(double, double, java.lang.Double, java.lang.Double, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String);
+  public static ai.pleos.playground.navi.data.RecentDestinationInfo copy$default(ai.pleos.playground.navi.data.RecentDestinationInfo, double, double, java.lang.Double, java.lang.Double, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.RecentDestinationInfo, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.RecentDestinationInfo(int, double, double, java.lang.Double, java.lang.Double, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, kotlinx.serialization.internal.SerializationConstructorMarker);
+}
+Compiled from "RegionInfo.kt"
+public final class ai.pleos.playground.navi.data.RegionInfo$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.RegionInfo> {
+  public static final ai.pleos.playground.navi.data.RegionInfo$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.RegionInfo deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.RegionInfo);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "RegionInfo.kt"
+public final class ai.pleos.playground.navi.data.RegionInfo$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.RegionInfo> serializer();
+  public ai.pleos.playground.navi.data.RegionInfo$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "RegionInfo.kt"
+public final class ai.pleos.playground.navi.data.RegionInfo {
+  public static final ai.pleos.playground.navi.data.RegionInfo$Companion Companion;
+  public ai.pleos.playground.navi.data.RegionInfo(int, int, int, int);
+  public final int getLeft();
+  public final int getTop();
+  public final int getRight();
+  public final int getBottom();
+  public final int component1();
+  public final int component2();
+  public final int component3();
+  public final int component4();
+  public final ai.pleos.playground.navi.data.RegionInfo copy(int, int, int, int);
+  public static ai.pleos.playground.navi.data.RegionInfo copy$default(ai.pleos.playground.navi.data.RegionInfo, int, int, int, int, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.RegionInfo, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.RegionInfo(int, int, int, int, int, kotlinx.serialization.internal.SerializationConstructorMarker);
+}
+Compiled from "RequestWaypointInfo.kt"
+public final class ai.pleos.playground.navi.data.RequestWaypointInfo$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.RequestWaypointInfo> {
+  public static final ai.pleos.playground.navi.data.RequestWaypointInfo$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.RequestWaypointInfo deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.RequestWaypointInfo);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "RequestWaypointInfo.kt"
+public final class ai.pleos.playground.navi.data.RequestWaypointInfo$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.RequestWaypointInfo> serializer();
+  public ai.pleos.playground.navi.data.RequestWaypointInfo$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "RequestWaypointInfo.kt"
+public final class ai.pleos.playground.navi.data.RequestWaypointInfo {
+  public static final ai.pleos.playground.navi.data.RequestWaypointInfo$Companion Companion;
+  public ai.pleos.playground.navi.data.RequestWaypointInfo(double, double, java.lang.String, ai.pleos.playground.navi.constants.WaypointIndex, java.lang.String, java.lang.String, java.lang.String, java.lang.String);
+  public ai.pleos.playground.navi.data.RequestWaypointInfo(double, double, java.lang.String, ai.pleos.playground.navi.constants.WaypointIndex, java.lang.String, java.lang.String, java.lang.String, java.lang.String, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final double getLatitude();
+  public final double getLongitude();
+  public final java.lang.String getPoiName();
+  public final ai.pleos.playground.navi.constants.WaypointIndex getWaypointIndex();
+  public final java.lang.String getPoiId();
+  public final java.lang.String getAddress();
+  public final java.lang.String getPoiSubId();
+  public final java.lang.String getPoiProvider();
+  public final double component1();
+  public final double component2();
+  public final java.lang.String component3();
+  public final ai.pleos.playground.navi.constants.WaypointIndex component4();
+  public final java.lang.String component5();
+  public final java.lang.String component6();
+  public final java.lang.String component7();
+  public final java.lang.String component8();
+  public final ai.pleos.playground.navi.data.RequestWaypointInfo copy(double, double, java.lang.String, ai.pleos.playground.navi.constants.WaypointIndex, java.lang.String, java.lang.String, java.lang.String, java.lang.String);
+  public static ai.pleos.playground.navi.data.RequestWaypointInfo copy$default(ai.pleos.playground.navi.data.RequestWaypointInfo, double, double, java.lang.String, ai.pleos.playground.navi.constants.WaypointIndex, java.lang.String, java.lang.String, java.lang.String, java.lang.String, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.RequestWaypointInfo, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.RequestWaypointInfo(int, double, double, java.lang.String, ai.pleos.playground.navi.constants.WaypointIndex, java.lang.String, java.lang.String, java.lang.String, java.lang.String, kotlinx.serialization.internal.SerializationConstructorMarker);
+  public static final kotlinx.serialization.KSerializer[] access$get$childSerializers$cp();
+}
+Compiled from "RouteInfo.kt"
+public final class ai.pleos.playground.navi.data.RouteInfo$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.RouteInfo> {
+  public static final ai.pleos.playground.navi.data.RouteInfo$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.RouteInfo deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.RouteInfo);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "RouteInfo.kt"
+public final class ai.pleos.playground.navi.data.RouteInfo$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.RouteInfo> serializer();
+  public ai.pleos.playground.navi.data.RouteInfo$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "RouteInfo.kt"
+public final class ai.pleos.playground.navi.data.RouteInfo {
+  public static final ai.pleos.playground.navi.data.RouteInfo$Companion Companion;
+  public ai.pleos.playground.navi.data.RouteInfo(double, double, java.lang.Double, java.lang.Double, java.lang.String, java.lang.String, java.lang.String, java.lang.String, ai.pleos.playground.navi.constants.RouteOption, java.lang.String, boolean);
+  public ai.pleos.playground.navi.data.RouteInfo(double, double, java.lang.Double, java.lang.Double, java.lang.String, java.lang.String, java.lang.String, java.lang.String, ai.pleos.playground.navi.constants.RouteOption, java.lang.String, boolean, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final double getLatitude();
+  public final double getLongitude();
+  public final java.lang.Double getDisplayLatitude();
+  public final java.lang.Double getDisplayLongitude();
+  public final java.lang.String getPoiName();
+  public final java.lang.String getPoiId();
+  public final java.lang.String getAddress();
+  public final java.lang.String getPoiSubId();
+  public final ai.pleos.playground.navi.constants.RouteOption getRouteOption();
+  public final java.lang.String getPoiProvider();
+  public final boolean isMobileRequest();
+  public final double component1();
+  public final double component2();
+  public final java.lang.Double component3();
+  public final java.lang.Double component4();
+  public final java.lang.String component5();
+  public final java.lang.String component6();
+  public final java.lang.String component7();
+  public final java.lang.String component8();
+  public final ai.pleos.playground.navi.constants.RouteOption component9();
+  public final java.lang.String component10();
+  public final boolean component11();
+  public final ai.pleos.playground.navi.data.RouteInfo copy(double, double, java.lang.Double, java.lang.Double, java.lang.String, java.lang.String, java.lang.String, java.lang.String, ai.pleos.playground.navi.constants.RouteOption, java.lang.String, boolean);
+  public static ai.pleos.playground.navi.data.RouteInfo copy$default(ai.pleos.playground.navi.data.RouteInfo, double, double, java.lang.Double, java.lang.Double, java.lang.String, java.lang.String, java.lang.String, java.lang.String, ai.pleos.playground.navi.constants.RouteOption, java.lang.String, boolean, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.RouteInfo, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.RouteInfo(int, double, double, java.lang.Double, java.lang.Double, java.lang.String, java.lang.String, java.lang.String, java.lang.String, ai.pleos.playground.navi.constants.RouteOption, java.lang.String, boolean, kotlinx.serialization.internal.SerializationConstructorMarker);
+  public static final kotlinx.serialization.KSerializer[] access$get$childSerializers$cp();
+}
+Compiled from "RouteOverviewShowInfo.kt"
+public final class ai.pleos.playground.navi.data.RouteOverviewShowInfo$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.RouteOverviewShowInfo> {
+  public static final ai.pleos.playground.navi.data.RouteOverviewShowInfo$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.RouteOverviewShowInfo deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.RouteOverviewShowInfo);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "RouteOverviewShowInfo.kt"
+public final class ai.pleos.playground.navi.data.RouteOverviewShowInfo$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.RouteOverviewShowInfo> serializer();
+  public ai.pleos.playground.navi.data.RouteOverviewShowInfo$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "RouteOverviewShowInfo.kt"
+public final class ai.pleos.playground.navi.data.RouteOverviewShowInfo {
+  public static final ai.pleos.playground.navi.data.RouteOverviewShowInfo$Companion Companion;
+  public ai.pleos.playground.navi.data.RouteOverviewShowInfo(int);
+  public ai.pleos.playground.navi.data.RouteOverviewShowInfo(int, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final int getDurationMs();
+  public final int component1();
+  public final ai.pleos.playground.navi.data.RouteOverviewShowInfo copy(int);
+  public static ai.pleos.playground.navi.data.RouteOverviewShowInfo copy$default(ai.pleos.playground.navi.data.RouteOverviewShowInfo, int, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.RouteOverviewShowInfo, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.RouteOverviewShowInfo(int, int, kotlinx.serialization.internal.SerializationConstructorMarker);
+  public ai.pleos.playground.navi.data.RouteOverviewShowInfo();
+}
+Compiled from "RoutePointInfo.kt"
+public final class ai.pleos.playground.navi.data.RoutePointInfo$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.RoutePointInfo> {
+  public static final ai.pleos.playground.navi.data.RoutePointInfo$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.RoutePointInfo deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.RoutePointInfo);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "RoutePointInfo.kt"
+public final class ai.pleos.playground.navi.data.RoutePointInfo$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.RoutePointInfo> serializer();
+  public ai.pleos.playground.navi.data.RoutePointInfo$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "RoutePointInfo.kt"
+public final class ai.pleos.playground.navi.data.RoutePointInfo {
+  public static final ai.pleos.playground.navi.data.RoutePointInfo$Companion Companion;
+  public ai.pleos.playground.navi.data.RoutePointInfo(double, double, java.lang.String, java.lang.String, double, ai.pleos.playground.navi.constants.RoutePointPoiType, ai.pleos.playground.navi.constants.RoutePointType, ai.pleos.playground.navi.constants.RoutePointSettingType);
+  public final double getLatitude();
+  public final double getLongitude();
+  public final java.lang.String getPoiName();
+  public final java.lang.String getPoiId();
+  public final double getRatioOnRoute();
+  public final ai.pleos.playground.navi.constants.RoutePointPoiType getPoiType();
+  public final ai.pleos.playground.navi.constants.RoutePointType getPointType();
+  public final ai.pleos.playground.navi.constants.RoutePointSettingType getSettingType();
+  public final double component1();
+  public final double component2();
+  public final java.lang.String component3();
+  public final java.lang.String component4();
+  public final double component5();
+  public final ai.pleos.playground.navi.constants.RoutePointPoiType component6();
+  public final ai.pleos.playground.navi.constants.RoutePointType component7();
+  public final ai.pleos.playground.navi.constants.RoutePointSettingType component8();
+  public final ai.pleos.playground.navi.data.RoutePointInfo copy(double, double, java.lang.String, java.lang.String, double, ai.pleos.playground.navi.constants.RoutePointPoiType, ai.pleos.playground.navi.constants.RoutePointType, ai.pleos.playground.navi.constants.RoutePointSettingType);
+  public static ai.pleos.playground.navi.data.RoutePointInfo copy$default(ai.pleos.playground.navi.data.RoutePointInfo, double, double, java.lang.String, java.lang.String, double, ai.pleos.playground.navi.constants.RoutePointPoiType, ai.pleos.playground.navi.constants.RoutePointType, ai.pleos.playground.navi.constants.RoutePointSettingType, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.RoutePointInfo, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.RoutePointInfo(int, double, double, java.lang.String, java.lang.String, double, ai.pleos.playground.navi.constants.RoutePointPoiType, ai.pleos.playground.navi.constants.RoutePointType, ai.pleos.playground.navi.constants.RoutePointSettingType, kotlinx.serialization.internal.SerializationConstructorMarker);
+  public static final kotlinx.serialization.KSerializer[] access$get$childSerializers$cp();
+}
+Compiled from "RouteStartInfo.kt"
+public final class ai.pleos.playground.navi.data.RouteStartInfo$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.RouteStartInfo> {
+  public static final ai.pleos.playground.navi.data.RouteStartInfo$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.RouteStartInfo deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.RouteStartInfo);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "RouteStartInfo.kt"
+public final class ai.pleos.playground.navi.data.RouteStartInfo$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.RouteStartInfo> serializer();
+  public ai.pleos.playground.navi.data.RouteStartInfo$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "RouteStartInfo.kt"
+public final class ai.pleos.playground.navi.data.RouteStartInfo {
+  public static final ai.pleos.playground.navi.data.RouteStartInfo$Companion Companion;
+  public ai.pleos.playground.navi.data.RouteStartInfo(int, int, int, java.lang.String, int);
+  public final int getDuration();
+  public final int getDistance();
+  public final int getTollFare();
+  public final java.lang.String getName();
+  public final int getRemainDestinationChargingValue();
+  public final int component1();
+  public final int component2();
+  public final int component3();
+  public final java.lang.String component4();
+  public final int component5();
+  public final ai.pleos.playground.navi.data.RouteStartInfo copy(int, int, int, java.lang.String, int);
+  public static ai.pleos.playground.navi.data.RouteStartInfo copy$default(ai.pleos.playground.navi.data.RouteStartInfo, int, int, int, java.lang.String, int, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.RouteStartInfo, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.RouteStartInfo(int, int, int, int, java.lang.String, int, kotlinx.serialization.internal.SerializationConstructorMarker);
+}
+Compiled from "RouteStateInfo.kt"
+public final class ai.pleos.playground.navi.data.RouteStateInfo$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.RouteStateInfo> {
+  public static final ai.pleos.playground.navi.data.RouteStateInfo$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.RouteStateInfo deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.RouteStateInfo);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "RouteStateInfo.kt"
+public final class ai.pleos.playground.navi.data.RouteStateInfo$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.RouteStateInfo> serializer();
+  public ai.pleos.playground.navi.data.RouteStateInfo$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "RouteStateInfo.kt"
+public final class ai.pleos.playground.navi.data.RouteStateInfo {
+  public static final ai.pleos.playground.navi.data.RouteStateInfo$Companion Companion;
+  public ai.pleos.playground.navi.data.RouteStateInfo(boolean, ai.pleos.playground.navi.constants.NaviMode, boolean, ai.pleos.playground.navi.constants.RouteOption, int, java.util.List<java.lang.Integer>, ai.pleos.playground.navi.data.TrafficStatus);
+  public final boolean getTermsAgreement();
+  public final ai.pleos.playground.navi.constants.NaviMode getNaviMode();
+  public final boolean isRouting();
+  public final ai.pleos.playground.navi.constants.RouteOption getRouteOption();
+  public final int getRemainDestinationChargingInt();
+  public final java.util.List<java.lang.Integer> getRemainWaypointChargingInt();
+  public final ai.pleos.playground.navi.data.TrafficStatus getTrafficStatus();
+  public final boolean component1();
+  public final ai.pleos.playground.navi.constants.NaviMode component2();
+  public final boolean component3();
+  public final ai.pleos.playground.navi.constants.RouteOption component4();
+  public final int component5();
+  public final java.util.List<java.lang.Integer> component6();
+  public final ai.pleos.playground.navi.data.TrafficStatus component7();
+  public final ai.pleos.playground.navi.data.RouteStateInfo copy(boolean, ai.pleos.playground.navi.constants.NaviMode, boolean, ai.pleos.playground.navi.constants.RouteOption, int, java.util.List<java.lang.Integer>, ai.pleos.playground.navi.data.TrafficStatus);
+  public static ai.pleos.playground.navi.data.RouteStateInfo copy$default(ai.pleos.playground.navi.data.RouteStateInfo, boolean, ai.pleos.playground.navi.constants.NaviMode, boolean, ai.pleos.playground.navi.constants.RouteOption, int, java.util.List, ai.pleos.playground.navi.data.TrafficStatus, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.RouteStateInfo, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.RouteStateInfo(int, boolean, ai.pleos.playground.navi.constants.NaviMode, boolean, ai.pleos.playground.navi.constants.RouteOption, int, java.util.List, ai.pleos.playground.navi.data.TrafficStatus, kotlinx.serialization.internal.SerializationConstructorMarker);
+  public static final kotlinx.serialization.KSerializer[] access$get$childSerializers$cp();
+}
+Compiled from "RouteWithWaypointsRequest.kt"
+public final class ai.pleos.playground.navi.data.RouteWithWaypointsRequest$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.RouteWithWaypointsRequest> {
+  public static final ai.pleos.playground.navi.data.RouteWithWaypointsRequest$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.RouteWithWaypointsRequest deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.RouteWithWaypointsRequest);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "RouteWithWaypointsRequest.kt"
+public final class ai.pleos.playground.navi.data.RouteWithWaypointsRequest$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.RouteWithWaypointsRequest> serializer();
+  public ai.pleos.playground.navi.data.RouteWithWaypointsRequest$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "RouteWithWaypointsRequest.kt"
+public final class ai.pleos.playground.navi.data.RouteWithWaypointsRequest {
+  public static final ai.pleos.playground.navi.data.RouteWithWaypointsRequest$Companion Companion;
+  public ai.pleos.playground.navi.data.RouteWithWaypointsRequest(ai.pleos.playground.navi.data.RouteInfo, java.util.List<ai.pleos.playground.navi.data.RequestWaypointInfo>);
+  public final ai.pleos.playground.navi.data.RouteInfo getDestination();
+  public final java.util.List<ai.pleos.playground.navi.data.RequestWaypointInfo> getWaypoints();
+  public final ai.pleos.playground.navi.data.RouteInfo component1();
+  public final java.util.List<ai.pleos.playground.navi.data.RequestWaypointInfo> component2();
+  public final ai.pleos.playground.navi.data.RouteWithWaypointsRequest copy(ai.pleos.playground.navi.data.RouteInfo, java.util.List<ai.pleos.playground.navi.data.RequestWaypointInfo>);
+  public static ai.pleos.playground.navi.data.RouteWithWaypointsRequest copy$default(ai.pleos.playground.navi.data.RouteWithWaypointsRequest, ai.pleos.playground.navi.data.RouteInfo, java.util.List, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.RouteWithWaypointsRequest, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.RouteWithWaypointsRequest(int, ai.pleos.playground.navi.data.RouteInfo, java.util.List, kotlinx.serialization.internal.SerializationConstructorMarker);
+  public static final kotlinx.serialization.KSerializer[] access$get$childSerializers$cp();
+}
+Compiled from "TBTInfo.kt"
+public final class ai.pleos.playground.navi.data.TBTInfo$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.TBTInfo> {
+  public static final ai.pleos.playground.navi.data.TBTInfo$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.TBTInfo deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.TBTInfo);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "TBTInfo.kt"
+public final class ai.pleos.playground.navi.data.TBTInfo$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.TBTInfo> serializer();
+  public ai.pleos.playground.navi.data.TBTInfo$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "TBTInfo.kt"
+public final class ai.pleos.playground.navi.data.TBTInfo {
+  public static final ai.pleos.playground.navi.data.TBTInfo$Companion Companion;
+  public ai.pleos.playground.navi.data.TBTInfo(ai.pleos.playground.navi.constants.TurnType, double, java.lang.String);
+  public final ai.pleos.playground.navi.constants.TurnType getType();
+  public final double getDistance();
+  public final java.lang.String getDescription();
+  public final ai.pleos.playground.navi.constants.TurnType component1();
+  public final double component2();
+  public final java.lang.String component3();
+  public final ai.pleos.playground.navi.data.TBTInfo copy(ai.pleos.playground.navi.constants.TurnType, double, java.lang.String);
+  public static ai.pleos.playground.navi.data.TBTInfo copy$default(ai.pleos.playground.navi.data.TBTInfo, ai.pleos.playground.navi.constants.TurnType, double, java.lang.String, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.TBTInfo, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.TBTInfo(int, ai.pleos.playground.navi.constants.TurnType, double, java.lang.String, kotlinx.serialization.internal.SerializationConstructorMarker);
+  public static final kotlinx.serialization.KSerializer[] access$get$childSerializers$cp();
+}
+Compiled from "TrafficCongestionInfo.kt"
+public final class ai.pleos.playground.navi.data.TrafficCongestionInfo$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.TrafficCongestionInfo> {
+  public static final ai.pleos.playground.navi.data.TrafficCongestionInfo$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.TrafficCongestionInfo deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.TrafficCongestionInfo);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "TrafficCongestionInfo.kt"
+public final class ai.pleos.playground.navi.data.TrafficCongestionInfo$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.TrafficCongestionInfo> serializer();
+  public ai.pleos.playground.navi.data.TrafficCongestionInfo$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "TrafficCongestionInfo.kt"
+public final class ai.pleos.playground.navi.data.TrafficCongestionInfo {
+  public static final ai.pleos.playground.navi.data.TrafficCongestionInfo$Companion Companion;
+  public ai.pleos.playground.navi.data.TrafficCongestionInfo(double, double, long, ai.pleos.playground.navi.constants.TrafficCongestionType, double, java.lang.String, java.lang.String, java.lang.String);
+  public final double getOffset();
+  public final double getDistance();
+  public final long getTrafficCongestionTime();
+  public final ai.pleos.playground.navi.constants.TrafficCongestionType getTrafficCongestionType();
+  public final double getAvrSpeed();
+  public final java.lang.String getRoadName();
+  public final java.lang.String getStartCrossName();
+  public final java.lang.String getEndCrossName();
+  public final double component1();
+  public final double component2();
+  public final long component3();
+  public final ai.pleos.playground.navi.constants.TrafficCongestionType component4();
+  public final double component5();
+  public final java.lang.String component6();
+  public final java.lang.String component7();
+  public final java.lang.String component8();
+  public final ai.pleos.playground.navi.data.TrafficCongestionInfo copy(double, double, long, ai.pleos.playground.navi.constants.TrafficCongestionType, double, java.lang.String, java.lang.String, java.lang.String);
+  public static ai.pleos.playground.navi.data.TrafficCongestionInfo copy$default(ai.pleos.playground.navi.data.TrafficCongestionInfo, double, double, long, ai.pleos.playground.navi.constants.TrafficCongestionType, double, java.lang.String, java.lang.String, java.lang.String, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.TrafficCongestionInfo, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.TrafficCongestionInfo(int, double, double, long, ai.pleos.playground.navi.constants.TrafficCongestionType, double, java.lang.String, java.lang.String, java.lang.String, kotlinx.serialization.internal.SerializationConstructorMarker);
+  public static final kotlinx.serialization.KSerializer[] access$get$childSerializers$cp();
+}
+Compiled from "TrafficCongestionSummary.kt"
+public final class ai.pleos.playground.navi.data.TrafficCongestionSummary$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.TrafficCongestionSummary> {
+  public static final ai.pleos.playground.navi.data.TrafficCongestionSummary$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.TrafficCongestionSummary deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.TrafficCongestionSummary);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "TrafficCongestionSummary.kt"
+public final class ai.pleos.playground.navi.data.TrafficCongestionSummary$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.TrafficCongestionSummary> serializer();
+  public ai.pleos.playground.navi.data.TrafficCongestionSummary$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "TrafficCongestionSummary.kt"
+public final class ai.pleos.playground.navi.data.TrafficCongestionSummary {
+  public static final ai.pleos.playground.navi.data.TrafficCongestionSummary$Companion Companion;
+  public ai.pleos.playground.navi.data.TrafficCongestionSummary(double, long, double);
+  public final double getTotalCongestionDist();
+  public final long getTotalCongestionTime();
+  public final double getTotalCongestionAvrSpeed();
+  public final double component1();
+  public final long component2();
+  public final double component3();
+  public final ai.pleos.playground.navi.data.TrafficCongestionSummary copy(double, long, double);
+  public static ai.pleos.playground.navi.data.TrafficCongestionSummary copy$default(ai.pleos.playground.navi.data.TrafficCongestionSummary, double, long, double, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.TrafficCongestionSummary, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.TrafficCongestionSummary(int, double, long, double, kotlinx.serialization.internal.SerializationConstructorMarker);
+}
+Compiled from "TrafficEventInfo.kt"
+public final class ai.pleos.playground.navi.data.TrafficEventInfo$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.TrafficEventInfo> {
+  public static final ai.pleos.playground.navi.data.TrafficEventInfo$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.TrafficEventInfo deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.TrafficEventInfo);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "TrafficEventInfo.kt"
+public final class ai.pleos.playground.navi.data.TrafficEventInfo$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.TrafficEventInfo> serializer();
+  public ai.pleos.playground.navi.data.TrafficEventInfo$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "TrafficEventInfo.kt"
+public final class ai.pleos.playground.navi.data.TrafficEventInfo {
+  public static final ai.pleos.playground.navi.data.TrafficEventInfo$Companion Companion;
+  public ai.pleos.playground.navi.data.TrafficEventInfo(double, double, ai.pleos.playground.navi.constants.TrafficEventType, java.lang.String, java.lang.String, java.lang.String);
+  public final double getLatitude();
+  public final double getLongitude();
+  public final ai.pleos.playground.navi.constants.TrafficEventType getEventType();
+  public final java.lang.String getStartTime();
+  public final java.lang.String getEndTime();
+  public final java.lang.String getDescription();
+  public final double component1();
+  public final double component2();
+  public final ai.pleos.playground.navi.constants.TrafficEventType component3();
+  public final java.lang.String component4();
+  public final java.lang.String component5();
+  public final java.lang.String component6();
+  public final ai.pleos.playground.navi.data.TrafficEventInfo copy(double, double, ai.pleos.playground.navi.constants.TrafficEventType, java.lang.String, java.lang.String, java.lang.String);
+  public static ai.pleos.playground.navi.data.TrafficEventInfo copy$default(ai.pleos.playground.navi.data.TrafficEventInfo, double, double, ai.pleos.playground.navi.constants.TrafficEventType, java.lang.String, java.lang.String, java.lang.String, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.TrafficEventInfo, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.TrafficEventInfo(int, double, double, ai.pleos.playground.navi.constants.TrafficEventType, java.lang.String, java.lang.String, java.lang.String, kotlinx.serialization.internal.SerializationConstructorMarker);
+  public static final kotlinx.serialization.KSerializer[] access$get$childSerializers$cp();
+}
+Compiled from "TrafficInfo.kt"
+public final class ai.pleos.playground.navi.data.TrafficInfo$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.TrafficInfo> {
+  public static final ai.pleos.playground.navi.data.TrafficInfo$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.TrafficInfo deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.TrafficInfo);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "TrafficInfo.kt"
+public final class ai.pleos.playground.navi.data.TrafficInfo$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.TrafficInfo> serializer();
+  public ai.pleos.playground.navi.data.TrafficInfo$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "TrafficInfo.kt"
+public final class ai.pleos.playground.navi.data.TrafficInfo {
+  public static final ai.pleos.playground.navi.data.TrafficInfo$Companion Companion;
+  public ai.pleos.playground.navi.data.TrafficInfo(ai.pleos.playground.navi.constants.TrafficCongestionType, int, int);
+  public final ai.pleos.playground.navi.constants.TrafficCongestionType getCongestionType();
+  public final int getStartRatio();
+  public final int getEndRatio();
+  public final ai.pleos.playground.navi.constants.TrafficCongestionType component1();
+  public final int component2();
+  public final int component3();
+  public final ai.pleos.playground.navi.data.TrafficInfo copy(ai.pleos.playground.navi.constants.TrafficCongestionType, int, int);
+  public static ai.pleos.playground.navi.data.TrafficInfo copy$default(ai.pleos.playground.navi.data.TrafficInfo, ai.pleos.playground.navi.constants.TrafficCongestionType, int, int, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.TrafficInfo, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.TrafficInfo(int, ai.pleos.playground.navi.constants.TrafficCongestionType, int, int, kotlinx.serialization.internal.SerializationConstructorMarker);
+  public static final kotlinx.serialization.KSerializer[] access$get$childSerializers$cp();
+}
+Compiled from "TrafficStatus.kt"
+public final class ai.pleos.playground.navi.data.TrafficStatus$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.TrafficStatus> {
+  public static final ai.pleos.playground.navi.data.TrafficStatus$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.TrafficStatus deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.TrafficStatus);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "TrafficStatus.kt"
+public final class ai.pleos.playground.navi.data.TrafficStatus$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.TrafficStatus> serializer();
+  public ai.pleos.playground.navi.data.TrafficStatus$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "TrafficStatus.kt"
+public final class ai.pleos.playground.navi.data.TrafficStatus {
+  public static final ai.pleos.playground.navi.data.TrafficStatus$Companion Companion;
+  public ai.pleos.playground.navi.data.TrafficStatus(ai.pleos.playground.navi.data.TrafficCongestionSummary, java.util.List<ai.pleos.playground.navi.data.TrafficCongestionInfo>, java.util.List<ai.pleos.playground.navi.data.TrafficEventInfo>);
+  public final ai.pleos.playground.navi.data.TrafficCongestionSummary getSummary();
+  public final java.util.List<ai.pleos.playground.navi.data.TrafficCongestionInfo> getCongestionItemList();
+  public final java.util.List<ai.pleos.playground.navi.data.TrafficEventInfo> getTrafficEventList();
+  public final ai.pleos.playground.navi.data.TrafficCongestionSummary component1();
+  public final java.util.List<ai.pleos.playground.navi.data.TrafficCongestionInfo> component2();
+  public final java.util.List<ai.pleos.playground.navi.data.TrafficEventInfo> component3();
+  public final ai.pleos.playground.navi.data.TrafficStatus copy(ai.pleos.playground.navi.data.TrafficCongestionSummary, java.util.List<ai.pleos.playground.navi.data.TrafficCongestionInfo>, java.util.List<ai.pleos.playground.navi.data.TrafficEventInfo>);
+  public static ai.pleos.playground.navi.data.TrafficStatus copy$default(ai.pleos.playground.navi.data.TrafficStatus, ai.pleos.playground.navi.data.TrafficCongestionSummary, java.util.List, java.util.List, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.TrafficStatus, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.TrafficStatus(int, ai.pleos.playground.navi.data.TrafficCongestionSummary, java.util.List, java.util.List, kotlinx.serialization.internal.SerializationConstructorMarker);
+  public static final kotlinx.serialization.KSerializer[] access$get$childSerializers$cp();
+}
+Compiled from "TripInfo.kt"
+public final class ai.pleos.playground.navi.data.TripInfo$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.TripInfo> {
+  public static final ai.pleos.playground.navi.data.TripInfo$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.TripInfo deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.TripInfo);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "TripInfo.kt"
+public final class ai.pleos.playground.navi.data.TripInfo$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.TripInfo> serializer();
+  public ai.pleos.playground.navi.data.TripInfo$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "TripInfo.kt"
+public final class ai.pleos.playground.navi.data.TripInfo {
+  public static final ai.pleos.playground.navi.data.TripInfo$Companion Companion;
+  public ai.pleos.playground.navi.data.TripInfo(int, int, int, double, ai.pleos.playground.navi.data.TripSummary);
+  public final int getDistance();
+  public final int getEta();
+  public final int getEstimatedSocAtDest();
+  public final double getEnergyConsumption();
+  public final ai.pleos.playground.navi.data.TripSummary getSummary();
+  public final int component1();
+  public final int component2();
+  public final int component3();
+  public final double component4();
+  public final ai.pleos.playground.navi.data.TripSummary component5();
+  public final ai.pleos.playground.navi.data.TripInfo copy(int, int, int, double, ai.pleos.playground.navi.data.TripSummary);
+  public static ai.pleos.playground.navi.data.TripInfo copy$default(ai.pleos.playground.navi.data.TripInfo, int, int, int, double, ai.pleos.playground.navi.data.TripSummary, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.TripInfo, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.TripInfo(int, int, int, int, double, ai.pleos.playground.navi.data.TripSummary, kotlinx.serialization.internal.SerializationConstructorMarker);
+}
+Compiled from "TripRequest.kt"
+public final class ai.pleos.playground.navi.data.TripRequest$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.TripRequest> {
+  public static final ai.pleos.playground.navi.data.TripRequest$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.TripRequest deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.TripRequest);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "TripRequest.kt"
+public final class ai.pleos.playground.navi.data.TripRequest$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.TripRequest> serializer();
+  public ai.pleos.playground.navi.data.TripRequest$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "TripRequest.kt"
+public final class ai.pleos.playground.navi.data.TripRequest {
+  public static final ai.pleos.playground.navi.data.TripRequest$Companion Companion;
+  public ai.pleos.playground.navi.data.TripRequest(double, double, java.lang.String, java.lang.String, java.lang.String);
+  public final double getLatitude();
+  public final double getLongitude();
+  public final java.lang.String getPoiId();
+  public final java.lang.String getPoiName();
+  public final java.lang.String getPoiSubId();
+  public final double component1();
+  public final double component2();
+  public final java.lang.String component3();
+  public final java.lang.String component4();
+  public final java.lang.String component5();
+  public final ai.pleos.playground.navi.data.TripRequest copy(double, double, java.lang.String, java.lang.String, java.lang.String);
+  public static ai.pleos.playground.navi.data.TripRequest copy$default(ai.pleos.playground.navi.data.TripRequest, double, double, java.lang.String, java.lang.String, java.lang.String, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.TripRequest, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.TripRequest(int, double, double, java.lang.String, java.lang.String, java.lang.String, kotlinx.serialization.internal.SerializationConstructorMarker);
+}
+Compiled from "TripSummary.kt"
+public final class ai.pleos.playground.navi.data.TripSummary$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.TripSummary> {
+  public static final ai.pleos.playground.navi.data.TripSummary$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.TripSummary deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.TripSummary);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "TripSummary.kt"
+public final class ai.pleos.playground.navi.data.TripSummary$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.TripSummary> serializer();
+  public ai.pleos.playground.navi.data.TripSummary$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "TripSummary.kt"
+public final class ai.pleos.playground.navi.data.TripSummary {
+  public static final ai.pleos.playground.navi.data.TripSummary$Companion Companion;
+  public ai.pleos.playground.navi.data.TripSummary(java.util.List<ai.pleos.playground.navi.data.TrafficInfo>, java.util.List<ai.pleos.playground.navi.data.RoutePointInfo>);
+  public final java.util.List<ai.pleos.playground.navi.data.TrafficInfo> getTrafficConditions();
+  public final java.util.List<ai.pleos.playground.navi.data.RoutePointInfo> getRoutePoints();
+  public final java.util.List<ai.pleos.playground.navi.data.TrafficInfo> component1();
+  public final java.util.List<ai.pleos.playground.navi.data.RoutePointInfo> component2();
+  public final ai.pleos.playground.navi.data.TripSummary copy(java.util.List<ai.pleos.playground.navi.data.TrafficInfo>, java.util.List<ai.pleos.playground.navi.data.RoutePointInfo>);
+  public static ai.pleos.playground.navi.data.TripSummary copy$default(ai.pleos.playground.navi.data.TripSummary, java.util.List, java.util.List, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.TripSummary, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.TripSummary(int, java.util.List, java.util.List, kotlinx.serialization.internal.SerializationConstructorMarker);
+  public static final kotlinx.serialization.KSerializer[] access$get$childSerializers$cp();
+}
+Compiled from "WaypointArrivedInfo.kt"
+public final class ai.pleos.playground.navi.data.WaypointArrivedInfo$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.WaypointArrivedInfo> {
+  public static final ai.pleos.playground.navi.data.WaypointArrivedInfo$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.WaypointArrivedInfo deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.WaypointArrivedInfo);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "WaypointArrivedInfo.kt"
+public final class ai.pleos.playground.navi.data.WaypointArrivedInfo$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.WaypointArrivedInfo> serializer();
+  public ai.pleos.playground.navi.data.WaypointArrivedInfo$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "WaypointArrivedInfo.kt"
+public final class ai.pleos.playground.navi.data.WaypointArrivedInfo {
+  public static final ai.pleos.playground.navi.data.WaypointArrivedInfo$Companion Companion;
+  public ai.pleos.playground.navi.data.WaypointArrivedInfo(int, int, ai.pleos.playground.navi.constants.WaypointIndex, java.lang.String, java.lang.String);
+  public final int getDuration();
+  public final int getDistance();
+  public final ai.pleos.playground.navi.constants.WaypointIndex getIndex();
+  public final java.lang.String getName();
+  public final java.lang.String getAddress();
+  public final int component1();
+  public final int component2();
+  public final ai.pleos.playground.navi.constants.WaypointIndex component3();
+  public final java.lang.String component4();
+  public final java.lang.String component5();
+  public final ai.pleos.playground.navi.data.WaypointArrivedInfo copy(int, int, ai.pleos.playground.navi.constants.WaypointIndex, java.lang.String, java.lang.String);
+  public static ai.pleos.playground.navi.data.WaypointArrivedInfo copy$default(ai.pleos.playground.navi.data.WaypointArrivedInfo, int, int, ai.pleos.playground.navi.constants.WaypointIndex, java.lang.String, java.lang.String, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.WaypointArrivedInfo, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.WaypointArrivedInfo(int, int, int, ai.pleos.playground.navi.constants.WaypointIndex, java.lang.String, java.lang.String, kotlinx.serialization.internal.SerializationConstructorMarker);
+  public static final kotlinx.serialization.KSerializer[] access$get$childSerializers$cp();
+}
+Compiled from "WaypointChangedInfo.kt"
+public final class ai.pleos.playground.navi.data.WaypointChangedInfo$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.WaypointChangedInfo> {
+  public static final ai.pleos.playground.navi.data.WaypointChangedInfo$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.WaypointChangedInfo deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.WaypointChangedInfo);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "WaypointChangedInfo.kt"
+public final class ai.pleos.playground.navi.data.WaypointChangedInfo$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.WaypointChangedInfo> serializer();
+  public ai.pleos.playground.navi.data.WaypointChangedInfo$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "WaypointChangedInfo.kt"
+public final class ai.pleos.playground.navi.data.WaypointChangedInfo {
+  public static final ai.pleos.playground.navi.data.WaypointChangedInfo$Companion Companion;
+  public ai.pleos.playground.navi.data.WaypointChangedInfo(ai.pleos.playground.navi.constants.WaypointIndex, ai.pleos.playground.navi.constants.WaypointCmdType, ai.pleos.playground.navi.data.RouteStartInfo);
+  public final ai.pleos.playground.navi.constants.WaypointIndex getIndex();
+  public final ai.pleos.playground.navi.constants.WaypointCmdType getCmdType();
+  public final ai.pleos.playground.navi.data.RouteStartInfo getRouteStartInfo();
+  public final ai.pleos.playground.navi.constants.WaypointIndex component1();
+  public final ai.pleos.playground.navi.constants.WaypointCmdType component2();
+  public final ai.pleos.playground.navi.data.RouteStartInfo component3();
+  public final ai.pleos.playground.navi.data.WaypointChangedInfo copy(ai.pleos.playground.navi.constants.WaypointIndex, ai.pleos.playground.navi.constants.WaypointCmdType, ai.pleos.playground.navi.data.RouteStartInfo);
+  public static ai.pleos.playground.navi.data.WaypointChangedInfo copy$default(ai.pleos.playground.navi.data.WaypointChangedInfo, ai.pleos.playground.navi.constants.WaypointIndex, ai.pleos.playground.navi.constants.WaypointCmdType, ai.pleos.playground.navi.data.RouteStartInfo, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.WaypointChangedInfo, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.WaypointChangedInfo(int, ai.pleos.playground.navi.constants.WaypointIndex, ai.pleos.playground.navi.constants.WaypointCmdType, ai.pleos.playground.navi.data.RouteStartInfo, kotlinx.serialization.internal.SerializationConstructorMarker);
+  public static final kotlinx.serialization.KSerializer[] access$get$childSerializers$cp();
+}
+Compiled from "WaypointInfo.kt"
+public final class ai.pleos.playground.navi.data.WaypointInfo$$serializer implements kotlinx.serialization.internal.GeneratedSerializer<ai.pleos.playground.navi.data.WaypointInfo> {
+  public static final ai.pleos.playground.navi.data.WaypointInfo$$serializer INSTANCE;
+  public kotlinx.serialization.KSerializer<?>[] typeParametersSerializers();
+  public kotlinx.serialization.descriptors.SerialDescriptor getDescriptor();
+  public kotlinx.serialization.KSerializer<?>[] childSerializers();
+  public ai.pleos.playground.navi.data.WaypointInfo deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, ai.pleos.playground.navi.data.WaypointInfo);
+  public java.lang.Object deserialize(kotlinx.serialization.encoding.Decoder);
+  public void serialize(kotlinx.serialization.encoding.Encoder, java.lang.Object);
+}
+Compiled from "WaypointInfo.kt"
+public final class ai.pleos.playground.navi.data.WaypointInfo$Companion {
+  public final kotlinx.serialization.KSerializer<ai.pleos.playground.navi.data.WaypointInfo> serializer();
+  public ai.pleos.playground.navi.data.WaypointInfo$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "WaypointInfo.kt"
+public final class ai.pleos.playground.navi.data.WaypointInfo {
+  public static final ai.pleos.playground.navi.data.WaypointInfo$Companion Companion;
+  public ai.pleos.playground.navi.data.WaypointInfo(java.lang.String, java.lang.String, double, double, java.lang.Double, java.lang.Double, int, int, java.lang.String, java.lang.String, java.lang.String);
+  public ai.pleos.playground.navi.data.WaypointInfo(java.lang.String, java.lang.String, double, double, java.lang.Double, java.lang.Double, int, int, java.lang.String, java.lang.String, java.lang.String, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final java.lang.String getName();
+  public final java.lang.String getAddress();
+  public final double getLatitude();
+  public final double getLongitude();
+  public final java.lang.Double getDisplayLatitude();
+  public final java.lang.Double getDisplayLongitude();
+  public final int getRemainDistance();
+  public final int getRemainTime();
+  public final java.lang.String getPoiId();
+  public final java.lang.String getPoiSubId();
+  public final java.lang.String getPoiProvider();
+  public final java.lang.String component1();
+  public final java.lang.String component2();
+  public final double component3();
+  public final double component4();
+  public final java.lang.Double component5();
+  public final java.lang.Double component6();
+  public final int component7();
+  public final int component8();
+  public final java.lang.String component9();
+  public final java.lang.String component10();
+  public final java.lang.String component11();
+  public final ai.pleos.playground.navi.data.WaypointInfo copy(java.lang.String, java.lang.String, double, double, java.lang.Double, java.lang.Double, int, int, java.lang.String, java.lang.String, java.lang.String);
+  public static ai.pleos.playground.navi.data.WaypointInfo copy$default(ai.pleos.playground.navi.data.WaypointInfo, java.lang.String, java.lang.String, double, double, java.lang.Double, java.lang.Double, int, int, java.lang.String, java.lang.String, java.lang.String, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final void write$Self$data_release(ai.pleos.playground.navi.data.WaypointInfo, kotlinx.serialization.encoding.CompositeEncoder, kotlinx.serialization.descriptors.SerialDescriptor);
+  public ai.pleos.playground.navi.data.WaypointInfo(int, java.lang.String, java.lang.String, double, double, java.lang.Double, java.lang.Double, int, int, java.lang.String, java.lang.String, java.lang.String, kotlinx.serialization.internal.SerializationConstructorMarker);
+}
+Compiled from "NaviEvent.kt"
+public final class ai.pleos.playground.navi.input.NaviEvent extends java.lang.Enum<ai.pleos.playground.navi.input.NaviEvent> {
+  public static final ai.pleos.playground.navi.input.NaviEvent RequestRoute;
+  public static final ai.pleos.playground.navi.input.NaviEvent RequestRouteWithWaypoints;
+  public static final ai.pleos.playground.navi.input.NaviEvent RequestRouteOptionChange;
+  public static final ai.pleos.playground.navi.input.NaviEvent RequestRouteCancel;
+  public static final ai.pleos.playground.navi.input.NaviEvent RequestWaypoint;
+  public static final ai.pleos.playground.navi.input.NaviEvent RequestReRoute;
+  public static final ai.pleos.playground.navi.input.NaviEvent RequestRemoveWaypoint;
+  public static final ai.pleos.playground.navi.input.NaviEvent GetCurrentLocationInfo;
+  public static final ai.pleos.playground.navi.input.NaviEvent GetRouteStateInfo;
+  public static final ai.pleos.playground.navi.input.NaviEvent GetDestinationInfo;
+  public static final ai.pleos.playground.navi.input.NaviEvent GetWaypointInfo;
+  public static final ai.pleos.playground.navi.input.NaviEvent GetBookmarkInfo;
+  public static final ai.pleos.playground.navi.input.NaviEvent GetRecentDestinationInfo;
+  public static final ai.pleos.playground.navi.input.NaviEvent GetTBTInfo;
+  public static final ai.pleos.playground.navi.input.NaviEvent GetChargerOperatorInfo;
+  public static final ai.pleos.playground.navi.input.NaviEvent RequestNavigationScreen;
+  public static final ai.pleos.playground.navi.input.NaviEvent RequestTrip;
+  public static final ai.pleos.playground.navi.input.NaviEvent UpdateOccupiedRegion;
+  public static ai.pleos.playground.navi.input.NaviEvent[] values();
+  public static ai.pleos.playground.navi.input.NaviEvent valueOf(java.lang.String);
+  public static kotlin.enums.EnumEntries<ai.pleos.playground.navi.input.NaviEvent> getEntries();
+}
+Compiled from "NaviProviderEvent.kt"
+public final class ai.pleos.playground.navi.input.NaviProviderEvent extends java.lang.Enum<ai.pleos.playground.navi.input.NaviProviderEvent> {
+  public static final ai.pleos.playground.navi.input.NaviProviderEvent NotifyRouteStarted;
+  public static final ai.pleos.playground.navi.input.NaviProviderEvent NotifyRouteEnded;
+  public static final ai.pleos.playground.navi.input.NaviProviderEvent NotifyRoutingCompleted;
+  public static final ai.pleos.playground.navi.input.NaviProviderEvent NotifyReRouteEnd;
+  public static final ai.pleos.playground.navi.input.NaviProviderEvent NotifyRouteOptionChanged;
+  public static final ai.pleos.playground.navi.input.NaviProviderEvent NotifyRouteCancelled;
+  public static final ai.pleos.playground.navi.input.NaviProviderEvent NotifyWaypointChanged;
+  public static final ai.pleos.playground.navi.input.NaviProviderEvent NotifyDestinationArrived;
+  public static final ai.pleos.playground.navi.input.NaviProviderEvent NotifyWaypointArrived;
+  public static final ai.pleos.playground.navi.input.NaviProviderEvent NotifyBookmarkChanged;
+  public static final ai.pleos.playground.navi.input.NaviProviderEvent NotifyDestinationChanged;
+  public static final ai.pleos.playground.navi.input.NaviProviderEvent NotifyError;
+  public static final ai.pleos.playground.navi.input.NaviProviderEvent NotifyCurrentLocationInfo;
+  public static final ai.pleos.playground.navi.input.NaviProviderEvent NotifyRouteStateInfo;
+  public static final ai.pleos.playground.navi.input.NaviProviderEvent NotifyDestinationInfo;
+  public static final ai.pleos.playground.navi.input.NaviProviderEvent NotifyWaypointInfo;
+  public static final ai.pleos.playground.navi.input.NaviProviderEvent NotifyBookmarkInfo;
+  public static final ai.pleos.playground.navi.input.NaviProviderEvent NotifyRecentDestinationInfo;
+  public static final ai.pleos.playground.navi.input.NaviProviderEvent NotifyCurrentRoadSpeedLimit;
+  public static final ai.pleos.playground.navi.input.NaviProviderEvent NotifyCameraAlert;
+  public static final ai.pleos.playground.navi.input.NaviProviderEvent NotifyDrivingInfo;
+  public static final ai.pleos.playground.navi.input.NaviProviderEvent NotifyNavigationStatus;
+  public static final ai.pleos.playground.navi.input.NaviProviderEvent NotifyTBTInfo;
+  public static final ai.pleos.playground.navi.input.NaviProviderEvent NotifyChargerOperatorInfo;
+  public static final ai.pleos.playground.navi.input.NaviProviderEvent NotifyCautionPointInfo;
+  public static final ai.pleos.playground.navi.input.NaviProviderEvent NotifyTripInfo;
+  public static ai.pleos.playground.navi.input.NaviProviderEvent[] values();
+  public static ai.pleos.playground.navi.input.NaviProviderEvent valueOf(java.lang.String);
+  public static kotlin.enums.EnumEntries<ai.pleos.playground.navi.input.NaviProviderEvent> getEntries();
+}
+Compiled from "EventData.kt"
+public final class ai.pleos.playground.navi.internal.EventData {
+  public ai.pleos.playground.navi.internal.EventData(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String);
+  public final java.lang.String getRequestId();
+  public final java.lang.String getTargetId();
+  public final java.lang.String getTargetSdk();
+  public final java.lang.String getType();
+  public final java.lang.String getData();
+  public final java.lang.String component1();
+  public final java.lang.String component2();
+  public final java.lang.String component3();
+  public final java.lang.String component4();
+  public final java.lang.String component5();
+  public final ai.pleos.playground.navi.internal.EventData copy(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String);
+  public static ai.pleos.playground.navi.internal.EventData copy$default(ai.pleos.playground.navi.internal.EventData, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+Compiled from "EventData.kt"
+public final class ai.pleos.playground.navi.internal.TargetSDK extends java.lang.Enum<ai.pleos.playground.navi.internal.TargetSDK> {
+  public static final ai.pleos.playground.navi.internal.TargetSDK NaviHelper;
+  public static final ai.pleos.playground.navi.internal.TargetSDK NaviProvider;
+  public static ai.pleos.playground.navi.internal.TargetSDK[] values();
+  public static ai.pleos.playground.navi.internal.TargetSDK valueOf(java.lang.String);
+  public static kotlin.enums.EnumEntries<ai.pleos.playground.navi.internal.TargetSDK> getEntries();
+}

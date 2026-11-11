@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="ai.pleos.playground.navi.helper" >
+
+    <uses-sdk android:minSdkVersion="23" />
+
+    <queries>
+        <intent>
+            <action android:name="ai.pleos.playground.intent.action.NAVI_START" />
+        </intent>
+    </queries>
+
+    <application>
+        <meta-data
+            android:name="ai.pleos.playground.service.navi.helper.min_version_name"
+            android:value="2.0.1" />
+        <meta-data
+            android:name="ai.pleos.playground.service.navi.helper.min_version_code"
+            android:value="11" />
+        <meta-data
+            android:name="ai.pleos.playground.sdk.navi.helper.current_version_name"
+            android:value="3.0.5" />
+        <meta-data
+            android:name="ai.pleos.playground.sdk.navi.helper.current_version_code"
+            android:value="75" />
+    </application>
+
+</manifest>

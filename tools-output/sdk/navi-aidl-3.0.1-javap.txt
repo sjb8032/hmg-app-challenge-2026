@@ -1,0 +1,134 @@
+Compiled from "ResponseParcel.kt"
+public final class ai.pleos.playground.navi.ResponseParcel$CREATOR implements android.os.Parcelable$Creator<ai.pleos.playground.navi.ResponseParcel> {
+  public ai.pleos.playground.navi.ResponseParcel createFromParcel(android.os.Parcel);
+  public ai.pleos.playground.navi.ResponseParcel[] newArray(int);
+  public java.lang.Object createFromParcel(android.os.Parcel);
+  public java.lang.Object[] newArray(int);
+  public ai.pleos.playground.navi.ResponseParcel$CREATOR(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+Compiled from "ResponseParcel.kt"
+public final class ai.pleos.playground.navi.ResponseParcel implements android.os.Parcelable {
+  public static final ai.pleos.playground.navi.ResponseParcel$CREATOR CREATOR;
+  public ai.pleos.playground.navi.ResponseParcel(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String);
+  public final java.lang.String getRequestId();
+  public final java.lang.String getTargetId();
+  public final java.lang.String getTargetSdk();
+  public final java.lang.String getType();
+  public final java.lang.String getData();
+  public ai.pleos.playground.navi.ResponseParcel(android.os.Parcel);
+  public void writeToParcel(android.os.Parcel, int);
+  public int describeContents();
+  public final java.lang.String component1();
+  public final java.lang.String component2();
+  public final java.lang.String component3();
+  public final java.lang.String component4();
+  public final java.lang.String component5();
+  public final ai.pleos.playground.navi.ResponseParcel copy(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String);
+  public static ai.pleos.playground.navi.ResponseParcel copy$default(ai.pleos.playground.navi.ResponseParcel, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+Compiled from "INaviService.java"
+public class ai.pleos.playground.navi.INaviService$Default implements ai.pleos.playground.navi.INaviService {
+  public ai.pleos.playground.navi.INaviService$Default();
+  public void registerCallback(ai.pleos.playground.navi.INaviServiceCallback, java.lang.String) throws android.os.RemoteException;
+  public void unregisterCallback(ai.pleos.playground.navi.INaviServiceCallback) throws android.os.RemoteException;
+  public void requestToNavi(java.lang.String, java.lang.String, java.lang.String) throws android.os.RemoteException;
+  public void requestToNaviProvider(java.lang.String, java.lang.String, java.lang.String) throws android.os.RemoteException;
+  public void registerCallbackV2(ai.pleos.playground.navi.INaviServiceCallbackV2, java.lang.String) throws android.os.RemoteException;
+  public void unregisterCallbackV2(ai.pleos.playground.navi.INaviServiceCallbackV2) throws android.os.RemoteException;
+  public void requestDefaultNaviSetting(java.lang.String) throws android.os.RemoteException;
+  public void showDefaultNaviDialog(java.lang.String) throws android.os.RemoteException;
+  public void setDefaultNaviPackage(java.lang.String) throws android.os.RemoteException;
+  public java.lang.String getServiceVersion() throws android.os.RemoteException;
+  public android.os.IBinder asBinder();
+}
+Compiled from "INaviService.java"
+class ai.pleos.playground.navi.INaviService$Stub$Proxy implements ai.pleos.playground.navi.INaviService {
+  public android.os.IBinder asBinder();
+  public java.lang.String getInterfaceDescriptor();
+  public void registerCallback(ai.pleos.playground.navi.INaviServiceCallback, java.lang.String) throws android.os.RemoteException;
+  public void unregisterCallback(ai.pleos.playground.navi.INaviServiceCallback) throws android.os.RemoteException;
+  public void requestToNavi(java.lang.String, java.lang.String, java.lang.String) throws android.os.RemoteException;
+  public void requestToNaviProvider(java.lang.String, java.lang.String, java.lang.String) throws android.os.RemoteException;
+  public void registerCallbackV2(ai.pleos.playground.navi.INaviServiceCallbackV2, java.lang.String) throws android.os.RemoteException;
+  public void unregisterCallbackV2(ai.pleos.playground.navi.INaviServiceCallbackV2) throws android.os.RemoteException;
+  public void requestDefaultNaviSetting(java.lang.String) throws android.os.RemoteException;
+  public void showDefaultNaviDialog(java.lang.String) throws android.os.RemoteException;
+  public void setDefaultNaviPackage(java.lang.String) throws android.os.RemoteException;
+  public java.lang.String getServiceVersion() throws android.os.RemoteException;
+}
+Compiled from "INaviService.java"
+public abstract class ai.pleos.playground.navi.INaviService$Stub extends android.os.Binder implements ai.pleos.playground.navi.INaviService {
+  public ai.pleos.playground.navi.INaviService$Stub();
+  public static ai.pleos.playground.navi.INaviService asInterface(android.os.IBinder);
+  public android.os.IBinder asBinder();
+  public boolean onTransact(int, android.os.Parcel, android.os.Parcel, int) throws android.os.RemoteException;
+}
+Compiled from "INaviService.java"
+public interface ai.pleos.playground.navi.INaviService extends android.os.IInterface {
+  public static final java.lang.String DESCRIPTOR = "ai.pleos.playground.navi.INaviService";
+  public abstract void registerCallback(ai.pleos.playground.navi.INaviServiceCallback, java.lang.String) throws android.os.RemoteException;
+  public abstract void unregisterCallback(ai.pleos.playground.navi.INaviServiceCallback) throws android.os.RemoteException;
+  public abstract void requestToNavi(java.lang.String, java.lang.String, java.lang.String) throws android.os.RemoteException;
+  public abstract void requestToNaviProvider(java.lang.String, java.lang.String, java.lang.String) throws android.os.RemoteException;
+  public abstract void registerCallbackV2(ai.pleos.playground.navi.INaviServiceCallbackV2, java.lang.String) throws android.os.RemoteException;
+  public abstract void unregisterCallbackV2(ai.pleos.playground.navi.INaviServiceCallbackV2) throws android.os.RemoteException;
+  public abstract void requestDefaultNaviSetting(java.lang.String) throws android.os.RemoteException;
+  public abstract void showDefaultNaviDialog(java.lang.String) throws android.os.RemoteException;
+  public abstract void setDefaultNaviPackage(java.lang.String) throws android.os.RemoteException;
+  public abstract java.lang.String getServiceVersion() throws android.os.RemoteException;
+}
+Compiled from "INaviServiceCallback.java"
+public class ai.pleos.playground.navi.INaviServiceCallback$Default implements ai.pleos.playground.navi.INaviServiceCallback {
+  public ai.pleos.playground.navi.INaviServiceCallback$Default();
+  public void onResponse(java.lang.String, java.lang.String) throws android.os.RemoteException;
+  public android.os.IBinder asBinder();
+}
+Compiled from "INaviServiceCallback.java"
+class ai.pleos.playground.navi.INaviServiceCallback$Stub$Proxy implements ai.pleos.playground.navi.INaviServiceCallback {
+  public android.os.IBinder asBinder();
+  public java.lang.String getInterfaceDescriptor();
+  public void onResponse(java.lang.String, java.lang.String) throws android.os.RemoteException;
+}
+Compiled from "INaviServiceCallback.java"
+public abstract class ai.pleos.playground.navi.INaviServiceCallback$Stub extends android.os.Binder implements ai.pleos.playground.navi.INaviServiceCallback {
+  public ai.pleos.playground.navi.INaviServiceCallback$Stub();
+  public static ai.pleos.playground.navi.INaviServiceCallback asInterface(android.os.IBinder);
+  public android.os.IBinder asBinder();
+  public boolean onTransact(int, android.os.Parcel, android.os.Parcel, int) throws android.os.RemoteException;
+}
+Compiled from "INaviServiceCallback.java"
+public interface ai.pleos.playground.navi.INaviServiceCallback extends android.os.IInterface {
+  public static final java.lang.String DESCRIPTOR = "ai.pleos.playground.navi.INaviServiceCallback";
+  public abstract void onResponse(java.lang.String, java.lang.String) throws android.os.RemoteException;
+}
+Compiled from "INaviServiceCallbackV2.java"
+public class ai.pleos.playground.navi.INaviServiceCallbackV2$Default implements ai.pleos.playground.navi.INaviServiceCallbackV2 {
+  public ai.pleos.playground.navi.INaviServiceCallbackV2$Default();
+  public void onResponse(ai.pleos.playground.navi.ResponseParcel) throws android.os.RemoteException;
+  public android.os.IBinder asBinder();
+}
+Compiled from "INaviServiceCallbackV2.java"
+class ai.pleos.playground.navi.INaviServiceCallbackV2$Stub$Proxy implements ai.pleos.playground.navi.INaviServiceCallbackV2 {
+  public android.os.IBinder asBinder();
+  public java.lang.String getInterfaceDescriptor();
+  public void onResponse(ai.pleos.playground.navi.ResponseParcel) throws android.os.RemoteException;
+}
+Compiled from "INaviServiceCallbackV2.java"
+public abstract class ai.pleos.playground.navi.INaviServiceCallbackV2$Stub extends android.os.Binder implements ai.pleos.playground.navi.INaviServiceCallbackV2 {
+  public ai.pleos.playground.navi.INaviServiceCallbackV2$Stub();
+  public static ai.pleos.playground.navi.INaviServiceCallbackV2 asInterface(android.os.IBinder);
+  public android.os.IBinder asBinder();
+  public boolean onTransact(int, android.os.Parcel, android.os.Parcel, int) throws android.os.RemoteException;
+}
+Compiled from "INaviServiceCallbackV2.java"
+public class ai.pleos.playground.navi.INaviServiceCallbackV2$_Parcel {
+  public ai.pleos.playground.navi.INaviServiceCallbackV2$_Parcel();
+}
+Compiled from "INaviServiceCallbackV2.java"
+public interface ai.pleos.playground.navi.INaviServiceCallbackV2 extends android.os.IInterface {
+  public static final java.lang.String DESCRIPTOR = "ai.pleos.playground.navi.INaviServiceCallbackV2";
+  public abstract void onResponse(ai.pleos.playground.navi.ResponseParcel) throws android.os.RemoteException;
+}
