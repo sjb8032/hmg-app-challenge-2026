@@ -1,7 +1,7 @@
-name: Tools - SDK API dump and rest area data
+name: Tools - rest area data
 
 # 임시 브랜치(tools/sdk-api-and-data)에서만 도는 작업.
-# Pleos SDK의 공개 API 목록과 OpenStreetMap 쉼터 데이터를 받아 아티팩트로 올린다.
+# OpenStreetMap 한국 추출본(Geofabrik)에서 휴게소·졸음쉼터와 도시 위치를 뽑아 이 브랜치에 커밋한다.
 on:
   push:
     branches: [ tools/sdk-api-and-data ]
@@ -11,118 +11,150 @@ permissions:
   contents: write
 
 jobs:
-  dump:
+  data:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
 
-      - name: Write helper scripts
+      - name: Install osmium
         run: |
-          mkdir -p out/sdk out/osm work
-          cat > work/deps.py <<'PY'
-          import sys, xml.etree.ElementTree as ET
-          ns = {'m': 'http://maven.apache.org/POM/4.0.0'}
-          root = ET.parse(sys.argv[1]).getroot()
-          def text(e, tag):
-              x = e.find('m:' + tag, ns)
-              return x.text.strip() if x is not None and x.text else ''
-          props = {}
-          p = root.find('m:properties', ns)
-          if p is not None:
-              for c in p:
-                  props[c.tag.split('}')[1]] = (c.text or '').strip()
-          found = []
-          deps = root.find('m:dependencies', ns)
-          if deps is not None:
-              for d in deps.findall('m:dependency', ns):
-                  g, a, v = text(d, 'groupId'), text(d, 'artifactId'), text(d, 'version')
-                  if v.startswith('${'):
-                      v = props.get(v[2:-1], v)
-                  print(f"{sys.argv[1]}: {g}:{a}:{v} scope={text(d, 'scope') or 'compile'}", file=sys.stderr)
-                  if g.startswith('ai.pleos') and v and not v.startswith('$'):
-                      found.append(f"{g}:{a}:{v}")
-          print(' '.join(found))
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq osmium-tool
+
+      - name: Download South Korea extract and filter
+        run: |
+          set -euo pipefail
+          mkdir -p work
+          curl -fsSL -o work/kr.osm.pbf https://download.geofabrik.de/asia/south-korea-latest.osm.pbf
+          curl -fsSL -o work/kr.state.txt https://download.geofabrik.de/asia/south-korea-updates/state.txt || true
+          ls -la work
+          osmium tags-filter work/kr.osm.pbf nwr/highway=rest_area,services n/place=city,town -o work/filtered.osm.pbf --overwrite
+          osmium export work/filtered.osm.pbf -f geojsonseq -x print_record_separator=false -u type_id -o work/filtered.geojsonseq --overwrite
+          wc -l work/filtered.geojsonseq
+
+      - name: Convert to app data
+        run: |
+          set -euo pipefail
+          mkdir -p tools-output/osm
+          cat > work/convert.py <<'PY'
+          import json, math, re, sys
+
+          features = []
+          with open('work/filtered.geojsonseq', encoding='utf-8') as f:
+              for line in f:
+                  line = line.strip().lstrip('\x1e')
+                  if line:
+                      features.append(json.loads(line))
+
+          def coords_of(geom):
+              out = []
+              def walk(c):
+                  if isinstance(c, (list, tuple)) and c and isinstance(c[0], (int, float)):
+                      out.append((c[1], c[0]))
+                  elif isinstance(c, (list, tuple)):
+                      for x in c:
+                          walk(x)
+              walk(geom.get('coordinates', []))
+              return out
+
+          hangul = re.compile('[가-힣]')
+          places = []
+          areas = []
+          for ft in features:
+              props = ft.get('properties', {})
+              name = props.get('name:ko') or props.get('name') or ''
+              pts = coords_of(ft.get('geometry') or {})
+              if not pts:
+                  continue
+              lat = sum(p[0] for p in pts) / len(pts)
+              lon = sum(p[1] for p in pts) / len(pts)
+              if props.get('place') in ('city', 'town'):
+                  if name and hangul.search(name):
+                      places.append({'name': name, 'place': props['place'], 'lat': lat, 'lon': lon,
+                                     'population': props.get('population')})
+                  continue
+              hw = props.get('highway')
+              if hw not in ('rest_area', 'services'):
+                  continue
+              if not name or not hangul.search(name):
+                  continue
+              if hw == 'services' or '휴게소' in name:
+                  t = 'S'
+              elif '졸음쉼터' in name:
+                  t = 'D'
+              else:
+                  t = 'R'
+              m = re.search(r'([가-힣]+)\s*(?:방향|방면)', name)
+              areas.append({'id': str(props.get('@id') or props.get('id') or ft.get('id') or len(areas)),
+                            'n': name, 't': t, 'lat': lat, 'lon': lon, 'dl': m.group(1) if m else None})
+
+          suffix = re.compile(r'(특별시|광역시|특별자치시|특별자치도|시|군|구|읍|면)$')
+          def base(n):
+              return suffix.sub('', n)
+          by_base = {}
+          for p in places:
+              key = base(p['name'])
+              prev = by_base.get(key)
+              if prev is None or (prev['place'] == 'town' and p['place'] == 'city'):
+                  by_base[key] = p
+
+          def dist_km(a_lat, a_lon, b_lat, b_lon):
+              r = 6371.0
+              dlat = math.radians(b_lat - a_lat)
+              dlon = math.radians(b_lon - a_lon)
+              h = math.sin(dlat / 2) ** 2 + math.cos(math.radians(a_lat)) * math.cos(math.radians(b_lat)) * math.sin(dlon / 2) ** 2
+              return 2 * r * math.asin(min(1.0, math.sqrt(h)))
+
+          # 같은 이름이 1km 안에 여러 번 있으면 하나만 남긴다 (노드와 면이 함께 있는 경우).
+          kept = []
+          for a in areas:
+              if any(k['n'] == a['n'] and dist_km(k['lat'], k['lon'], a['lat'], a['lon']) < 1.0 for k in kept):
+                  continue
+              kept.append(a)
+
+          matched = 0
+          out = []
+          for a in kept:
+              item = {'id': a['id'], 'n': a['n'], 't': a['t'],
+                      'lat': round(a['lat'], 5), 'lon': round(a['lon'], 5)}
+              if a['dl']:
+                  item['dl'] = a['dl']
+                  p = by_base.get(a['dl'])
+                  if p:
+                      item['dlat'] = round(p['lat'], 4)
+                      item['dlon'] = round(p['lon'], 4)
+                      matched += 1
+              out.append(item)
+          out.sort(key=lambda x: (x['lat'], x['lon']))
+
+          with open('tools-output/osm/rest_areas.json', 'w', encoding='utf-8') as f:
+              json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
+          with open('tools-output/osm/places.json', 'w', encoding='utf-8') as f:
+              json.dump(places, f, ensure_ascii=False, indent=0)
+
+          counts = {}
+          for x in out:
+              counts[x['t']] = counts.get(x['t'], 0) + 1
+          labelled = sum(1 for x in out if 'dl' in x)
+          unmatched = sorted({x['dl'] for x in out if 'dl' in x and 'dlat' not in x})
+          with open('tools-output/osm/summary.txt', 'w', encoding='utf-8') as f:
+              f.write(f"features={len(features)} places={len(places)} areas_raw={len(areas)} kept={len(out)}\n")
+              f.write(f"by_type={counts}\n")
+              f.write(f"direction_labelled={labelled} matched={matched}\n")
+              f.write("unmatched_labels=" + ','.join(unmatched) + "\n")
+              for x in out:
+                  if any(k in x['n'] for k in ('기흥', '안성', '망향', '입장', '천안', '죽전')):
+                      f.write(json.dumps(x, ensure_ascii=False) + "\n")
+          print(open('tools-output/osm/summary.txt', encoding='utf-8').read()[:3000])
           PY
-
-      - name: Download Pleos SDK and dump public API
-        run: |
-          set -uo pipefail
-          base=https://nexus-playground.pleos.ai/repository/maven-releases
-          queue="ai.pleos.playground:Vehicle:2.3.2 ai.pleos.playground:NaviHelper:3.0.5"
-          seen=" "
-          while [ -n "${queue// /}" ]; do
-            coord="${queue%% *}"
-            if [ "$coord" = "$queue" ]; then queue=""; else queue="${queue#* }"; fi
-            [ -z "$coord" ] && continue
-            case "$seen" in *" $coord "*) continue;; esac
-            seen="$seen$coord "
-            g="${coord%%:*}"; rest="${coord#*:}"; a="${rest%%:*}"; v="${rest#*:}"
-            url="$base/${g//.//}/$a/$v/$a-$v"
-            echo "== $coord"
-            if ! curl -fsSL "$url.pom" -o "work/$a-$v.pom"; then echo "pom missing: $url.pom"; continue; fi
-            cp "work/$a-$v.pom" out/sdk/
-            jar=""
-            if curl -fsSL "$url.aar" -o "work/$a-$v.aar"; then
-              mkdir -p "work/$a-$v"
-              unzip -q -o "work/$a-$v.aar" -d "work/$a-$v"
-              cp "work/$a-$v/AndroidManifest.xml" "out/sdk/$a-$v-AndroidManifest.xml" 2>/dev/null || true
-              (cd "work/$a-$v" && find . -type f | sort) > "out/sdk/$a-$v-aar-files.txt"
-              jar="work/$a-$v/classes.jar"
-            elif curl -fsSL "$url.jar" -o "work/$a-$v.jar"; then
-              jar="work/$a-$v.jar"
-            fi
-            if [ -n "$jar" ]; then
-              unzip -Z1 "$jar" | grep '\.class$' | grep -v 'module-info' | sed 's/\.class$//; s#/#.#g' > "out/sdk/$a-$v-classes.txt"
-              javap -public -constants -classpath "$jar" $(cat "out/sdk/$a-$v-classes.txt") > "out/sdk/$a-$v-javap.txt" 2>&1 || true
-            fi
-            more=$(python3 work/deps.py "work/$a-$v.pom" 2>> out/sdk/dependencies.txt)
-            queue="$queue $more"
-          done
-          ls -la out/sdk
-
-      - name: Fetch rest areas and places from OpenStreetMap
-        timeout-minutes: 12
-        run: |
-          set -uo pipefail
-          cat > work/rest.ql <<'QL'
-          [out:json][timeout:150][bbox:33.0,124.5,38.7,131.0];
-          (
-            nwr["highway"="rest_area"];
-            nwr["highway"="services"];
-          );
-          out center;
-          QL
-          cat > work/places.ql <<'QL'
-          [out:json][timeout:150][bbox:33.0,124.5,38.7,131.0];
-          node["place"~"^(city|town)$"];
-          out body;
-          QL
-          fetch() {
-            for ep in https://overpass-api.de/api/interpreter https://overpass.kumi.systems/api/interpreter https://overpass.private.coffee/api/interpreter; do
-              if curl -fsS --max-time 170 --data-urlencode "data@$1" "$ep" -o "$2"; then
-                echo "ok $ep -> $2"; return 0
-              fi
-              echo "failed $ep"
-            done
-            return 1
-          }
-          fetch work/rest.ql out/osm/rest_areas_raw.json
-          sleep 5
-          fetch work/places.ql out/osm/places_raw.json
-          ls -la out/osm
+          python3 work/convert.py
+          cp work/kr.state.txt tools-output/osm/geofabrik-state.txt 2>/dev/null || true
 
       - name: Commit results to this branch
         if: always()
         run: |
-          rm -rf tools-output
-          mkdir -p tools-output
-          cp -r out/. tools-output/
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add tools-output
-          git commit -q -m "tools: SDK API dump and OSM rest area data" || echo "nothing to commit"
+          git commit -q -m "tools: OSM rest area data" || echo "nothing to commit"
           git push -q origin HEAD:${GITHUB_REF_NAME}
