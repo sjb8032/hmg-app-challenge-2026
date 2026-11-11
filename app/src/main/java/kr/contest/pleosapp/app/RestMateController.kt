@@ -1,6 +1,7 @@
 package kr.contest.pleosapp.app
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -9,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kr.contest.pleosapp.audio.AlarmPlayer
 import kr.contest.pleosapp.audio.Speaker
+import kr.contest.pleosapp.core.CabinMode
 import kr.contest.pleosapp.core.CheckInAnswer
 import kr.contest.pleosapp.core.DemoScenarios
 import kr.contest.pleosapp.core.Effect
@@ -20,9 +22,11 @@ import kr.contest.pleosapp.core.Phase
 import kr.contest.pleosapp.core.RestArea
 import kr.contest.pleosapp.core.RestAreaCandidate
 import kr.contest.pleosapp.core.RestAreaFinder
+import kr.contest.pleosapp.core.RestEnvironment
 import kr.contest.pleosapp.core.RestMateConfig
 import kr.contest.pleosapp.core.RestMateEngine
 import kr.contest.pleosapp.core.RestMateState
+import kr.contest.pleosapp.core.VehicleEvent
 import kr.contest.pleosapp.data.RestAreaRepository
 import kr.contest.pleosapp.sdk.NaviSignals
 import kr.contest.pleosapp.sdk.VehicleExtras
@@ -49,6 +53,9 @@ data class UiState(
     /** 마지막으로 말한 안내 문구. 음성이 안 나와도 화면으로 볼 수 있게 한다. */
     val lastMessage: String? = null,
     val naviNote: String? = null,
+    /** 실내 환경 제어 결과 */
+    val cabinNote: String? = null,
+    val env: RestEnvironment = RestEnvironment(),
     val config: RestMateConfig = RestMateConfig(),
 )
 
@@ -64,15 +71,18 @@ interface RestMateActions {
     fun setRestMinutes(minutes: Int)
     fun extendRest(minutes: Int)
     fun stopAlarm()
+    fun wakeUp()
     fun departNow()
     fun dismissRecovery()
     fun acceptRecoveryRest()
+    fun setRestEnvironment(env: RestEnvironment)
 
     fun setDemoMode(on: Boolean)
     fun demoDrive(wobbly: Boolean)
     fun demoPark()
     fun demoAddDrivingTime()
     fun demoAttentionWarning()
+    fun demoLaneEvent()
     fun demoSkipRest()
     fun demoRestart()
 }
@@ -92,8 +102,10 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
     private val speaker = Speaker(appContext)
     private val alarm = AlarmPlayer(appContext)
     private val main = Handler(Looper.getMainLooper())
+    private val prefs: SharedPreferences = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    private var env = loadEnvironment()
 
-    private val _ui = MutableStateFlow(UiState(restAreaCount = areas.size))
+    private val _ui = MutableStateFlow(UiState(restAreaCount = areas.size, env = env))
     val ui: StateFlow<UiState> = _ui
 
     private var useRealSignals = true
@@ -138,6 +150,8 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
     fun stop() {
         main.removeCallbacks(ticker)
         main.removeCallbacks(demoLoop)
+        // 쉬는 중에 앱이 꺼지면 실내 환경을 원래대로 돌려 둔다.
+        if (engine.state.phase == Phase.RESTING) vehicle.cabin.apply(CabinMode.RESTORE, env)
         vehicle.stop()
         navi.stop()
         speaker.release()
@@ -165,6 +179,7 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
                 _ui.update { it.copy(lastMessage = effect.text) }
             }
             is Effect.Alarm -> if (effect.on) alarm.start() else alarm.stop()
+            is Effect.Cabin -> vehicle.cabin.apply(effect.mode, env)
         }
     }
 
@@ -184,9 +199,23 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
     override fun setRestMinutes(minutes: Int) = act { engine.setRestMinutes(it, minutes) }
     override fun extendRest(minutes: Int) = act { engine.extendRest(it, minutes) }
     override fun stopAlarm() = act { engine.stopAlarm(it) }
+    override fun wakeUp() = act { engine.wakeUp(it) }
     override fun departNow() = act { engine.departNow(it) }
     override fun dismissRecovery() = act { engine.dismissRecovery(it) }
     override fun acceptRecoveryRest() = act { engine.acceptRecoveryRest(it) }
+
+    override fun setRestEnvironment(env: RestEnvironment) {
+        val previous = this.env
+        this.env = env
+        saveEnvironment(env)
+        _ui.update { it.copy(env = env) }
+        val rest = engine.state.rest ?: return
+        // 쉬는 중에 바꾸면 바로 반영한다. 끄면 원래 설정으로 돌린다.
+        when {
+            !env.enabled && previous.enabled -> vehicle.cabin.apply(CabinMode.RESTORE, env)
+            env.enabled && rest.wakeStartedAt == null -> vehicle.cabin.apply(CabinMode.REST, env)
+        }
+    }
 
     override fun startRest() {
         // 시연 중 '주차했어요'를 누르면 모의 차량도 세운다.
@@ -245,13 +274,21 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
         if (_ui.value.demoMode) act { engine.onAttentionWarning(it) }
     }
 
+    override fun demoLaneEvent() {
+        if (_ui.value.demoMode) act { engine.onVehicleEvent(it, VehicleEvent.LANE_ASSIST) }
+    }
+
     override fun demoSkipRest() {
         if (_ui.value.demoMode) act { engine.skipToAlarm(it) }
     }
 
     /** 새 엔진으로 처음부터 시작한다. 진행 중이던 안내와 알람은 끈다. */
     private fun resetEngine(config: RestMateConfig) {
-        if (engine.state.phase == Phase.TO_REST_AREA) navi.cancelGuidance()
+        when (engine.state.phase) {
+            Phase.TO_REST_AREA -> navi.cancelGuidance()
+            Phase.RESTING -> vehicle.cabin.apply(CabinMode.RESTORE, env)
+            Phase.DRIVING -> Unit
+        }
         alarm.stop()
         engine = RestMateEngine(finder, config)
     }
@@ -342,6 +379,16 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
         _ui.update { it.copy(extras = extras) }
     }
 
+    /** 경고등 사건은 시연 모드에서도 받는다 (Virtual Console로 운전자 주의 경고를 켜서 보여 줄 수 있게). */
+    override fun onVehicleEvent(event: VehicleEvent) {
+        engine.onVehicleEvent(now(), event)
+        publish()
+    }
+
+    override fun onCabinNote(message: String) {
+        _ui.update { it.copy(cabinNote = message) }
+    }
+
     // ---- 내비 신호 ----
 
     override fun onNaviConnection(connected: Boolean, message: String?) {
@@ -381,8 +428,32 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
         _ui.update { it.copy(naviNote = message) }
     }
 
+    private fun loadEnvironment(): RestEnvironment {
+        val d = RestEnvironment()
+        return RestEnvironment(
+            enabled = prefs.getBoolean(KEY_ENV_ENABLED, d.enabled),
+            restTemperatureC = prefs.getFloat(KEY_ENV_TEMP, d.restTemperatureC),
+            dimLight = prefs.getBoolean(KEY_ENV_DIM, d.dimLight),
+            freshAir = prefs.getBoolean(KEY_ENV_FRESH, d.freshAir),
+        )
+    }
+
+    private fun saveEnvironment(env: RestEnvironment) {
+        prefs.edit()
+            .putBoolean(KEY_ENV_ENABLED, env.enabled)
+            .putFloat(KEY_ENV_TEMP, env.restTemperatureC)
+            .putBoolean(KEY_ENV_DIM, env.dimLight)
+            .putBoolean(KEY_ENV_FRESH, env.freshAir)
+            .apply()
+    }
+
     companion object {
         const val CONNECTED = "연결됨"
+        private const val PREFS = "restmate"
+        private const val KEY_ENV_ENABLED = "env_enabled"
+        private const val KEY_ENV_TEMP = "env_temp"
+        private const val KEY_ENV_DIM = "env_dim"
+        private const val KEY_ENV_FRESH = "env_fresh"
         private const val TAG = "RestMate"
         private const val TICK_MS = 1_000L
         private const val HOLD_SPEECH_METERS = 300.0

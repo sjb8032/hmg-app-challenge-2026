@@ -131,4 +131,26 @@ class StabilityMonitorTest {
         monitor.onBrake(start + 6_000, true)
         assertEquals(2, monitor.metrics(start, start + MINUTE_MS).brakePresses)
     }
+
+    @Test
+    fun laneAssistAndCollisionWarningsRaiseTheWobbleIndex() {
+        val calm = StabilityMetrics(qualifiedMinutes = 10.0, steeringCorrections = 10, brakePresses = 0, warnings = 0)
+        val withLane = calm.copy(laneEvents = 2)
+        val withCollision = calm.copy(collisionWarnings = 1)
+        assertEquals(1.0, calm.wobbleIndex, 1e-9)
+        assertEquals(1.0 + 3.0 * 2.0, withLane.wobbleIndex, 1e-9)
+        assertEquals(1.0 + 5.0 * 1.0, withCollision.wobbleIndex, 1e-9)
+    }
+
+    @Test
+    fun laneEventsAreCountedInTheirWindow() {
+        val monitor = StabilityMonitor()
+        monitor.onLaneEvent(1_000L)
+        monitor.onLaneEvent(5_000L)
+        monitor.onCollisionWarning(5_000L)
+        val m = monitor.metrics(0L, 4_000L)
+        assertEquals(1, m.laneEvents)
+        assertEquals(0, m.collisionWarnings)
+        assertEquals(2, monitor.metrics(0L, 10_000L).laneEvents)
+    }
 }

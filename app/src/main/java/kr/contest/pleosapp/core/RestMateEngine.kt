@@ -119,6 +119,15 @@ class RestMateEngine(
         }
     }
 
+    /** 차량 경고등에서 읽은 사건. 주의 경고는 쉼터 안내로 이어지고, 나머지는 휴식 전후 비교에만 쓴다. */
+    fun onVehicleEvent(now: Long, event: VehicleEvent) {
+        when (event) {
+            VehicleEvent.DRIVER_ATTENTION -> onAttentionWarning(now)
+            VehicleEvent.LANE_ASSIST -> stability.onLaneEvent(now)
+            VehicleEvent.COLLISION_WARNING -> stability.onCollisionWarning(now)
+        }
+    }
+
     // ---- 운전자 조작 ----
 
     /** '졸려요' 버튼. 묻지 않고 바로 쉼터 안내로 넘어간다. */
@@ -206,6 +215,7 @@ class RestMateEngine(
                 remainingRouteEstimated = navRemaining == null && remaining != null,
             ),
         )
+        effects += Effect.Cabin(CabinMode.REST)
         effects += Effect.Speak("휴식을 시작할게요. ${planned}분 뒤에 알람으로 알려 드릴게요.")
     }
 
@@ -213,12 +223,14 @@ class RestMateEngine(
         advance(now)
         val rest = state.rest ?: return
         if (rest.alarmRinging) effects += Effect.Alarm(false)
+        if (rest.wakeStartedAt != null) effects += Effect.Cabin(CabinMode.REST)
         state = state.copy(
             rest = rest.copy(
                 plannedMinutes = minutes,
                 alarmAt = rest.startedAt + minutes * MINUTE_MS,
                 alarmRinging = false,
                 alarmDone = false,
+                wakeStartedAt = null,
             ),
         )
         evaluate(now)
@@ -228,6 +240,7 @@ class RestMateEngine(
         advance(now)
         val rest = state.rest ?: return
         if (rest.alarmRinging) effects += Effect.Alarm(false)
+        if (rest.wakeStartedAt != null) effects += Effect.Cabin(CabinMode.REST)
         val alarmAt = max(rest.alarmAt, now) + minutes * MINUTE_MS
         state = state.copy(
             rest = rest.copy(
@@ -235,6 +248,7 @@ class RestMateEngine(
                 alarmAt = alarmAt,
                 alarmRinging = false,
                 alarmDone = false,
+                wakeStartedAt = null,
             ),
         )
     }
@@ -244,6 +258,16 @@ class RestMateEngine(
         val rest = state.rest ?: return
         if (rest.alarmRinging) effects += Effect.Alarm(false)
         state = state.copy(rest = rest.copy(alarmRinging = false, alarmDone = true))
+    }
+
+    /** 알람 전에 깼을 때 '일어났어요'. 남은 알람은 끄고 깨우기를 시작한다. */
+    fun wakeUp(now: Long) {
+        advance(now)
+        val rest = state.rest ?: return
+        if (rest.wakeStartedAt != null) return
+        if (rest.alarmRinging) effects += Effect.Alarm(false)
+        state = state.copy(rest = rest.copy(alarmRinging = false, alarmDone = true, wakeStartedAt = now))
+        startWakeUp(byAlarm = false)
     }
 
     /** 기어 정보를 못 받을 때 쓰는 '출발' 버튼. */
@@ -442,10 +466,20 @@ class RestMateEngine(
             return
         }
         if (!rest.alarmRinging && !rest.alarmDone && now >= rest.alarmAt) {
-            state = state.copy(rest = rest.copy(alarmRinging = true))
+            state = state.copy(rest = rest.copy(alarmRinging = true, wakeStartedAt = rest.wakeStartedAt ?: now))
             effects += Effect.Alarm(true)
-            effects += Effect.Speak("휴식 시간이 끝났어요. 출발 전에 몸을 한 번 풀어 주세요.")
+            startWakeUp(byAlarm = true)
         }
+    }
+
+    /** 깨우기: 차 환경을 바꾸고, 깬 뒤 바로 출발하지 않도록 안내한다 (수면 관성). */
+    private fun startWakeUp(byAlarm: Boolean) {
+        effects += Effect.Cabin(CabinMode.WAKE)
+        val opening = if (byAlarm) "휴식 시간이 끝났어요." else "잘 쉬셨어요."
+        effects += Effect.Speak(
+            "$opening 무드등을 밝히고 시원한 바람을 넣을게요. " +
+                "깬 직후에는 멍할 수 있으니 ${RestMateText.duration(config.wakeUpMs)} 정도 몸을 깨운 뒤 출발해 주세요.",
+        )
     }
 
     private fun endRest(now: Long) {
@@ -466,8 +500,12 @@ class RestMateEngine(
         longDriveSnoozeUntil = 0L
         // '출발' 버튼으로 끝냈는데 아직 P단이면, 방금 쉰 자리에서 다시 '여기서 쉬어 갈까요?'를 묻지 않는다.
         parkedPromptShown = true
+        effects += Effect.Cabin(CabinMode.RESTORE)
+        val wokeAt = rest.wakeStartedAt
+        val groggy = wokeAt == null || now - wokeAt < config.wakeUpMs
+        val caution = if (groggy) " 깬 지 얼마 안 됐으니 처음 몇 분은 천천히 가 주세요." else ""
         effects += Effect.Speak(
-            "다시 출발하시네요. 처음 ${RestMateText.duration(config.afterWindowMs)} 동안 휴식 전과 주행을 비교해 볼게요.",
+            "다시 출발하시네요.$caution 처음 ${RestMateText.duration(config.afterWindowMs)} 동안 휴식 전과 주행을 비교해 볼게요.",
         )
     }
 

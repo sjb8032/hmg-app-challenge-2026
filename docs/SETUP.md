@@ -24,6 +24,7 @@
 2. 대표 한 명이 Workspace > My Project에서 프로젝트를 만들고, 프로젝트의 SDK 메뉴에서 SDK 제공 상태를 확인합니다.
    - 문서상 Vehicle(상태 조회)과 NaviHelper는 신청 없이 바로 쓸 수 있습니다.
    - TextToSpeech, SpeechToText, FusedLocation, Vehicle 제어는 '준비 중'으로 안내돼 있어 콘솔에서 다시 확인해야 합니다.
+   - 다만 Vehicle SDK 2.3.2에는 공조·무드등·창문 제어 API가 들어 있고, 공식 샘플 앱도 제어 권한을 선언해 에뮬레이터에서 제어합니다. 레스트메이트는 휴식 모드에서 공조·무드등 제어를 씁니다.
 
 ## 2. Android Studio
 
@@ -49,8 +50,9 @@
 1. 저장소를 clone하고 Android Studio로 엽니다.
 2. Gradle Sync를 기다립니다. 처음 Sync할 때 Pleos Maven 저장소에서 SDK를 받습니다.
 3. Pleos Connect AVD를 켜고 Run(▶)을 누르거나 `./gradlew installDebug`를 실행합니다.
-4. 첫 화면 '개발 환경 점검'에서 Vehicle SDK와 NaviHelper SDK가 모두 '연결됨'이면 세팅이 끝난 것입니다.
-5. '도어 위치 읽기'를 눌러 값이 나오는지 보고, Virtual Console에서 도어 값을 바꾼 뒤 다시 읽어 봅니다.
+4. 화면 오른쪽 상태 영역에서 '차량 SDK'와 '내비 SDK'가 모두 '연결됨'이면 세팅이 끝난 것입니다.
+5. Virtual Console에서 기어를 P ↔ D로 바꿔 '기어' 값이 따라 바뀌는지 봅니다. 차 없이 흐름을 보려면 '시연 모드'를 켭니다(README 참고).
+6. 단위 테스트: `./gradlew testDebugUnitTest` (쉼터 검색·상태 전환·주행 비교 로직)
 
 ## 5. 브랜치 규칙
 
@@ -67,11 +69,19 @@
 
 ## 7. 권한
 
-Manifest에는 실제로 쓰는 API의 최소 권한만 선언합니다. 지금은 `CAR_DOORS`, `NAVI_ROUTE` 두 개뿐입니다.
+권한 이름은 [공식 Vehicle 샘플 앱](https://github.com/Pleos-Playground/pleos-sample-vehicle-app)의 Manifest를 따랐습니다. 레스트메이트가 쓰는 것만 선언합니다.
 
-- Vehicle 조회 권한 예: `CAR_INFO`, `CAR_SPEED`, `CAR_DRIVE`, `CAR_ENERGY`, `CAR_MILEAGE`, `CAR_LIGHTS`, `CAR_WINDOWS`, `READ_WINDSHIELD_WIPERS` (모두 `pleos.car.permission.` 접두사)
-- Vehicle 제어 권한은 `CONTROL_` 으로 시작합니다. 예: `CONTROL_CAR_CLIMATE`
-- NaviHelper: `NAVI_ROUTE`(경로 정보 조회, 여정 요청), `NAVI_ROUTE_SEARCH`(경로 요청·취소, 재탐색, 경유지 추가·삭제, 경로 옵션 변경), `NAVI_CUSTOM_MAP`(내비 화면 요청)
+| 용도 | 권한 (`pleos.car.permission.` 접두사) |
+| --- | --- |
+| 기어·속도·조향각·브레이크 | `CAR_DRIVE`, `CAR_POWERTRAIN`, `CAR_SPEED`, `READ_CAR_STEERING` |
+| 깜빡이 | `CAR_LIGHTS` |
+| 휴식 화면 정보(창문·공조·연료·주행 가능 거리) | `CAR_WINDOWS`, `CAR_CLIMATE`, `CAR_ENERGY`, `CAR_MILEAGE`, `CAR_INFO` |
+| 경고등(운전자 주의 경고, LKA·ELK·FCA) | `CAR_SAFETY`, `READ_ADAS_STATES` |
+| 휴식 모드·깨우기 제어(공조·무드등) | `CONTROL_CAR_CLIMATE`, `CONTROL_CAR_LIGHTS` |
+| 내비 경로 정보 조회 / 경유지 추가·경로 요청 | `NAVI_ROUTE` / `NAVI_ROUTE_SEARCH` |
+
+- 기어·조향각 API에 필요한 권한은 공식 권한 문서의 도메인 표에 없어서 샘플 앱 기준으로 넣었습니다. 연결은 되는데 값이 안 오면 Android Studio에서 해당 함수의 `@RequiresPermission`을 확인합니다.
+- 앱마켓 입점 시에는 사전 협의·승인된 권한만 쓸 수 있습니다.
 - 전체 목록: [Vehicle 권한](https://document.pleos.ai/docs/pleos-only/connect-sdk-pleos/Vehicle/vehicle-permission), [NaviHelper 권한](https://document.pleos.ai/docs/pleos-only/connect-sdk-pleos/NaviHelper/declaring-permissions)
 
 ## 8. 문제 해결

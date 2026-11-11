@@ -10,18 +10,32 @@ data class StabilityMetrics(
     val qualifiedMinutes: Double,
     val steeringCorrections: Int,
     val brakePresses: Int,
+    /** 운전자 주의 경고 */
     val warnings: Int,
+    /** 차로 유지 보조·비상 차로 유지 개입 (차가 차로를 벗어나려 해서 개입한 횟수) */
+    val laneEvents: Int = 0,
+    /** 전방 충돌 경고 */
+    val collisionWarnings: Int = 0,
 ) {
     val steeringCorrectionsPerMin: Double
         get() = if (qualifiedMinutes > 0.0) steeringCorrections / qualifiedMinutes else 0.0
     val brakePressesPer10Min: Double
-        get() = if (qualifiedMinutes > 0.0) brakePresses / qualifiedMinutes * 10.0 else 0.0
+        get() = per10Min(brakePresses, zeroTimeFactor = 0.0)
     val warningsPer10Min: Double
-        get() = if (qualifiedMinutes > 0.0) warnings / qualifiedMinutes * 10.0 else warnings * 10.0
+        get() = per10Min(warnings)
+    val laneEventsPer10Min: Double
+        get() = per10Min(laneEvents)
+    val collisionWarningsPer10Min: Double
+        get() = per10Min(collisionWarnings)
 
     /** 흔들림 지수. 클수록 불안정. 가중치는 시험값이며 에뮬레이터 시나리오로 조정한다. */
     val wobbleIndex: Double
-        get() = steeringCorrectionsPerMin + 2.0 * brakePressesPer10Min + 5.0 * warningsPer10Min
+        get() = steeringCorrectionsPerMin + 2.0 * brakePressesPer10Min + 3.0 * laneEventsPer10Min +
+            5.0 * (warningsPer10Min + collisionWarningsPer10Min)
+
+    /** 비교 가능한 주행 시간이 없어도 경고는 무게를 두고 센다 (경고 1회 = 10분당 10회로 본다). */
+    private fun per10Min(count: Int, zeroTimeFactor: Double = 10.0): Double =
+        if (qualifiedMinutes > 0.0) count / qualifiedMinutes * 10.0 else count * zeroTimeFactor
 }
 
 data class StabilityComparison(
@@ -53,6 +67,8 @@ class StabilityMonitor(var config: StabilityConfig = StabilityConfig()) {
     private val corrections = ArrayList<Long>()
     private val brakePresses = ArrayList<Long>()
     private val warnings = ArrayList<Long>()
+    private val laneEvents = ArrayList<Long>()
+    private val collisionWarnings = ArrayList<Long>()
     private val segments = ArrayList<LongArray>()
 
     private var speedKmh: Double? = null
@@ -126,6 +142,14 @@ class StabilityMonitor(var config: StabilityConfig = StabilityConfig()) {
         warnings.add(now)
     }
 
+    fun onLaneEvent(now: Long) {
+        laneEvents.add(now)
+    }
+
+    fun onCollisionWarning(now: Long) {
+        collisionWarnings.add(now)
+    }
+
     fun metrics(from: Long, to: Long): StabilityMetrics {
         if (to <= from) return StabilityMetrics(0.0, 0, 0, 0)
         var qualifiedMs = 0L
@@ -137,6 +161,8 @@ class StabilityMonitor(var config: StabilityConfig = StabilityConfig()) {
             steeringCorrections = corrections.count { it in range },
             brakePresses = brakePresses.count { it in range },
             warnings = warnings.count { it in range },
+            laneEvents = laneEvents.count { it in range },
+            collisionWarnings = collisionWarnings.count { it in range },
         )
     }
 
@@ -167,6 +193,8 @@ class StabilityMonitor(var config: StabilityConfig = StabilityConfig()) {
         corrections.removeAll { it < olderThan }
         brakePresses.removeAll { it < olderThan }
         warnings.removeAll { it < olderThan }
+        laneEvents.removeAll { it < olderThan }
+        collisionWarnings.removeAll { it < olderThan }
         segments.removeAll { it[1] < olderThan }
     }
 

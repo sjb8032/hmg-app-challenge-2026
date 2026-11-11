@@ -17,6 +17,37 @@ enum class Phase {
 
 enum class CheckInAnswer { OK, MORE_DROWSY, QUIET }
 
+/** 차량 경고등에서 읽은 사건. 휴식 전후 주행 비교와 쉼터 안내에 쓴다. */
+enum class VehicleEvent {
+    /** 운전자 주의 경고 (차가 졸음·부주의를 감지해 휴식을 권함) */
+    DRIVER_ATTENTION,
+    /** 차로 유지 보조·비상 차로 유지 개입 */
+    LANE_ASSIST,
+    /** 전방 충돌 경고 */
+    COLLISION_WARNING,
+}
+
+/** 차 실내 환경 전환 단계 */
+enum class CabinMode {
+    /** 쉬기 좋게: 무드등 은은하게, 원하는 온도, 약한 바람 */
+    REST,
+    /** 깨우기: 무드등 점점 밝게, 시원한 바깥 바람 */
+    WAKE,
+    /** 출발: 휴식 전 설정으로 되돌림 */
+    RESTORE,
+}
+
+/** 사용자가 고르는 휴식 환경 */
+data class RestEnvironment(
+    /** 휴식을 시작하면 차 실내 환경을 바꿀지 */
+    val enabled: Boolean = true,
+    val restTemperatureC: Float = 23f,
+    /** 무드등을 은은하게 켤지 */
+    val dimLight: Boolean = true,
+    /** 쉬는 동안 바깥 공기를 들일지 (내기 순환을 끔) */
+    val freshAir: Boolean = true,
+)
+
 sealed interface Prompt {
     /** 연속 주행이 길 때 휴식을 한 번 묻는다. */
     data class LongDrive(val drivenMinutes: Int, val next: RestAreaCandidate?) : Prompt
@@ -37,6 +68,7 @@ sealed interface Effect {
     data object CancelGuidance : Effect
     data class Speak(val text: String) : Effect
     data class Alarm(val on: Boolean) : Effect
+    data class Cabin(val mode: CabinMode) : Effect
 }
 
 data class RestSession(
@@ -55,6 +87,8 @@ data class RestSession(
     val sawPark: Boolean = false,
     /** 휴식 중 한 번이라도 멈췄는지. 멈춘 뒤에만 속도로 출발을 판단한다 ('주차했어요'를 조금 일찍 눌러도 휴식이 바로 끝나지 않게) */
     val sawStill: Boolean = false,
+    /** 깨우기를 시작한 시각 (알람이 울렸거나 '일어났어요'를 누름). null이면 아직 쉬는 중 */
+    val wakeStartedAt: Long? = null,
 )
 
 data class RecoveryCheck(
@@ -113,9 +147,10 @@ data class RestMateConfig(
     val beforeWindowMs: Long = 20 * MINUTE_MS,
     /** 재출발 후 비교 구간 */
     val afterWindowMs: Long = 10 * MINUTE_MS,
+    /** 기본 휴식 시간. 30분 미만 낮잠이 깊은 잠을 피해 깬 뒤 멍함(수면 관성)이 덜하다 */
     val defaultRestMinutes: Int = 20,
-    /** 주차·보행·기상 후 다시 출발하기까지 준비 시간 */
-    val prepMinutes: Int = 5,
+    /** 깨우기 시간: 깬 뒤 바로 출발하지 않고 몸을 깨우는 시간. 도착 예상에도 더한다 (시험값, 팀 결정 필요) */
+    val wakeUpMs: Long = 10 * MINUTE_MS,
     val stability: StabilityConfig = StabilityConfig(),
 ) {
     companion object {
@@ -127,6 +162,7 @@ data class RestMateConfig(
             beforeWindowMs = 2 * MINUTE_MS,
             afterWindowMs = 30 * SECOND_MS,
             aheadSearchIntervalMs = 5 * SECOND_MS,
+            wakeUpMs = 30 * SECOND_MS,
             stability = StabilityConfig(minBeforeMinutes = 0.5, minAfterMinutes = 0.25),
         )
     }

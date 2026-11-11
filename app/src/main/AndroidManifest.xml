@@ -23,11 +23,13 @@
     <uses-permission android:name="pleos.car.permission.CAR_SAFETY" />
     <uses-permission android:name="pleos.car.permission.READ_ADAS_STATES" />
 
-    <!-- NaviHelper SDK: 현재 위치·목적지 조회, 쉼터 경유지 추가·경로 요청 -->
+    <!-- Vehicle SDK 제어: 휴식 모드·깨우기에서 공조와 무드등을 바꾸고 출발할 때 되돌림 -->
+    <uses-permission android:name="pleos.car.permission.CONTROL_CAR_CLIMATE" />
+    <uses-permission android:name="pleos.car.permission.CONTROL_CAR_LIGHTS" />
+
+    <!-- NaviHelper SDK: 경로 정보 조회(NAVI_ROUTE), 경로 요청·경유지 추가·삭제(NAVI_ROUTE_SEARCH) -->
     <uses-permission android:name="pleos.car.permission.NAVI_ROUTE" />
     <uses-permission android:name="pleos.car.permission.NAVI_ROUTE_SEARCH" />
-    <uses-permission android:name="pleos.car.permission.NAVI_CUSTOM_ROUTE" />
-    <uses-permission android:name="pleos.car.permission.NAVI_CUSTOM_ETC" />
 
     <application
         android:allowBackup="false"

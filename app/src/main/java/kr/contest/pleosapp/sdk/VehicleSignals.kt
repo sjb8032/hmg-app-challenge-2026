@@ -1,21 +1,29 @@
 package kr.contest.pleosapp.sdk
 
 import ai.pleos.playground.vehicle.Vehicle
+import ai.pleos.playground.vehicle.api.model.telltale.Telltales
 import ai.pleos.playground.vehicle.api.model.area.SeatArea
 import ai.pleos.playground.vehicle.api.model.area.WindowArea
 import ai.pleos.playground.vehicle.constant.area.SeatValue
 import ai.pleos.playground.vehicle.constant.area.TurnSignalValue
 import ai.pleos.playground.vehicle.constant.area.WindowValue
 import ai.pleos.playground.vehicle.constant.control.VehicleGear
+import ai.pleos.playground.vehicle.constant.telltale.TelltaleState
+import ai.pleos.playground.vehicle.constant.telltale.TelltaleType
 import ai.pleos.playground.vehicle.listener.BrakePedalStatusListener
 import ai.pleos.playground.vehicle.listener.GearSelectionListener
 import ai.pleos.playground.vehicle.listener.SteeringWheelAngleListener
+import ai.pleos.playground.vehicle.listener.TelltaleInfoListener
 import ai.pleos.playground.vehicle.listener.TurnSignalStateListener
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import kr.contest.pleosapp.core.Gear
+import kr.contest.pleosapp.core.VehicleEvent
+
+/** 경고등이 어떻게 바뀌면 사건으로 볼지 */
+private enum class Trigger { TURNS_ON, STARTS_BLINKING }
 
 /** 휴식 화면에서 쓰는 차량 실내·연료 정보. 못 읽으면 null */
 data class VehicleExtras(
@@ -27,8 +35,10 @@ data class VehicleExtras(
 )
 
 /**
- * Pleos Vehicle SDK(조회 전용)에서 레스트메이트가 쓰는 신호를 받아 메인 스레드로 넘긴다.
- * 기어·조향각·브레이크·깜빡이는 리스너로 받고, 창문·공조·연료는 휴식 화면용으로 주기적으로 읽는다.
+ * Pleos Vehicle SDK에서 레스트메이트가 쓰는 신호를 받아 메인 스레드로 넘긴다.
+ * - 기어·조향각·브레이크·깜빡이·경고등은 리스너로 받는다.
+ * - 창문·공조·연료는 휴식 화면용으로 주기적으로 읽는다.
+ * - 휴식 모드의 실내 환경 제어는 [cabin]이 맡는다.
  */
 class VehicleSignals(context: Context, private val sink: Sink) {
     interface Sink {
@@ -38,6 +48,10 @@ class VehicleSignals(context: Context, private val sink: Sink) {
         fun onBrake(pressed: Boolean)
         fun onTurnSignal(on: Boolean)
         fun onExtras(extras: VehicleExtras)
+        /** 경고등에서 읽은 사건 (새로 켜지거나 깜빡이기 시작한 경고만) */
+        fun onVehicleEvent(event: VehicleEvent)
+        /** 실내 환경 제어 결과 문구 */
+        fun onCabinNote(message: String)
     }
 
     private val vehicle = Vehicle(context.applicationContext)
@@ -46,6 +60,11 @@ class VehicleSignals(context: Context, private val sink: Sink) {
     private var connected = false
     private var extras = VehicleExtras()
     private val windowPositions = HashMap<WindowValue, Int>()
+    private val telltaleStates = HashMap<TelltaleType, TelltaleState>()
+    private val telltaleCounts = HashMap<TelltaleType, Int>()
+
+    /** 휴식 모드·깨우기용 실내 환경 제어 */
+    val cabin = CabinControl(vehicle, { connected }, { message -> sink.onCabinNote(message) })
 
     private val extrasPoll = object : Runnable {
         override fun run() {
@@ -67,6 +86,8 @@ class VehicleSignals(context: Context, private val sink: Sink) {
         registerSteering()
         registerBrake()
         registerTurnSignal()
+        registerTelltales()
+        cabin.prepare()
         main.post(extrasPoll)
     }
 
@@ -138,6 +159,40 @@ class VehicleSignals(context: Context, private val sink: Sink) {
         }
     }
 
+    private fun registerTelltales() {
+        safely("telltales") {
+            val api = vehicle.getSafety()
+            val listener = listenerProxy<TelltaleInfoListener> { method, args ->
+                val info = args.firstOrNull()
+                if (method == "onTelltaleInfoUpdated") post { onTelltales(info) }
+                else if (method == "onFailed") warn("telltale listener", info)
+            }
+            api.registerTelltales(listener)
+            unregisters += { api.unregisterTelltales(listener) }
+            // 처음 읽은 상태는 기준으로만 쓴다 (앱을 켜기 전부터 켜져 있던 경고는 사건으로 세지 않음).
+            api.getTelltalesInfo({ info -> post { onTelltales(info) } }, { e -> warn("telltales", e) })
+        }
+    }
+
+    /** 경고등 목록을 이전 상태와 비교해, 새로 켜지거나 깜빡이기 시작한 경고(또는 경고 횟수 증가)만 사건으로 넘긴다. */
+    private fun onTelltales(info: Any?) {
+        val list = (info as? Telltales)?.telltales ?: return
+        for (item in list) {
+            val type = (item?.type as Any?) as? TelltaleType ?: continue
+            val (event, trigger) = WATCHED[type] ?: continue
+            val state = (item.state as Any?) as? TelltaleState ?: TelltaleState.OFF
+            val count = item.warningCount
+            val prevState = telltaleStates.put(type, state)
+            val prevCount = telltaleCounts.put(type, count)
+            if (prevState == null || prevCount == null) continue
+            val triggered = when (trigger) {
+                Trigger.TURNS_ON -> prevState == TelltaleState.OFF && state != TelltaleState.OFF
+                Trigger.STARTS_BLINKING -> prevState != TelltaleState.BLINK && state == TelltaleState.BLINK
+            }
+            if (triggered || count > prevCount) sink.onVehicleEvent(event)
+        }
+    }
+
     private fun readExtras() {
         if (!connected) return
         for (value in WINDOWS) {
@@ -194,6 +249,17 @@ class VehicleSignals(context: Context, private val sink: Sink) {
 
     companion object {
         private const val TAG = "RestMateVehicle"
+
+        /**
+         * 지켜볼 경고등. 정상 작동 중에도 켜져 있는 표시등(LKA·FCA)은 깜빡이기 시작할 때만 센다.
+         * 실제 차량의 표시 방식은 에뮬레이터 Virtual Console과 실차에서 확인이 필요하다.
+         */
+        private val WATCHED: Map<TelltaleType, Pair<VehicleEvent, Trigger>> = mapOf(
+            TelltaleType.DRIVER_ATTENTION to (VehicleEvent.DRIVER_ATTENTION to Trigger.TURNS_ON),
+            TelltaleType.ELK to (VehicleEvent.LANE_ASSIST to Trigger.TURNS_ON),
+            TelltaleType.LKA to (VehicleEvent.LANE_ASSIST to Trigger.STARTS_BLINKING),
+            TelltaleType.FCA to (VehicleEvent.COLLISION_WARNING to Trigger.STARTS_BLINKING),
+        )
         private const val EXTRAS_INTERVAL_MS = 20_000L
         private val WINDOWS = listOf(WindowValue.ROW_1_LEFT, WindowValue.ROW_1_RIGHT, WindowValue.ROW_2_LEFT, WindowValue.ROW_2_RIGHT)
 

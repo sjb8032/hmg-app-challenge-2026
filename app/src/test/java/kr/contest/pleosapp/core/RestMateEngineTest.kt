@@ -249,6 +249,89 @@ class RestMateEngineTest {
     }
 
     @Test
+    fun restSwitchesCabinAndAlarmStartsWakeUp() {
+        val e = engine()
+        val restAt = e.restAtNearest(t0)
+        assertTrue(e.drainEffects().contains(Effect.Cabin(CabinMode.REST)))
+
+        e.onTick(restAt + 20 * MINUTE_MS)
+        assertEquals(restAt + 20 * MINUTE_MS, e.state.rest?.wakeStartedAt)
+        val effects = e.drainEffects()
+        assertTrue(effects.contains(Effect.Alarm(true)))
+        assertTrue(effects.contains(Effect.Cabin(CabinMode.WAKE)))
+    }
+
+    @Test
+    fun wakingUpEarlyCancelsTheAlarm() {
+        val e = engine()
+        val restAt = e.restAtNearest(t0)
+        e.wakeUp(restAt + 8 * MINUTE_MS)
+        assertEquals(restAt + 8 * MINUTE_MS, e.state.rest?.wakeStartedAt)
+        assertTrue(e.drainEffects().contains(Effect.Cabin(CabinMode.WAKE)))
+
+        e.onTick(restAt + 25 * MINUTE_MS)
+        assertFalse(e.state.rest!!.alarmRinging)
+    }
+
+    @Test
+    fun goingBackToSleepReturnsToRestMode() {
+        val e = engine()
+        val restAt = e.restAtNearest(t0)
+        e.onTick(restAt + 20 * MINUTE_MS)
+        e.drainEffects()
+
+        e.extendRest(restAt + 20 * MINUTE_MS + 5_000, 10)
+        assertNull(e.state.rest?.wakeStartedAt)
+        val effects = e.drainEffects()
+        assertTrue(effects.contains(Effect.Alarm(false)))
+        assertTrue(effects.contains(Effect.Cabin(CabinMode.REST)))
+    }
+
+    @Test
+    fun departingRightAfterWakingAsksToGoSlowAndRestoresCabin() {
+        val e = engine()
+        val restAt = e.restAtNearest(t0)
+        e.onTick(restAt + 20 * MINUTE_MS)
+        e.stopAlarm(restAt + 20 * MINUTE_MS + 10_000)
+        e.drainEffects()
+
+        val departAt = restAt + 22 * MINUTE_MS // 깬 지 2분
+        e.onGear(departAt, Gear.DRIVE)
+        val effects = e.drainEffects()
+        assertTrue(effects.contains(Effect.Cabin(CabinMode.RESTORE)))
+        assertTrue(effects.any { it is Effect.Speak && it.text.contains("천천히") })
+    }
+
+    @Test
+    fun departingAfterWakeUpTimeDoesNotWarn() {
+        val e = engine()
+        val restAt = e.restAtNearest(t0)
+        e.onTick(restAt + 20 * MINUTE_MS)
+        e.stopAlarm(restAt + 20 * MINUTE_MS + 10_000)
+        e.drainEffects()
+
+        e.onGear(restAt + 31 * MINUTE_MS, Gear.DRIVE)
+        assertFalse(e.drainEffects().any { it is Effect.Speak && it.text.contains("천천히") })
+    }
+
+    @Test
+    fun driverAttentionTelltaleStartsGuidance() {
+        val e = engine()
+        e.driveAt(t0)
+        e.onVehicleEvent(t0 + 1_000, VehicleEvent.DRIVER_ATTENTION)
+        assertEquals(Phase.TO_REST_AREA, e.state.phase)
+        assertEquals("a5", e.state.target?.area?.id)
+    }
+
+    @Test
+    fun laneAssistEventsDoNotTriggerGuidanceByThemselves() {
+        val e = engine()
+        e.driveAt(t0)
+        e.onVehicleEvent(t0 + 1_000, VehicleEvent.LANE_ASSIST)
+        assertEquals(Phase.DRIVING, e.state.phase)
+    }
+
+    @Test
     fun spokenNameDropsDirectionInParentheses() {
         assertEquals("안성휴게소", RestMateText.spokenName("안성휴게소(부산방향)"))
         assertEquals("안성휴게소", RestMateText.spokenName("안성휴게소 (부산방향)"))
