@@ -1,0 +1,118 @@
+name: Tools - SDK API dump and rest area data
+
+# 임시 브랜치(tools/sdk-api-and-data)에서만 도는 작업.
+# Pleos SDK의 공개 API 목록과 OpenStreetMap 쉼터 데이터를 받아 아티팩트로 올린다.
+on:
+  push:
+    branches: [ tools/sdk-api-and-data ]
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Write helper scripts
+        run: |
+          mkdir -p out/sdk out/osm work
+          cat > work/deps.py <<'PY'
+          import sys, xml.etree.ElementTree as ET
+          ns = {'m': 'http://maven.apache.org/POM/4.0.0'}
+          root = ET.parse(sys.argv[1]).getroot()
+          def text(e, tag):
+              x = e.find('m:' + tag, ns)
+              return x.text.strip() if x is not None and x.text else ''
+          props = {}
+          p = root.find('m:properties', ns)
+          if p is not None:
+              for c in p:
+                  props[c.tag.split('}')[1]] = (c.text or '').strip()
+          found = []
+          deps = root.find('m:dependencies', ns)
+          if deps is not None:
+              for d in deps.findall('m:dependency', ns):
+                  g, a, v = text(d, 'groupId'), text(d, 'artifactId'), text(d, 'version')
+                  if v.startswith('${'):
+                      v = props.get(v[2:-1], v)
+                  print(f"{sys.argv[1]}: {g}:{a}:{v} scope={text(d, 'scope') or 'compile'}", file=sys.stderr)
+                  if g.startswith('ai.pleos') and v and not v.startswith('$'):
+                      found.append(f"{g}:{a}:{v}")
+          print(' '.join(found))
+          PY
+
+      - name: Download Pleos SDK and dump public API
+        run: |
+          set -uo pipefail
+          base=https://nexus-playground.pleos.ai/repository/maven-releases
+          queue="ai.pleos.playground:Vehicle:2.3.2 ai.pleos.playground:NaviHelper:3.0.5"
+          seen=" "
+          while [ -n "${queue// /}" ]; do
+            coord="${queue%% *}"
+            if [ "$coord" = "$queue" ]; then queue=""; else queue="${queue#* }"; fi
+            [ -z "$coord" ] && continue
+            case "$seen" in *" $coord "*) continue;; esac
+            seen="$seen$coord "
+            g="${coord%%:*}"; rest="${coord#*:}"; a="${rest%%:*}"; v="${rest#*:}"
+            url="$base/${g//.//}/$a/$v/$a-$v"
+            echo "== $coord"
+            if ! curl -fsSL "$url.pom" -o "work/$a-$v.pom"; then echo "pom missing: $url.pom"; continue; fi
+            cp "work/$a-$v.pom" out/sdk/
+            jar=""
+            if curl -fsSL "$url.aar" -o "work/$a-$v.aar"; then
+              mkdir -p "work/$a-$v"
+              unzip -q -o "work/$a-$v.aar" -d "work/$a-$v"
+              cp "work/$a-$v/AndroidManifest.xml" "out/sdk/$a-$v-AndroidManifest.xml" 2>/dev/null || true
+              (cd "work/$a-$v" && find . -type f | sort) > "out/sdk/$a-$v-aar-files.txt"
+              jar="work/$a-$v/classes.jar"
+            elif curl -fsSL "$url.jar" -o "work/$a-$v.jar"; then
+              jar="work/$a-$v.jar"
+            fi
+            if [ -n "$jar" ]; then
+              unzip -Z1 "$jar" | grep '\.class$' | grep -v 'module-info' | sed 's/\.class$//; s#/#.#g' > "out/sdk/$a-$v-classes.txt"
+              javap -public -constants -classpath "$jar" $(cat "out/sdk/$a-$v-classes.txt") > "out/sdk/$a-$v-javap.txt" 2>&1 || true
+            fi
+            more=$(python3 work/deps.py "work/$a-$v.pom" 2>> out/sdk/dependencies.txt)
+            queue="$queue $more"
+          done
+          ls -la out/sdk
+
+      - name: Fetch rest areas and places from OpenStreetMap
+        run: |
+          set -uo pipefail
+          cat > work/rest.ql <<'QL'
+          [out:json][timeout:300];
+          area["ISO3166-1"="KR"][admin_level=2]->.kr;
+          (
+            nwr["highway"="rest_area"](area.kr);
+            nwr["highway"="services"](area.kr);
+          );
+          out center;
+          QL
+          cat > work/places.ql <<'QL'
+          [out:json][timeout:300];
+          area["ISO3166-1"="KR"][admin_level=2]->.kr;
+          node["place"~"^(city|town)$"](area.kr);
+          out body;
+          QL
+          fetch() {
+            for ep in https://overpass-api.de/api/interpreter https://overpass.kumi.systems/api/interpreter https://overpass.private.coffee/api/interpreter; do
+              if curl -fsS --retry 2 --retry-delay 10 --max-time 400 --data-urlencode "data@$1" "$ep" -o "$2"; then
+                echo "ok $ep -> $2"; return 0
+              fi
+              echo "failed $ep"
+            done
+            return 1
+          }
+          fetch work/rest.ql out/osm/rest_areas_raw.json
+          sleep 5
+          fetch work/places.ql out/osm/places_raw.json
+          ls -la out/osm
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sdk-and-data
+          path: out/
