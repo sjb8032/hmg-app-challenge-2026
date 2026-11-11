@@ -31,6 +31,9 @@ jobs:
           osmium tags-filter work/kr.osm.pbf nwr/highway=rest_area,services n/place=city,town -o work/filtered.osm.pbf --overwrite
           osmium export work/filtered.osm.pbf -f geojsonseq -x print_record_separator=false -u type_id -o work/filtered.geojsonseq --overwrite
           wc -l work/filtered.geojsonseq
+          osmium tags-filter work/kr.osm.pbf w/highway=motorway -o work/motorway.osm.pbf --overwrite
+          osmium export work/motorway.osm.pbf -f geojsonseq -x print_record_separator=false --geometry-types=linestring -o work/motorway.geojsonseq --overwrite
+          wc -l work/motorway.geojsonseq
 
       - name: Convert to app data
         run: |
@@ -129,11 +132,54 @@ jobs:
                   continue
               kept.append(a)
 
+          # 고속도로(motorway) 본선에서 가까운 쉼터 표시: 고속도로 주행 중에는 이 쉼터들만 고른다.
+          cell = 0.01
+          grid = {}
+          with open('work/motorway.geojsonseq', encoding='utf-8') as f:
+              for line in f:
+                  line = line.strip().lstrip('\x1e')
+                  if not line:
+                      continue
+                  pts = coords_of(json.loads(line).get('geometry') or {})
+                  for (lat1, lon1), (lat2, lon2) in zip(pts, pts[1:]):
+                      seg = (lat1, lon1, lat2, lon2)
+                      for la in {int(lat1 / cell), int(lat2 / cell)}:
+                          for lo in {int(lon1 / cell), int(lon2 / cell)}:
+                              grid.setdefault((la, lo), []).append(seg)
+
+          def seg_dist_m(lat, lon, seg):
+              lat1, lon1, lat2, lon2 = seg
+              kx = 111320.0 * math.cos(math.radians(lat))
+              ky = 110540.0
+              ax, ay = (lon1 - lon) * kx, (lat1 - lat) * ky
+              bx, by = (lon2 - lon) * kx, (lat2 - lat) * ky
+              dx, dy = bx - ax, by - ay
+              l2 = dx * dx + dy * dy
+              t = 0.0 if l2 == 0 else max(0.0, min(1.0, -(ax * dx + ay * dy) / l2))
+              px, py = ax + t * dx, ay + t * dy
+              return math.hypot(px, py)
+
+          def near_motorway_m(lat, lon):
+              best = None
+              la0, lo0 = int(lat / cell), int(lon / cell)
+              for la in range(la0 - 1, la0 + 2):
+                  for lo in range(lo0 - 1, lo0 + 2):
+                      for seg in grid.get((la, lo), []):
+                          d = seg_dist_m(lat, lon, seg)
+                          if best is None or d < best:
+                              best = d
+              return best
+
           matched = 0
           out = []
+          expressway = 0
           for a in kept:
               item = {'id': a['id'], 'n': a['n'], 't': a['t'],
                       'lat': round(a['lat'], 5), 'lon': round(a['lon'], 5)}
+              d = near_motorway_m(a['lat'], a['lon'])
+              if d is not None and d <= 350.0:
+                  item['e'] = 1
+                  expressway += 1
               if a['dl']:
                   item['dl'] = a['dl']
                   p = by_base.get(a['dl'])
@@ -157,7 +203,7 @@ jobs:
           with open('tools-output/osm/summary.txt', 'w', encoding='utf-8') as f:
               f.write(f"features={len(features)} places={len(places)} areas_raw={len(areas)} kept={len(out)}\n")
               f.write(f"by_type={counts}\n")
-              f.write(f"direction_labelled={labelled} matched={matched}\n")
+              f.write(f"direction_labelled={labelled} matched={matched} expressway={expressway} motorway_cells={len(grid)}\n")
               f.write("unmatched_labels=" + ','.join(unmatched) + "\n")
               for x in out:
                   if any(k in x['n'] for k in ('기흥', '안성', '망향', '입장', '천안', '죽전')):
