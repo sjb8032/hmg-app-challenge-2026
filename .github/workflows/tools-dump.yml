@@ -5,11 +5,16 @@ name: Tools - SDK API dump and rest area data
 on:
   push:
     branches: [ tools/sdk-api-and-data ]
+    paths: [ '.github/workflows/tools-dump.yml' ]
+
+permissions:
+  contents: write
 
 jobs:
   dump:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -80,26 +85,25 @@ jobs:
           ls -la out/sdk
 
       - name: Fetch rest areas and places from OpenStreetMap
+        timeout-minutes: 12
         run: |
           set -uo pipefail
           cat > work/rest.ql <<'QL'
-          [out:json][timeout:300];
-          area["ISO3166-1"="KR"][admin_level=2]->.kr;
+          [out:json][timeout:150][bbox:33.0,124.5,38.7,131.0];
           (
-            nwr["highway"="rest_area"](area.kr);
-            nwr["highway"="services"](area.kr);
+            nwr["highway"="rest_area"];
+            nwr["highway"="services"];
           );
           out center;
           QL
           cat > work/places.ql <<'QL'
-          [out:json][timeout:300];
-          area["ISO3166-1"="KR"][admin_level=2]->.kr;
-          node["place"~"^(city|town)$"](area.kr);
+          [out:json][timeout:150][bbox:33.0,124.5,38.7,131.0];
+          node["place"~"^(city|town)$"];
           out body;
           QL
           fetch() {
             for ep in https://overpass-api.de/api/interpreter https://overpass.kumi.systems/api/interpreter https://overpass.private.coffee/api/interpreter; do
-              if curl -fsS --retry 2 --retry-delay 10 --max-time 400 --data-urlencode "data@$1" "$ep" -o "$2"; then
+              if curl -fsS --max-time 170 --data-urlencode "data@$1" "$ep" -o "$2"; then
                 echo "ok $ep -> $2"; return 0
               fi
               echo "failed $ep"
@@ -111,8 +115,14 @@ jobs:
           fetch work/places.ql out/osm/places_raw.json
           ls -la out/osm
 
-      - uses: actions/upload-artifact@v4
+      - name: Commit results to this branch
         if: always()
-        with:
-          name: sdk-and-data
-          path: out/
+        run: |
+          rm -rf tools-output
+          mkdir -p tools-output
+          cp -r out/. tools-output/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tools-output
+          git commit -q -m "tools: SDK API dump and OSM rest area data" || echo "nothing to commit"
+          git push -q origin HEAD:${GITHUB_REF_NAME}
