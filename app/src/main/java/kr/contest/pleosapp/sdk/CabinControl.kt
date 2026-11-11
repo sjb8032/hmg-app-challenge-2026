@@ -77,19 +77,22 @@ class CabinControl(
             report("차량이 연결되지 않아 실내 환경은 바꾸지 않았어요.")
             return
         }
-        generation++
+        val gen = ++generation
         failureReported = false
+        // 원래 설정을 읽는 동안 기다렸다가 바꾼다. 그 사이에 다른 단계로 넘어가면(예: 바로 출발) 건너뛴다.
         when (mode) {
             CabinMode.REST -> if (env.enabled) {
                 // 처음 휴식 모드로 바꿀 때만 원래 설정을 읽어 둔다 (깨우기에서 다시 잠들 때는 그대로 둔다).
-                if (!changed) snapshot()
+                val fresh = !changed
+                if (fresh) snapshot()
                 changed = true
-                main.postDelayed({ applyRest(env) }, SNAPSHOT_WAIT_MS)
+                main.postDelayed({ if (gen == generation) applyRest(env) }, if (fresh) SNAPSHOT_WAIT_MS else 0L)
             }
             CabinMode.WAKE -> if (env.enabled) {
-                if (!changed) snapshot()
+                val fresh = !changed
+                if (fresh) snapshot()
                 changed = true
-                main.postDelayed({ applyWake(env) }, if (savedTemp.isEmpty()) SNAPSHOT_WAIT_MS else 0L)
+                main.postDelayed({ if (gen == generation) applyWake(env) }, if (fresh) SNAPSHOT_WAIT_MS else 0L)
             }
             CabinMode.RESTORE -> if (changed) restore()
         }
