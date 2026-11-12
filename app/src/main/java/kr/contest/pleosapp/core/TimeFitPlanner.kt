@@ -14,6 +14,8 @@ import kotlin.math.sqrt
  */
 object TimeFitPlanner {
     private const val MIN_FILL = 0.35
+    /** 롱웨이 모드에서 MIN_FILL로 고를 지점이 없을 때 (더 달릴 시간을 늘렸더니 후보가 사라지지 않게) */
+    private const val LOOSE_MIN_FILL = 0.15
     private const val SCENIC_BONUS = 0.15
     /** 고른 분위기(야경·강변·다리·공원)에 맞는 지점 가산 */
     private const val PREFER_BONUS = 0.5
@@ -33,9 +35,13 @@ object TimeFitPlanner {
     /** 이보다 오래 가는 길이면 휴게소에서만 쉬다 가고, 가는 길 축 위의 지점만 본다 */
     private const val LONG_TRIP_MS = 45 * MINUTE_MS
 
-    /** 먼 길: 길의 30%를 지난 곳부터 목적지 조금 너머까지, 옆으로는 max(10km, 길이의 12%) 안 */
+    /** 먼 길은 남는 시간이 이만큼만 돼도 휴게소에서 쉬다 가는 코스를 낸다 (두 시간 운전에 15분 쉬기는 자연스럽다) */
+    private const val LONG_TRIP_REST_MIN_SLACK_MS = 15 * MINUTE_MS
+
+    /** 먼 길: 길의 30%를 지난 곳부터 목적지 조금 너머까지(온타임 모드는 목적지까지), 옆으로는 max(10km, 길이의 12%) 안 */
     private const val AXIS_MIN_PROGRESS = 0.3
     private const val AXIS_MAX_PROGRESS = 1.1
+    private const val ON_TIME_AXIS_MAX_PROGRESS = 1.0
     private const val AXIS_MIN_LATERAL_METERS = 10_000.0
     private const val AXIS_LATERAL_RATIO = 0.12
 
@@ -46,9 +52,18 @@ object TimeFitPlanner {
     private const val WAIT_NEAR_METERS = 2_000.0
     private const val WAIT_NEAR_MAX_METERS = 3_000.0
 
-    /** '도심 피하기'에서 피하는 곳: 서울시청·강남역 3km 안 */
-    private const val CITY_CENTER_METERS = 3_000.0
-    private val CITY_CENTERS = listOf(LatLng(37.5663, 126.9779), LatLng(37.4979, 127.0276))
+    /** 기다리는 코스는 이만큼은 기다릴 수 있어야 낸다 (1분 기다리려고 돌아가지 않게) */
+    private const val MIN_WAIT_STAY_MS = 5 * MINUTE_MS
+
+    /** 먼 길의 두 번째 쉬다 가는 곳은 첫 곳과 길 위 위치가 이만큼 달라야 한다 */
+    private const val DISTINCT_PROGRESS = 0.15
+
+    /** '도심 피하기'에서 피하는 곳: 서울시청 3.5km·강남역 3km 안, 그리고 시청 2.5km 안을 지나는 길 */
+    private val CITY_HALL = LatLng(37.5663, 126.9779)
+    private val GANGNAM = LatLng(37.4979, 127.0276)
+    private const val CITY_HALL_METERS = 3_500.0
+    private const val GANGNAM_METERS = 3_000.0
+    private const val CITY_HALL_PASS_METERS = 2_500.0
 
     fun slackMs(now: Long, targetAt: Long, directMs: Long, config: DriveConfig): Long =
         targetAt - now - directMs - config.marginMs
@@ -111,18 +126,26 @@ object TimeFitPlanner {
         if (slackMs < config.minSlackMs) return listOf(direct(slackMs))
         val to = destination.position
         val speed = effectiveSpeedMps(from, to, directMs, config)
-        val rest = if (slackMs >= config.restStopMinSlackMs) {
+        val restMinSlack = if (directMs >= LONG_TRIP_MS) LONG_TRIP_REST_MIN_SLACK_MS else config.restStopMinSlackMs
+        val rest = if (slackMs >= restMinSlack) {
             restStopOptions(from, to, directMs, slackMs, speed, restPlaces, config)
         } else {
             emptyList()
         }
-        if (slackMs > maxAddedMs && rest.isNotEmpty()) return rest
         val driveSlack = minOf(slackMs, maxAddedMs)
         val candidates = candidatePoints(from, to, directMs, points, wish)
-        val scenic = scenicOptions(from, to, driveSlack, speed, candidates, wish, config)
+        var scenic = scenicOptions(from, to, driveSlack, speed, candidates, wish, config, MIN_FILL)
+        // 롱웨이 모드: 더 달릴 시간을 늘렸다고 후보가 사라지지 않게 덜 채우는 지점도 본다.
+        if (scenic.isEmpty() && !wish.onTime) scenic = scenicOptions(from, to, driveSlack, speed, candidates, wish, config, LOOSE_MIN_FILL)
+        // 남는 시간이 길면 쉬다 가는 곳을 앞에 두고, 경치 코스도 하나는 같이 보여 준다.
+        if (slackMs > maxAddedMs && rest.isNotEmpty()) return (rest + scenic.take(1)).take(MAX_OPTIONS)
         val detour = if (scenic.isEmpty()) detourOption(from, to, driveSlack, speed, config) else null
         return (scenic + rest + listOfNotNull(detour)).take(MAX_OPTIONS).ifEmpty { listOf(direct(slackMs)) }
     }
+
+    /** 목적지 근처(3km 안)에 기다릴 곳이 있는지 ('근처에서 기다리기' 후보가 없을 때 이유를 알리려고) */
+    fun hasWaitPlaceNear(destination: Place, restPlaces: List<RestArea>): Boolean =
+        restPlaces.any { Geo.distanceMeters(it.position, destination.position) <= WAIT_NEAR_MAX_METERS }
 
     /**
      * 온타임 모드 '근처에서 기다리기': 목적지 2km 안(없으면 3km 안)의 공원·공영 주차장 등에 세워 기다렸다 간다.
@@ -145,7 +168,7 @@ object TimeFitPlanner {
         val pool = within(WAIT_NEAR_METERS).ifEmpty { within(WAIT_NEAR_MAX_METERS) }
         val usable = pool
             .map { it to addedMs(from, to, it.position, speed, config) }
-            .filter { (_, detour) -> detour < slackMs }
+            .filter { (_, detour) -> slackMs - detour >= MIN_WAIT_STAY_MS }
             .sortedWith(
                 compareBy<Pair<RestArea, Long>>({ if (RestAreaFinder.isCityPlace(it.first)) 0 else 1 })
                     .thenBy { Geo.distanceMeters(it.first.position, to) },
@@ -159,7 +182,7 @@ object TimeFitPlanner {
                 kind = CourseKind.REST_STOP,
                 title = "${RestMateText.spokenName(area.name)}에서 기다리기",
                 reason = "${area.type.label} · 목적지까지 ${RestMateText.distance(Geo.distanceMeters(area.position, to))} · " +
-                    "약 ${DriveText.minutes(stay)}분 기다려요",
+                    "약 ${DriveText.duration(stay)} 기다려요",
                 via = listOf(Place(area.name, area.position, PlaceKind.WAYPOINT)),
                 addedMs = slackMs,
                 stayMs = stay,
@@ -170,15 +193,18 @@ object TimeFitPlanner {
     }
 
     /**
-     * 바로 가는 코스.
-     * @param arriveAt 바로 가면 도착하는 시각. 주면 일찍 닿는 만큼을 이유에 적는다 ("바로 가면 오후 6:45 도착, 15분 일찍")
+     * 바로 가는 코스. 이유는 목표 시각 기준으로 적는다 (여유를 못 지키는 것과 늦는 것은 다르다).
+     * @param slackMs 남는 시간 (여유를 뺀 값)
+     * @param arriveAt 바로 가면 도착하는 시각. 주면 "바로 가면 오후 6:45 도착 · 15분 일찍"처럼 적는다
      */
     fun direct(slackMs: Long, arriveAt: Long? = null, marginMs: Long = 0L): CourseOption {
+        // 목표보다 얼마나 일찍 닿는지 (음수면 늦음)
         val early = slackMs + marginMs
         val reason = when {
-            slackMs < 0 -> "바로 가도 약 ${DriveText.minutes(slackMs)}분 늦을 수 있어요"
-            arriveAt == null || early < 2 * MINUTE_MS -> "바로 가도 시간에 맞아요"
-            else -> "바로 가면 ${DriveText.clock(arriveAt)} 도착, ${DriveText.minutes(early)}분 일찍"
+            early < -30 * SECOND_MS -> "바로 가도 약 ${DriveText.duration(early)} 늦어요"
+            arriveAt == null -> "바로 가도 시간에 맞아요"
+            early <= 30 * SECOND_MS -> "바로 가면 ${DriveText.clock(arriveAt)} 도착 · 정각"
+            else -> "바로 가면 ${DriveText.clock(arriveAt)} 도착 · ${DriveText.duration(early)} 일찍"
         }
         return CourseOption(
             id = "direct",
@@ -198,8 +224,10 @@ object TimeFitPlanner {
         wish: CourseWish,
     ): List<CoursePoint> {
         val total = Geo.distanceMeters(from, to)
+        // 온타임 모드는 목적지를 지나쳤다 되돌아오는 지점을 뺀다 (체크인 시각을 맞추려고 숙소를 지나가지 않게).
+        val maxProgress = if (wish.onTime) ON_TIME_AXIS_MAX_PROGRESS else AXIS_MAX_PROGRESS
         return when {
-            directMs >= LONG_TRIP_MS -> points.filter { onAxis(from, to, total, it.position) }
+            directMs >= LONG_TRIP_MS -> points.filter { onAxis(from, to, total, it.position, maxProgress) }
             wish.onTime -> {
                 val radius = max(total, ON_TIME_MIN_RADIUS_METERS)
                 points.filter { Geo.distanceMeters(it.position, to) <= radius }
@@ -208,15 +236,37 @@ object TimeFitPlanner {
         }
     }
 
-    private fun onAxis(from: LatLng, to: LatLng, total: Double, p: LatLng): Boolean {
+    private fun onAxis(from: LatLng, to: LatLng, total: Double, p: LatLng, maxProgress: Double): Boolean {
         if (total < 1.0) return false
         val (along, across) = Geo.alongAcross(from, to, p)
         val progress = along / total
-        return progress in AXIS_MIN_PROGRESS..AXIS_MAX_PROGRESS &&
+        return progress in AXIS_MIN_PROGRESS..maxProgress &&
             abs(across) <= max(AXIS_MIN_LATERAL_METERS, total * AXIS_LATERAL_RATIO)
     }
 
-    private fun nearCityCenter(p: LatLng): Boolean = CITY_CENTERS.any { Geo.distanceMeters(it, p) <= CITY_CENTER_METERS }
+    /**
+     * 도심(시청·강남역 가까이)이거나, 가는 길이 시청 가까이를 지나는지 ('도심 피하기').
+     * 출발지나 목적지가 도심이면 그쪽 구간은 어차피 도심을 지나므로 따지지 않는다.
+     */
+    private fun throughCity(from: LatLng, p: LatLng, to: LatLng): Boolean {
+        if (Geo.distanceMeters(CITY_HALL, p) <= CITY_HALL_METERS || Geo.distanceMeters(GANGNAM, p) <= GANGNAM_METERS) return true
+        val fromDowntown = Geo.distanceMeters(CITY_HALL, from) <= CITY_HALL_METERS
+        val toDowntown = Geo.distanceMeters(CITY_HALL, to) <= CITY_HALL_METERS
+        return (!fromDowntown && segmentDistance(from, p, CITY_HALL) <= CITY_HALL_PASS_METERS) ||
+            (!toDowntown && segmentDistance(p, to, CITY_HALL) <= CITY_HALL_PASS_METERS)
+    }
+
+    /** 점과 a→b 선분 사이 거리 (m, 근사) */
+    private fun segmentDistance(a: LatLng, b: LatLng, point: LatLng): Double {
+        val length = Geo.distanceMeters(a, b)
+        if (length < 1.0) return Geo.distanceMeters(a, point)
+        val (along, across) = Geo.alongAcross(a, b, point)
+        return when {
+            along <= 0.0 -> Geo.distanceMeters(a, point)
+            along >= length -> Geo.distanceMeters(b, point)
+            else -> abs(across)
+        }
+    }
 
     private fun scenicOptions(
         from: LatLng,
@@ -226,6 +276,7 @@ object TimeFitPlanner {
         points: List<CoursePoint>,
         wish: CourseWish,
         config: DriveConfig,
+        minFill: Double,
     ): List<CourseOption> {
         data class Scored(val point: CoursePoint, val added: Long, val score: Double)
 
@@ -234,10 +285,10 @@ object TimeFitPlanner {
                 return@mapNotNull null
             }
             val added = addedMs(from, to, p.position, speed, config)
-            if (added > slackMs || added < slackMs * MIN_FILL) return@mapNotNull null
+            if (added > slackMs || added < slackMs * minFill) return@mapNotNull null
             var bonus = if (p.tags.any { it in SCENIC_TAGS }) SCENIC_BONUS else 0.0
             if (p.tags.any { it in wish.prefer }) bonus += PREFER_BONUS
-            if (wish.avoidCity && nearCityCenter(p.position)) bonus -= CITY_PENALTY
+            if (wish.avoidCity && throughCity(from, p.position, to)) bonus -= CITY_PENALTY
             Scored(p, added, added.toDouble() / slackMs + bonus)
         }.sortedByDescending { it.score }
 
@@ -261,7 +312,7 @@ object TimeFitPlanner {
     }
 
     /**
-     * 가는 길에 들를 수 있는 쉼터에서 남는 시간만큼 쉬다 간다. 종류가 다른 곳으로 최대 2곳.
+     * 가는 길에 들를 수 있는 쉼터에서 남는 시간만큼 쉬다 간다. 최대 2곳 (시내는 종류가 다른 곳, 먼 길은 길 위 위치가 다른 곳).
      * - 먼 길(고속도로)은 휴게소만, 길의 60% 즈음을 좋게 본다.
      * - 가까운 길(시내)은 공원·공영 주차장도 보고, 목적지 가까이(70% 즈음)를 좋게 본다. 깬 뒤 남은 길이 짧아 시간이 잘 맞는다.
      * - 돌아가는 시간이 짧을수록 좋다.
@@ -286,7 +337,7 @@ object TimeFitPlanner {
         } else {
             restPlaces
         }
-        data class Scored(val area: RestArea, val detour: Long, val score: Double)
+        data class Scored(val area: RestArea, val detour: Long, val score: Double, val progress: Double)
 
         val ranked = pool.asSequence()
             .filter { Geo.distanceMeters(from, it.position) >= NEAR_METERS }
@@ -299,21 +350,25 @@ object TimeFitPlanner {
             .map { (area, detour) ->
                 val a = Geo.distanceMeters(from, area.position)
                 val progress = a / (a + Geo.distanceMeters(area.position, to))
-                Scored(area, detour, detour + abs(progress - idealProgress) * progressWeightMs)
+                Scored(area, detour, detour + abs(progress - idealProgress) * progressWeightMs, progress)
             }
             .sortedBy { it.score }
             .toList()
         val first = ranked.firstOrNull() ?: return emptyList()
         val second = ranked.drop(1).firstOrNull {
-            it.area.type != first.area.type && Geo.distanceMeters(it.area.position, first.area.position) >= DISTINCT_METERS
+            val apart = Geo.distanceMeters(it.area.position, first.area.position) >= DISTINCT_METERS
+            // 먼 길은 모두 휴게소라 종류 대신 길 위 위치가 다른 곳을 둘째로 (예: 길의 40%·75%)
+            apart && if (longTrip) abs(it.progress - first.progress) >= DISTINCT_PROGRESS else it.area.type != first.area.type
         }
         return listOfNotNull(first, second).map { s ->
             val stay = slackMs - s.detour
+            val city = RestAreaFinder.isCityPlace(s.area)
             CourseOption(
                 id = "rest-${s.area.id}",
                 kind = CourseKind.REST_STOP,
-                title = "${RestMateText.spokenName(s.area.name)}에서 쉬다 가기",
-                reason = "${s.area.type.label} · 약 ${DriveText.minutes(stay)}분 쉬고 시간 맞춰 출발",
+                // 시내 공원·주차장은 '근처에서 기다리기'와 같은 이름으로 (같은 곳을 두 이름으로 부르지 않게)
+                title = "${RestMateText.spokenName(s.area.name)}에서 ${if (city) "기다리기" else "쉬다 가기"}",
+                reason = "${s.area.type.label} · 약 ${DriveText.duration(stay)} ${if (city) "기다렸다" else "쉬고"} 시간 맞춰 출발",
                 via = listOf(Place(s.area.name, s.area.position, PlaceKind.WAYPOINT)),
                 addedMs = slackMs,
                 stayMs = stay,
@@ -349,7 +404,7 @@ object TimeFitPlanner {
             id = "detour",
             kind = CourseKind.DETOUR,
             title = "주변으로 돌아서 가기",
-            reason = "근처에 고른 경치 지점이 없어 약 ${DriveText.minutes(added)}분 돌아가요",
+            reason = "근처에 들를 만한 지점이 없어 약 ${DriveText.minutes(added)}분 돌아가요",
             via = listOf(Place("돌아가는 지점", via, PlaceKind.WAYPOINT)),
             addedMs = added,
         )

@@ -131,6 +131,8 @@ private fun Header(ui: UiState) {
         Phase.DRIVING -> driveTitle(ui.drive)
         Phase.TO_REST_AREA -> "레스트 모드 · 쉴 곳으로 안내 중" to RM.amber
         Phase.RESTING -> when {
+            // 온타임 모드로 계획한 곳에서 기다리는 것은 졸려서 쉬는 것과 구분한다.
+            rest?.kind == RestKind.WAIT && rest.strictTarget && !rest.fatigue -> "온타임 모드 · 기다리는 중" to RM.teal
             rest?.kind == RestKind.WAIT -> "레스트 모드 · 기다리는 중" to RM.teal
             rest?.kind == RestKind.STAY -> "레스트 모드 · 잠깐 머무는 중" to RM.violet
             waking -> "레스트 모드 · 깨우는 중" to RM.amber
@@ -153,7 +155,7 @@ private fun Header(ui: UiState) {
             modifier = Modifier.weight(1f),
         )
         if (ui.demoMode) Chip("시연 모드", RM.amber)
-        if (ui.now > 0L) Text(DriveText.clock(ui.now), color = RM.textDim, fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
+        if (ui.now > 0L) Text(DriveText.clockNow(ui.now), color = RM.textDim, fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -333,7 +335,7 @@ private fun GuidanceContent(ui: UiState, actions: RestMateActions) {
                 fontWeight = FontWeight.SemiBold,
             )
             if (near) {
-                Caption("곧 진입로예요. 내비 안내에 집중해 주세요.", RM.amber)
+                Caption("곧 도착해요. 내비 안내에 집중해 주세요.", RM.amber)
             } else {
                 Caption("도착해서 P단으로 주차하면 휴식 화면으로 바뀌어요.")
             }
@@ -401,12 +403,16 @@ private fun RestingContent(ui: UiState, actions: RestMateActions) {
     val rest = s.rest ?: return
     val wokeAt = rest.wakeStartedAt
     RestKindRow(rest, ui, actions)
+    // 온타임 모드: 깬 뒤에도 출발 시각을 크게 보여 준다 (기다릴 시간이 남았거나 늦기 시작했을 때).
+    val departs = rest.strictTarget && rest.callAt != null
+    val wakeDone = wokeAt != null && s.now >= wokeAt + rest.wakeMs
     when {
-        rest.kind != RestKind.NAP -> DepartPanel(rest, ui)
+        rest.kind != RestKind.NAP -> DepartPanel(rest, ui, actions)
+        departs && (rest.lateWarnedAt != null || (wakeDone && !rest.alarmRinging)) -> DepartPanel(rest, ui, actions)
         wokeAt != null && !rest.alarmRinging -> WakeUpPanel(wokeAt, rest, ui)
         else -> RestTimerPanel(rest, s.now)
     }
-    FitNotice(rest)
+    if (rest.kind == RestKind.NAP && wokeAt == null) FitNotice(rest, ui)
     val minutesMatter = rest.kind == RestKind.NAP || rest.targetAt == null
     if (minutesMatter && wokeAt == null) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -450,34 +456,61 @@ private fun RestKindRow(rest: RestSession, ui: UiState, actions: RestMateActions
     }
 }
 
-/** 그냥 기다리기·잠깐 머물기: 출발할 시각을 크게 보여 준다. */
+/** 그냥 기다리기·잠깐 머물기 (온타임 모드에서는 깬 뒤의 눈 붙이기도): 출발할 시각을 크게 보여 준다. */
 @Composable
-private fun DepartPanel(rest: RestSession, ui: UiState) {
+private fun DepartPanel(rest: RestSession, ui: UiState, actions: RestMateActions) {
     val now = ui.core.now
     val depart = rest.departAt
+    val call = rest.callAt
     val target = rest.targetAt
-    Panel(border = if (rest.remindedAt != null) RM.amber else RM.teal) {
-        Label(rest.area?.name ?: "지금 있는 곳에서 ${if (rest.kind == RestKind.STAY) "잠깐 머물기" else "기다리기"}")
+    val called = rest.departCalledAt != null || rest.remindedAt != null
+    Panel(border = if (called) RM.amber else RM.teal) {
+        val doing = when (rest.kind) {
+            RestKind.STAY -> "잠깐 머물기"
+            RestKind.WAIT -> "기다리기"
+            RestKind.NAP -> "휴식"
+        }
+        Label(rest.area?.name ?: "지금 있는 곳에서 $doing")
         when {
             rest.kind == RestKind.STAY -> StayInfo(rest, now)
-            depart != null && target != null -> {
+            depart != null && call != null && target != null -> {
+                val route = rest.remainingRouteMs ?: (target - depart)
+                val arriveNow = now + route
+                val lateNow = arriveNow - target
                 val headline = when {
-                    depart > now + 30 * SECOND_MS -> "${DriveText.clock(depart)} 출발"
-                    now - depart <= MINUTE_MS -> "지금 출발하면 맞아요"
+                    call > now + 30 * SECOND_MS -> "${DriveText.clock(call)} 출발"
+                    lateNow <= 30 * SECOND_MS -> "지금 출발하면 맞아요"
                     else -> "지금 출발해 주세요"
                 }
-                Text(headline, color = if (rest.remindedAt != null) RM.amber else RM.text, fontSize = 64.sp, fontWeight = FontWeight.Bold)
-                val route = rest.remainingRouteMs
-                if (route != null) {
-                    val arriveNow = now + route
-                    val early = target - arriveNow
-                    val lead = when {
-                        early > MINUTE_MS -> "지금 출발하면 ${DriveText.clock(arriveNow)} 도착 (${DriveText.minutes(early)}분 일찍)"
-                        early < -MINUTE_MS -> "지금 출발해도 ${DriveText.clock(arriveNow)} 도착 (약 ${DriveText.minutes(early)}분 늦어요)"
-                        else -> "지금 출발하면 ${DriveText.clock(arriveNow)} 도착"
+                Text(headline, color = if (called) RM.amber else RM.text, fontSize = 64.sp, fontWeight = FontWeight.Bold)
+                if (call > now + 30 * SECOND_MS) {
+                    Caption("${DriveText.clock(call)}에 출발하면 ${DriveText.clock(call + route)} 도착 · 목표 ${DriveText.clock(target)}")
+                }
+                Caption(
+                    when {
+                        lateNow > 30 * SECOND_MS ->
+                            "지금 출발해도 ${DriveText.clock(arriveNow)} 도착 (약 ${DriveText.duration(lateNow)} 늦어요)"
+                        lateNow < -30 * SECOND_MS ->
+                            "지금 출발하면 ${DriveText.clock(arriveNow)} 도착 (${DriveText.duration(lateNow)} 일찍)"
+                        else -> "지금 출발하면 ${DriveText.clock(arriveNow)} 도착 (정각)"
+                    },
+                    if (lateNow > 30 * SECOND_MS) RM.amber else RM.textDim,
+                )
+                if (call > depart + MINUTE_MS && call > now) {
+                    Caption("졸릴 때는 충분히 쉬어 가요. ${DriveText.clock(call)}까지는 쉬고 출발해 주세요.", RM.amber)
+                }
+                if (rest.previousAlarmAt != null && rest.departCalledAt == null) {
+                    Caption("남은 길이 바뀌어 출발 시각을 다시 맞췄어요.", RM.amber)
+                }
+                if (ui.drive.step == DriveStep.ACTIVE && ui.drive.mode == DriveMode.ON_TIME) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        ActionButton("+5분", { actions.addDriveTime(5) }, Modifier.width(130.dp), minHeight = 60.dp, textSize = 20.sp)
+                        ActionButton("+10분", { actions.addDriveTime(10) }, Modifier.width(130.dp), minHeight = 60.dp, textSize = 20.sp)
+                        if (rest.alarmRinging) {
+                            ActionButton("알람 끄기", actions::stopAlarm, Modifier.width(150.dp), Tone.AMBER, minHeight = 60.dp, textSize = 20.sp)
+                        }
+                        Caption("약속이 늦춰지면 출발 시각을 미뤄요.", modifier = Modifier.weight(1f))
                     }
-                    val tail = if (depart > now) " · ${DriveText.clock(depart)}에 출발하면 ${DriveText.clock(target)} 도착에 맞아요" else ""
-                    Caption(lead + tail)
                 }
             }
             else -> {
@@ -504,21 +537,26 @@ private fun StayInfo(rest: RestSession, now: Long) {
     Caption("분위기는 그대로예요. 출발할 때쯤 알려 드릴게요.")
 }
 
-/** 도착 시각에 맞춰 알람을 잡았는지, 남은 길이 바뀌어 알람을 옮겼는지 */
+/**
+ * 눈 붙이기 (온타임 모드): 알람을 도착 시각에 맞췄는지, 깨운 뒤 기다렸다 출발하는지, 이대로 쉬면 늦어지는지.
+ * 남은 길이 바뀌어 알람을 옮겼으면 보여 준다.
+ */
 @Composable
-private fun FitNotice(rest: RestSession) {
+private fun FitNotice(rest: RestSession, ui: UiState) {
     val target = rest.targetAt ?: return
     if (!rest.strictTarget) return
-    val late = rest.lateByMs?.takeIf { rest.wakeStartedAt == null && rest.remindedAt == null }
+    val late = rest.lateByMs
+    val call = rest.callAt
+    val wakeEnd = rest.alarmAt + RestTiming.wakeMsFor(rest.alarmAt - rest.startedAt, ui.config.wakeUpMs)
     when {
-        late != null -> Notice("이대로 쉬면 ${DriveText.clock(target)} 도착이 약 ${DriveText.minutes(late)}분 늦어져요. 안전이 먼저예요.", RM.amber)
-        rest.kind == RestKind.NAP && rest.fitsTarget && rest.wakeStartedAt == null ->
-            Notice("${DriveText.clock(target)} 도착에 맞춰 깨워 드려요.", RM.teal)
+        late != null -> Notice("이대로 쉬면 ${DriveText.clock(target)} 도착이 약 ${DriveText.duration(late)} 늦어져요. 안전이 먼저예요.", RM.amber)
+        call != null && call - wakeEnd > 2 * MINUTE_MS ->
+            Notice("${DriveText.clock(rest.alarmAt)}에 깨우고, ${DriveText.clock(call)}에 출발하면 ${DriveText.clock(target)} 도착에 맞아요.", RM.teal)
+        else -> Notice("${DriveText.clock(target)} 도착에 맞춰 깨워 드려요.", RM.teal)
     }
     val previous = rest.previousAlarmAt
-    if (previous != null && rest.wakeStartedAt == null && rest.remindedAt == null) {
-        val what = if (rest.kind == RestKind.NAP) "알람" else "출발 알림"
-        Caption("남은 길이 바뀌어 $what ${DriveText.clock(previous)} → ${DriveText.clock(rest.alarmAt)}", RM.amber)
+    if (previous != null) {
+        Caption("남은 길이 바뀌어 알람 ${DriveText.clock(previous)} → ${DriveText.clock(rest.alarmAt)}", RM.amber)
     }
 }
 
@@ -633,8 +671,9 @@ private fun RestEnvironmentPanel(ui: UiState, actions: RestMateActions) {
 @Composable
 private fun ArrivalPanel(rest: RestSession, ui: UiState) {
     val route = rest.remainingRouteMs
-    // 기다리기·머물기는 출발 시각 화면에 이미 보여 준다.
+    // 기다리기·머물기와 깬 뒤의 온타임 눈 붙이기는 출발 시각 화면에 이미 보여 준다.
     if (rest.kind != RestKind.NAP && rest.departAt != null) return
+    if (rest.kind == RestKind.NAP && rest.wakeStartedAt != null && rest.strictTarget && rest.callAt != null) return
     Panel {
         if (route == null) {
             Label("도착 예상")
@@ -715,6 +754,9 @@ private fun BottomAction(ui: UiState, actions: RestMateActions) {
         Phase.RESTING -> {
             val rest = s.rest
             when {
+                // 늦기 시작해서 울리는 알람: 출발하면 알람도 꺼진다 (못 떠나면 위의 +5분·+10분이나 '알람 끄기')
+                rest?.alarmRinging == true && (rest.kind != RestKind.NAP || rest.lateWarnedAt != null) ->
+                    BigButton("출발할게요", "알람도 함께 꺼져요", Tone.AMBER, actions::departNow)
                 rest?.alarmRinging == true ->
                     BigButton("알람 끄기", null, Tone.AMBER, actions::stopAlarm)
                 rest != null && rest.kind != RestKind.NAP ->
@@ -816,7 +858,8 @@ private fun DemoControls(ui: UiState, actions: RestMateActions) {
         SmallButton("P단 주차", actions::demoPark, Modifier.weight(1f))
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        SmallButton("막힘 +6분", actions::demoTraffic, Modifier.weight(1f), enabled = ui.demoDriving)
+        // 기다리는 중에도 누를 수 있다 (쉬는 동안 길이 막히면 출발 시각을 다시 맞추는 것을 보여 줄 때).
+        SmallButton("막힘 +6분", actions::demoTraffic, Modifier.weight(1f), enabled = ui.demoDriving || ui.core.phase == Phase.RESTING)
         SmallButton("10분 건너뛰기", { actions.demoSkip(10) }, Modifier.weight(1f))
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

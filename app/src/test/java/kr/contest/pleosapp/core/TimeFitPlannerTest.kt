@@ -82,6 +82,21 @@ class TimeFitPlannerTest {
     }
 
     @Test
+    fun avoidCityAlsoAvoidsPointsReachedThroughCityHall() {
+        // 논현 → 잠실: 북악 팔각정은 시청에서 4km 넘게 떨어져 있지만 가는 길이 종로를 지나므로 뒤로 미룬다.
+        val from = LatLng(37.5110, 127.0214)
+        val home = Place("집", LatLng(37.5145, 127.1059))
+        val bugak = CoursePoint("bugak", "팔각정", LatLng(37.6023, 126.9810), setOf(CourseTag.NIGHT_VIEW, CourseTag.MOUNTAIN))
+        val river = CoursePoint("nodeul", "노들섬", LatLng(37.5176, 126.9594), setOf(CourseTag.RIVER, CourseTag.NIGHT_VIEW, CourseTag.BRIDGE))
+        val wish = CourseWish(prefer = CourseFlavor.AVOID_CITY.tags, avoidCity = true)
+        val options = TimeFitPlanner.options(from, home, 25 * MINUTE_MS, 90 * MINUTE_MS, listOf(bugak, river), emptyList(), config, wish = wish)
+        assertEquals("scenic-nodeul", options.first().id)
+        // 도심 피하기가 아니면 더 오래 달리는 팔각정이 앞이다.
+        val plain = TimeFitPlanner.options(from, home, 25 * MINUTE_MS, 90 * MINUTE_MS, listOf(bugak, river), emptyList(), config, wish = CourseWish(prefer = CourseFlavor.AVOID_CITY.tags))
+        assertEquals("scenic-bugak", plain.first().id)
+    }
+
+    @Test
     fun shortSlackGoesDirect() {
         val options = TimeFitPlanner.options(
             origin, dest, direct, 3 * MINUTE_MS, listOf(point("p6", sideKm(6.0))), emptyList(), config,
@@ -110,7 +125,38 @@ class TimeFitPlannerTest {
         val options = TimeFitPlanner.options(
             origin, far, 160 * MINUTE_MS, 40 * MINUTE_MS, emptyList(), listOf(park, early, middle), config,
         )
-        assertEquals("rest-middle", options.single { it.kind == CourseKind.REST_STOP }.id)
+        assertEquals("rest-middle", options.first { it.kind == CourseKind.REST_STOP }.id)
+        assertTrue(options.none { it.id == "rest-park" })
+    }
+
+    @Test
+    fun longTripSecondRestStopSitsElsewhereOnTheRoute() {
+        // 먼 길은 모두 휴게소라 종류 대신 길 위 위치가 다른 곳을 둘째로 낸다 (60% 근처와 그보다 앞쪽).
+        val far = Place("강릉", southKm(150.0))
+        val middle = TestAreas.area("middle", southKm(90.0))
+        val nextDoor = TestAreas.area("nextdoor", southKm(93.0))
+        val later = TestAreas.area("later", southKm(120.0))
+        val options = TimeFitPlanner.options(
+            origin, far, 160 * MINUTE_MS, 80 * MINUTE_MS, emptyList(), listOf(middle, nextDoor, later), config,
+            maxAddedMs = 35 * MINUTE_MS,
+        )
+        val rests = options.filter { it.kind == CourseKind.REST_STOP }.map { it.id }
+        assertEquals(listOf("rest-middle", "rest-later"), rests)
+        // 기다리는 시간이 한 시간을 넘으면 시간과 분으로 적는다.
+        assertTrue(options.first().reason, options.first().reason.contains("1시간 20분"))
+    }
+
+    @Test
+    fun onTimeLongTripSkipsPointsBeyondTheDestination() {
+        // 목적지를 지나쳤다 되돌아오는 바닷가(길의 105%)는 온타임 모드에서 빼고, 롱웨이 모드에서는 본다.
+        val far = Place("강릉 숙소", southKm(150.0))
+        val beyond = point("beyond", Geo.destinationPoint(southKm(157.0), 90.0, 6_000.0), CourseTag.SEA)
+        val onTime = TimeFitPlanner.options(
+            origin, far, 160 * MINUTE_MS, 20 * MINUTE_MS, listOf(beyond), emptyList(), config, wish = CourseWish(onTime = true),
+        )
+        assertTrue(onTime.none { it.id == "scenic-beyond" })
+        val longer = TimeFitPlanner.options(origin, far, 160 * MINUTE_MS, 20 * MINUTE_MS, listOf(beyond), emptyList(), config)
+        assertTrue(longer.any { it.id == "scenic-beyond" })
     }
 
     @Test
@@ -146,7 +192,27 @@ class TimeFitPlannerTest {
         val options = TimeFitPlanner.options(
             origin, dest, direct, 58 * MINUTE_MS, listOf(far), listOf(ahead), config, maxAddedMs = 35 * MINUTE_MS,
         )
-        assertEquals(listOf("rest-ahead"), options.map { it.id })
+        // 오래 돌기보다 쉬다 가기를 앞에 두되, 경치 코스도 하나는 같이 보여 준다.
+        assertEquals(listOf("rest-ahead", "scenic-far"), options.map { it.id })
+        assertTrue(options.first().title, options.first().title.endsWith("에서 기다리기"))
+    }
+
+    @Test
+    fun longerModeShowsShorterPointsRatherThanNothing() {
+        // 60분 더 달리고 싶은데 근처 지점은 15분짜리뿐이면, 아무것도 없다고 하지 않고 그 지점을 보여 준다.
+        val near = point("near", sideKm(6.0))
+        val options = TimeFitPlanner.options(origin, dest, direct, 60 * MINUTE_MS, listOf(near), emptyList(), config)
+        assertEquals("scenic-near", options.first().id)
+    }
+
+    @Test
+    fun waitNearNeedsAFewMinutesOfWaiting() {
+        // 2.4km 떨어진 주차장까지 돌아가는 데 남는 시간을 거의 다 쓰면 기다리는 코스로 내지 않는다.
+        val lot = RestArea("lot", "먼주차장", RestAreaType.PARKING, Geo.destinationPoint(dest.position, 90.0, 2_400.0))
+        val detour = TimeFitPlanner.addedMs(origin, dest.position, lot.position, TimeFitPlanner.effectiveSpeedMps(origin, dest.position, direct, config), config)
+        assertTrue(TimeFitPlanner.waitNearOptions(origin, dest, direct, detour + 2 * MINUTE_MS, listOf(lot), config).isEmpty())
+        assertEquals(1, TimeFitPlanner.waitNearOptions(origin, dest, direct, detour + 6 * MINUTE_MS, listOf(lot), config).size)
+        assertTrue(TimeFitPlanner.hasWaitPlaceNear(dest, listOf(lot)))
     }
 
     @Test
@@ -214,7 +280,10 @@ class TimeFitPlannerTest {
     fun directReasonSaysHowEarly() {
         val at = 1_700_000_000_000L
         assertTrue(TimeFitPlanner.direct(12 * MINUTE_MS, at, 3 * MINUTE_MS).reason.endsWith("15분 일찍"))
-        assertEquals("바로 가도 시간에 맞아요", TimeFitPlanner.direct(0L, at, MINUTE_MS).reason)
+        assertTrue(TimeFitPlanner.direct(0L, at, MINUTE_MS).reason.endsWith("1분 일찍"))
+        assertTrue(TimeFitPlanner.direct(-MINUTE_MS, at, MINUTE_MS).reason.endsWith("정각"))
+        // 여유(3분)를 못 지키는 것과 늦는 것은 다르다: 늦음은 목표 시각 기준으로 센다.
+        assertEquals("바로 가도 약 2분 늦어요", TimeFitPlanner.direct(-5 * MINUTE_MS, at, 3 * MINUTE_MS).reason)
     }
 
     @Test
@@ -231,7 +300,9 @@ class TimeFitPlannerTest {
     @Test
     fun fitLabelTreatsSmallSpareAsOnTime() {
         assertEquals("정각", DriveText.fit(FitStatus.ON_TIME, -30 * SECOND_MS))
-        assertEquals("3분 여유", DriveText.fit(FitStatus.ON_TIME, -3 * MINUTE_MS))
+        assertEquals("3분 일찍", DriveText.fit(FitStatus.ON_TIME, -3 * MINUTE_MS))
+        // 목표를 30초 넘게 지나면 늦는다고 보여 준다 (예전에는 2분까지 '정각').
+        assertEquals("약 1분 늦어요", DriveText.fit(FitStatus.ON_TIME, 40 * SECOND_MS))
         assertEquals("8분 일찍", DriveText.fit(FitStatus.EARLY, -8 * MINUTE_MS))
         assertEquals("약 4분 늦어요", DriveText.fit(FitStatus.LATE, 4 * MINUTE_MS))
         // 롱웨이 모드에는 '늦어요'가 없다.
@@ -261,7 +332,7 @@ class TimeFitPlannerTest {
     fun negativeSlackSaysItMayBeLate() {
         val only = TimeFitPlanner.options(origin, dest, direct, -5 * MINUTE_MS, emptyList(), emptyList(), config).single()
         assertEquals(CourseKind.DIRECT, only.kind)
-        assertTrue(only.reason.contains("5분 늦을"))
+        assertTrue(only.reason, only.reason.contains("5분 늦어요"))
         assertNull(only.restArea)
     }
 
@@ -276,5 +347,22 @@ class TimeFitPlannerTest {
         assertEquals("휴게소로", DriveText.toward("휴게소"))
         assertEquals("공영 주차장으로", DriveText.toward("공영 주차장"))
         assertEquals("서울로", DriveText.toward("서울"))
+    }
+
+    @Test
+    fun particlesLookPastTrailingParentheses() {
+        assertEquals("용인 휴게소 (강릉 방향)를", DriveText.withObject("용인 휴게소 (강릉 방향)"))
+        assertEquals("구정휴게소(동해방향)로", DriveText.toward("구정휴게소(동해방향)"))
+        assertEquals("강변공원을", DriveText.withObject("강변공원"))
+    }
+
+    @Test
+    fun clockRoundsToTheNearestMinuteLikeMinutes() {
+        // 7:02:40 도착은 '7:03' (분 차이를 반올림하는 것과 같은 기준). 지금 시각 표시는 시계처럼 버린다.
+        val base = DriveText.todayAt(1_700_000_000_000L, 19 * 60)
+        assertEquals("오후 7:03", DriveText.clock(base + 2 * MINUTE_MS + 40 * SECOND_MS))
+        assertEquals("오후 7:02", DriveText.clock(base + 2 * MINUTE_MS + 20 * SECOND_MS))
+        assertEquals("오후 7:02", DriveText.clockNow(base + 2 * MINUTE_MS + 40 * SECOND_MS))
+        assertEquals("7시 3분", DriveText.spokenClock(base + 2 * MINUTE_MS + 40 * SECOND_MS))
     }
 }

@@ -9,8 +9,13 @@ package kr.contest.pleosapp.core
  * - 이름이 쉴 곳이 아님을 드러내면 뺀다 (퀵·택시·주유소·자전거 등).
  * - 이름만 있는 항목(정자·쉼터·휴게소)은 어디인지 말로 안내할 수 없어 뺀다.
  * - 큰 도시 한가운데의 고속도로 밖 휴게소·쉼터는 대부분 잘못 찍힌 좌표라 뺀다 (시내는 공원·공영 주차장으로 안내).
+ * - 같은 곳이 이름만 조금 다르게 두 번 들어 있으면 ("용인휴게소 강릉방향"과 "용인 휴게소 (강릉 방향)") 하나만 남긴다.
  */
 object RestAreaCleaner {
+    /** 이 거리 안에 같은 종류·같은 이름(방향 표시 뺀)이 또 있으면 같은 곳으로 본다 */
+    private const val SAME_PLACE_METERS = 250.0
+    private val TYPE_TAILS = listOf("졸음쉼터", "휴게소", "쉼터")
+
     private val REST_WORDS = listOf("휴게", "쉼터", "졸음", "만남의", "광장")
 
     private val NOISE_WORDS = listOf(
@@ -40,7 +45,49 @@ object RestAreaCleaner {
         Zone("전주", LatLng(35.8242, 127.1480), 7_000.0),
     )
 
-    fun clean(areas: List<RestArea>): List<RestArea> = areas.filter(::keep)
+    fun clean(areas: List<RestArea>): List<RestArea> = dedupe(areas.filter(::keep))
+
+    /**
+     * 같은 곳이 두 번 들어 있으면 하나만 남긴다: 같은 종류, 250m 안, 방향 표시를 뺀 이름이 같고, 방향이 서로 다르지 않을 때.
+     * 괄호로 방향을 적은 이름("○○ 휴게소 (강릉 방향)")을 먼저 남긴다. 순서는 그대로 둔다.
+     */
+    fun dedupe(areas: List<RestArea>): List<RestArea> {
+        val dropped = HashSet<String>()
+        val groups = areas.groupBy { it.type to baseKey(it) }
+        for (group in groups.values) {
+            if (group.size < 2) continue
+            val kept = ArrayList<RestArea>()
+            for (a in group.sortedBy { rank(it) }) {
+                val twin = kept.any { k ->
+                    (k.directionLabel == null || a.directionLabel == null || k.directionLabel == a.directionLabel) &&
+                        Geo.distanceMeters(k.position, a.position) <= SAME_PLACE_METERS
+                }
+                if (twin) dropped += a.id else kept += a
+            }
+        }
+        return if (dropped.isEmpty()) areas else areas.filterNot { it.id in dropped }
+    }
+
+    /** 이름에서 괄호·방향 표시·띄어쓰기·끝의 '휴게소/쉼터'를 뺀 것 ("용인 휴게소 (강릉 방향)" → "용인") */
+    fun baseKey(area: RestArea): String {
+        val words = RestMateText.spokenName(area.name).split(" ").filter { it.isNotBlank() }
+        val core = if (words.size > 1 && words.last().endsWith("방향")) words.dropLast(1) else words
+        var key = core.joinToString("")
+        for (tail in TYPE_TAILS) {
+            if (key.length > tail.length && key.endsWith(tail)) {
+                key = key.removeSuffix(tail)
+                break
+            }
+        }
+        return key
+    }
+
+    /** 남길 순서: 괄호로 방향을 적은 이름 → 방향을 아는 것 → 나머지 */
+    private fun rank(area: RestArea): Int = when {
+        area.name.contains("(") -> 0
+        area.directionLabel != null -> 1
+        else -> 2
+    }
 
     fun keep(area: RestArea): Boolean {
         // 시내 쉴 곳(공원·공영 주차장)은 팀이 고른 목록이라 그대로 둔다.

@@ -1,6 +1,7 @@
 package kr.contest.pleosapp.core
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -46,6 +47,36 @@ class SavedTripTest {
     @Test
     fun chipTextSaysModeTimeAndStyle() {
         assertEquals("온타임 · 오후 4:50 · 근처에서 기다리기", pickup.detail)
-        assertEquals("롱웨이 · +30분 · 데이트", date.detail)
+        assertEquals("롱웨이 · +30분 · 데이트 · 야경", date.detail)
+    }
+
+    @Test
+    fun differentStyleMoodOrRoadIsADifferentTrip() {
+        assertFalse(pickup.sameAs(pickup.copy(onTimeStyle = OnTimeStyle.LOOP)))
+        assertTrue(pickup.sameAs(pickup.copy(place = pickup.place.copy(name = "학원"))))
+        assertFalse(date.sameAs(date.copy(mood = Mood.SOLO)))
+        assertFalse(date.sameAs(date.copy(flavor = CourseFlavor.RIVER)))
+        // 같은 곳·같은 시각이라도 방식이 다르면 따로 저장된다.
+        val both = SavedTrip.added(listOf(pickup), pickup.copy(onTimeStyle = OnTimeStyle.LOOP))
+        assertEquals(2, both.size)
+    }
+
+    @Test
+    fun chipTitleAddsTimeWhenSamePlaceRepeats() {
+        val early = pickup.copy(minuteOfDay = 16 * 60 + 40)
+        val all = listOf(pickup, early, date)
+        assertEquals("4:50 아이	학원", pickup.title(all))
+        assertEquals("집", date.title(all))
+    }
+
+    @Test
+    fun fullListTellsWhichTripDropsAndUsedTripMovesFirst() {
+        val trips = (0 until SavedTrip.MAX).map { pickup.copy(minuteOfDay = 9 * 60 + it * 10) }
+        val newOne = pickup.copy(minuteOfDay = 18 * 60)
+        assertEquals(trips.last(), SavedTrip.droppedBy(trips, newOne))
+        assertNull(SavedTrip.droppedBy(trips, trips[1]))
+        val used = SavedTrip.used(trips, trips.last())
+        assertEquals(trips.last(), used.first())
+        assertEquals(SavedTrip.MAX, used.size)
     }
 }

@@ -78,7 +78,8 @@ class CabinControl(
         }
     }
 
-    fun apply(mode: CabinMode, env: RestEnvironment) {
+    /** @param departing 출발해서 되돌리는지 (아니면 쉬는 방식을 바꿔 휴식 환경만 끈 것) */
+    fun apply(mode: CabinMode, env: RestEnvironment, departing: Boolean = true) {
         if (!isConnected()) {
             report("차량이 연결되지 않아 실내 환경은 바꾸지 않았어요.")
             return
@@ -96,7 +97,9 @@ class CabinControl(
                 val wait = beginChange()
                 main.postDelayed({ if (gen == generation) applyWake(env) }, wait)
             }
-            CabinMode.RESTORE -> if (changed) restore("출발: 실내 환경을 휴식 전 설정으로 되돌렸어요.")
+            CabinMode.RESTORE -> if (changed) {
+                restore(if (departing) "출발: 실내 환경을 휴식 전 설정으로 되돌렸어요." else "휴식 환경을 끄고 원래 설정으로 되돌렸어요.")
+            }
         }
     }
 

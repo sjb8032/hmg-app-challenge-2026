@@ -59,12 +59,14 @@ enum class RestKind(val label: String, val detail: String) {
  *
  * @param strict 온타임 모드처럼 늦으면 안 되는 시각인지 (롱웨이 모드는 느슨한 목표)
  * @param remainingMs 지금 위치에서 목적지까지 바로 가는 시간 (내비 값, 없으면 추정). 모르면 null
+ * @param quiet 롱웨이 모드 데이트처럼 말하지 않는 드라이브인지 (출발 알림을 화면으로만)
  */
 data class TripDeadline(
     val targetAt: Long,
     val marginMs: Long,
     val strict: Boolean,
     val remainingMs: Long?,
+    val quiet: Boolean = false,
 )
 
 /** 낮잠·깨우기 시간 계산 */
@@ -136,8 +138,13 @@ sealed interface Effect {
     data class StartGuidance(val area: RestArea) : Effect
     data object CancelGuidance : Effect
     data class Speak(val text: String) : Effect
+    /** 점점 커지는 알람 (끌 때까지 울림) */
     data class Alarm(val on: Boolean) : Effect
-    data class Cabin(val mode: CabinMode) : Effect
+    /** 짧은 알림음 한 번 (출발할 시각) */
+    data object Chime : Effect
+
+    /** @param departing 출발해서 되돌리는지 (아니면 쉬는 방식을 바꿔 휴식 환경만 끈 것) */
+    data class Cabin(val mode: CabinMode, val departing: Boolean = true) : Effect
 }
 
 data class RestSession(
@@ -168,6 +175,21 @@ data class RestSession(
     val remindedAt: Long? = null,
     /** 깬 뒤 몸을 깨우는 시간 (깨우기를 시작할 때 쉰 시간으로 정한다) */
     val wakeMs: Long = 0L,
+    /** 졸려서 쉬는지 (레스트 모드 안내·졸음 경고로 왔음). 기다리기로 바꿔도 조금은 쉬고 출발하게 한다 */
+    val fatigue: Boolean = false,
+    /** 쉬기 전 30분 안에 차량의 운전자 주의 경고가 있었는지. 낮잠을 도착 시각에 맞춰 줄이지 않는다 */
+    val warned: Boolean = false,
+    /**
+     * 출발하라고 알릴 시각: 도착 시각에 맞는 출발 시각. 졸려서 쉬는 중이면 조금은 쉰 뒤, 눈 붙이기면 몸을 깨운 뒤.
+     * 도착 시각이 없으면 null
+     */
+    val callAt: Long? = null,
+    /** 출발할 시각이라고 알린 때 (짧은 알림음 + 음성) */
+    val departCalledAt: Long? = null,
+    /** '지금 출발해도 늦어요'를 알린 때 */
+    val lateWarnedAt: Long? = null,
+    /** 멈춘 자리. 여기서 150m 넘게 움직이면 출발로 본다 */
+    val stopPosition: LatLng? = null,
     /** 휴식 시작 시점에 목적지까지 남은 경로 시간 (ms). 모르면 null */
     val remainingRouteMs: Long? = null,
     /** remainingRouteMs가 내비 값이 아니라 직선거리로 추정한 값인지 */
@@ -246,6 +268,12 @@ data class RestMateConfig(
     val departNoticeMs: Long = 2 * MINUTE_MS,
     /** 잠깐 머물기(롱웨이 모드): 세운 뒤 적어도 이만큼은 출발을 묻지 않는다 */
     val minStayMs: Long = 10 * MINUTE_MS,
+    /** 졸려서 쉬는 중(레스트 모드 안내로 옴)이면 기다리기로 바꿔도 이만큼은 출발을 재촉하지 않는다 */
+    val fatigueMinRestMs: Long = 10 * MINUTE_MS,
+    /** 쉬기 전 이 시간 안에 운전자 주의 경고가 있었으면 경고 뒤 휴식으로 본다 */
+    val warnedWindowMs: Long = 30 * MINUTE_MS,
+    /** 목적지까지 이보다 적게 남았으면 휴식 공백 안내·2시간 알림 대신 '도착해서 쉬어 가세요' */
+    val nearDestinationMs: Long = 30 * MINUTE_MS,
     /** 쉬는 동안 남은 길을 다시 보고 알람·출발 시각을 고치는 간격 */
     val refitIntervalMs: Long = MINUTE_MS,
     /** 다시 출발한 뒤 휴식 전후 주행을 비교할지 (드라이브메이트 기획에서 빠짐, 기본 꺼짐) */

@@ -283,20 +283,27 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
         }
     }
 
-    /** 레스트 모드가 진행 중이면 시간 맞추기를 멈추고, 쉬고 출발하면 가던 목적지로 다시 안내한다. */
+    /**
+     * 레스트 모드가 진행 중이면 시간 맞추기를 멈추고, 쉬고 출발하면 가던 목적지로 다시 안내한다
+     * (시간 모드 코스의 경유지가 아직 남아 있으면 그 경유지를 거쳐서).
+     */
     private fun syncRest(t: Long) {
         val phase = engine.state.phase
-        drive.onRestPhase(t, phase)
+        drive.onRestPhase(t, phase, engine.state.rest, engine.state.target?.area)
         if (lastPhase != Phase.RESTING && phase == Phase.RESTING) {
-            // 쉬기 시작하면 쉰 곳이 경유지를 대신한다: 남은 시간이 바로 가는 길 기준이 되도록 경유지를 뺀다.
+            // 쉬는 동안은 남은 시간이 바로 가는 길 기준이 되도록 경유지를 뺀다.
             val dest = currentTrip()
             if (dest != null && !restAsDestination) routeNavi(dest, emptyList())
         }
         if (lastPhase == Phase.RESTING && phase == Phase.DRIVING) {
             val dest = currentTrip()
             if (dest != null && !restAsDestination) {
-                routeNavi(dest, emptyList())
-                note("내비에 ${dest.name}까지 다시 안내를 요청했어요.")
+                val via = drive.activeVia()
+                routeNavi(dest, via)
+                note(
+                    if (via.isEmpty()) "내비에 ${dest.name}까지 다시 안내를 요청했어요."
+                    else "내비에 ${via.joinToString(", ") { it.name }} 거쳐 ${dest.name}까지 다시 안내를 요청했어요.",
+                )
             }
             shareDeadline()
             restAsDestination = false
@@ -310,8 +317,9 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
             Effect.CancelGuidance -> cancelRestRoute()
             is Effect.Speak -> say(effect.text)
             is Effect.Alarm -> if (effect.on) alarm.start() else alarm.stop()
+            Effect.Chime -> alarm.chime()
             is Effect.Cabin -> {
-                vehicle.cabin.apply(effect.mode, env)
+                vehicle.cabin.apply(effect.mode, env, effect.departing)
                 // 휴식 환경을 되돌리면 롱웨이 모드 분위기도 같이 꺼지므로 다시 켠다.
                 if (effect.mode == CabinMode.RESTORE) drive.moodInEffect?.let { vehicle.cabin.applyMood(it) }
             }
@@ -475,7 +483,7 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
         val rest = engine.state.rest ?: return
         // 쉬는 중에 바꾸면 바로 반영한다. 끄면 원래 설정으로 돌린다.
         when {
-            !env.enabled && previous.enabled -> vehicle.cabin.apply(CabinMode.RESTORE, env)
+            !env.enabled && previous.enabled -> vehicle.cabin.apply(CabinMode.RESTORE, env, departing = false)
             env.enabled && rest.wakeStartedAt == null -> vehicle.cabin.apply(CabinMode.REST, env)
         }
     }
@@ -506,14 +514,23 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
 
     override fun saveTrip() {
         val trip = drive.saveable() ?: return
-        val list = SavedTrip.added(_ui.value.saved, trip)
+        val before = _ui.value.saved
+        val dropped = SavedTrip.droppedBy(before, trip)
+        val list = SavedTrip.added(before, trip)
         saveSaved(list)
         _ui.update { it.copy(saved = list) }
-        note("자주 쓰는 설정에 저장했어요: ${trip.place.name} · ${trip.detail}")
+        val tail = dropped?.let { " 꽉 차서 가장 오래 안 쓴 설정(${it.place.name} · ${it.detail})을 뺐어요." }.orEmpty()
+        note("자주 쓰는 설정에 저장했어요: ${trip.place.name} · ${trip.detail}.$tail")
     }
 
     override fun applySavedTrip(trip: SavedTrip) {
         if (demo == null) navi.requestPlaces()
+        // 쓴 칩을 맨 앞으로 (꽉 찼을 때 자주 쓰는 칩이 빠지지 않게)
+        val list = SavedTrip.used(_ui.value.saved, trip)
+        if (list != _ui.value.saved) {
+            saveSaved(list)
+            _ui.update { it.copy(saved = list) }
+        }
         act { drive.applySaved(it, trip) }
     }
 
@@ -521,6 +538,7 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
         val list = _ui.value.saved.filterNot { it == trip }
         saveSaved(list)
         _ui.update { it.copy(saved = list) }
+        note("자주 쓰는 설정에서 뺐어요: ${trip.place.name} · ${trip.detail}")
     }
 
     // ---- 시연 모드 ----

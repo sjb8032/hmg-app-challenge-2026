@@ -62,6 +62,12 @@ class AlarmPlayer(context: Context) {
         if (played) main.postDelayed(rampLoop, RAMP_STEP_MS) else main.post(beepLoop)
     }
 
+    /** 짧은 알림음 한 번 (출발할 시각). 울리는 알람과 따로 낸다. */
+    fun chime() {
+        val tone = tones.getOrNull(tones.size / 2) ?: tones.lastOrNull() ?: return
+        runCatching { tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 400) }
+    }
+
     fun stop() {
         ringing = false
         main.removeCallbacks(beepLoop)

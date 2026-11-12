@@ -75,11 +75,20 @@ enum class CourseFlavor(val label: String, val tags: Set<CourseTag>) {
     ;
 
     companion object {
-        /** 시각과 분위기로 기본값을 정한다: 밤이면 야경, 낮 데이트면 강변, 낮에 혼자면 도심 피하기 */
-        fun auto(hourOfDay: Int, mood: Mood): CourseFlavor = when {
-            hourOfDay >= 18 || hourOfDay < 6 -> NIGHT_VIEW
+        /**
+         * 시각과 분위기로 기본값을 정한다: 어두우면 야경, 낮 데이트면 강변, 낮에 혼자면 도심 피하기.
+         * 어두워지는 시각은 계절에 따라 본다 (11~2월 17시, 3·4·9·10월 18시, 5~8월 19시).
+         */
+        fun auto(hourOfDay: Int, mood: Mood, month: Int = 6): CourseFlavor = when {
+            hourOfDay >= nightStartHour(month) || hourOfDay < 6 -> NIGHT_VIEW
             mood == Mood.DATE -> RIVER
             else -> AVOID_CITY
+        }
+
+        fun nightStartHour(month: Int): Int = when (month) {
+            11, 12, 1, 2 -> 17
+            3, 4, 9, 10 -> 18
+            else -> 19
         }
     }
 }
@@ -197,6 +206,9 @@ data class DriveState(
     val extendOffered: Boolean = false,
     /** '조금 더 돌기'를 누르면 거쳐 갈 코스 (권할 때 미리 골라 둔다) */
     val extendOption: CourseOption? = null,
+    /** 쉬다 가는(기다리는) 코스: 그곳에 닿는 시각과 그곳에서 떠날 시각 (화면에 '4:30 도착 → 4:40 출발') */
+    val stopArriveAt: Long? = null,
+    val stopDepartAt: Long? = null,
     val message: String? = null,
     /** [message]를 띄운 시각. 달리는 중에는 조금 지나면 지운다 */
     val messageAt: Long? = null,
@@ -251,8 +263,8 @@ data class DriveConfig(
     val marginMs: Long = 3 * MINUTE_MS,
     /** 남는 시간이 이보다 적으면 바로 간다 */
     val minSlackMs: Long = 4 * MINUTE_MS,
-    /** 이만큼 늦을 것 같으면 경유지를 뺀다 */
-    val lateToleranceMs: Long = 2 * MINUTE_MS,
+    /** 목표보다 이만큼 넘게 늦을 것 같으면 늦는 것으로 본다 (온타임 모드. 여유 3분을 다 쓰고도 늦을 때) */
+    val lateToleranceMs: Long = 30 * SECOND_MS,
     /** 이만큼 일찍 도착할 것 같으면 더 돌기를 권한다 */
     val earlyToleranceMs: Long = 6 * MINUTE_MS,
     /** 더 돌기를 권하려면 남은 시간이 이 정도는 있어야 한다 */
@@ -279,6 +291,10 @@ data class DriveConfig(
     val extendQuietMs: Long = 10 * MINUTE_MS,
     /** 달리는 중 안내 문구를 화면에 두는 시간 */
     val messageTtlMs: Long = 2 * MINUTE_MS,
+    /** 기다리는 코스에서 기다릴 시간이 이보다 줄면 들르지 않고 바로 간다 (들어갔다 나오는 시간도 걸림) */
+    val minWaitStayMs: Long = 3 * MINUTE_MS,
+    /** 코스를 고른 뒤 이만큼은 '조금 더 돌기'를 권하지 않는다 */
+    val extendAfterChooseQuietMs: Long = 3 * MINUTE_MS,
 )
 
 /**
@@ -296,7 +312,7 @@ data class SavedTrip(
     val onTimeStyle: OnTimeStyle? = null,
     val flavor: CourseFlavor? = null,
 ) {
-    /** 칩 아랫줄: "온타임 · 오후 4:50 · 근처에서 기다리기", "롱웨이 · +30분 · 데이트" */
+    /** 칩 아랫줄: "온타임 · 오후 4:50 · 근처에서 기다리기", "롱웨이 · +30분 · 데이트 · 야경" */
     val detail: String
         get() = listOfNotNull(
             if (mode == DriveMode.ON_TIME) "온타임" else "롱웨이",
@@ -304,11 +320,30 @@ data class SavedTrip(
             extraMinutes?.let { "+${it}분" },
             onTimeStyle?.takeIf { it == OnTimeStyle.WAIT_NEAR }?.label,
             mood?.takeIf { mode == DriveMode.LONGER }?.label,
+            flavor?.takeIf { mode == DriveMode.LONGER }?.label,
         ).joinToString(" · ")
 
-    /** 같은 곳·같은 시각이면 같은 설정으로 본다 (다시 저장하면 바꿔 쓴다) */
-    fun sameAs(other: SavedTrip): Boolean =
-        mode == other.mode && place.sameSpot(other.place) && minuteOfDay == other.minuteOfDay && extraMinutes == other.extraMinutes
+    /**
+     * 같은 설정인지 (다시 저장하면 바꿔 쓴다). 곳과 시각(더 달릴 시간)이 같아도 방식·분위기·길이 다르면 다른 설정이다.
+     */
+    fun sameAs(other: SavedTrip): Boolean {
+        if (mode != other.mode || !place.sameSpot(other.place)) return false
+        return when (mode) {
+            DriveMode.ON_TIME -> minuteOfDay == other.minuteOfDay &&
+                (onTimeStyle ?: OnTimeStyle.LOOP) == (other.onTimeStyle ?: OnTimeStyle.LOOP)
+            DriveMode.LONGER -> extraMinutes == other.extraMinutes && mood == other.mood && flavor == other.flavor
+        }
+    }
+
+    /** 칩 큰 글씨: 보통은 장소 이름. 같은 장소 칩이 여럿이면 시각(롱웨이는 분위기)을 앞에 붙인다 ("4:50 아이 학원") */
+    fun title(all: List<SavedTrip>): String {
+        if (all.count { it.place.name == place.name } < 2) return place.name
+        val tag = when (mode) {
+            DriveMode.ON_TIME -> minuteOfDay?.let { DriveText.shortClockOfDay(it) }
+            DriveMode.LONGER -> listOfNotNull(mood?.label, flavor?.label).joinToString(" ").ifEmpty { extraMinutes?.let { "+${it}분" } }
+        }
+        return listOfNotNull(tag, place.name).joinToString(" ")
+    }
 
     /** 한 줄 글자로 (탭으로 나눔). 장소 이름의 탭·줄바꿈은 빈칸으로 바꾼다 */
     fun encode(): String = listOf(
@@ -365,8 +400,18 @@ data class SavedTrip(
         fun decodeAll(text: String?): List<SavedTrip> =
             text.orEmpty().lines().filter { it.isNotBlank() }.mapNotNull(::decode).take(MAX)
 
-        /** 새 설정을 맨 앞에 넣는다. 같은 설정은 바꿔 쓰고, [MAX]개를 넘으면 오래된 것부터 뺀다 */
+        /** 새 설정을 맨 앞에 넣는다. 같은 설정은 바꿔 쓰고, [MAX]개를 넘으면 가장 오래 안 쓴 것(맨 뒤)부터 뺀다 */
         fun added(trips: List<SavedTrip>, trip: SavedTrip): List<SavedTrip> =
             (listOf(trip) + trips.filterNot { it.sameAs(trip) }).take(MAX)
+
+        /** [added]로 넣으면 빠지는 설정 (꽉 찼을 때 맨 뒤). 빠지는 것이 없으면 null */
+        fun droppedBy(trips: List<SavedTrip>, trip: SavedTrip): SavedTrip? {
+            val rest = trips.filterNot { it.sameAs(trip) }
+            return if (rest.size >= MAX) rest.last() else null
+        }
+
+        /** 칩을 눌러 쓴 설정을 맨 앞으로 (꽉 찼을 때 자주 쓰는 칩이 빠지지 않게) */
+        fun used(trips: List<SavedTrip>, trip: SavedTrip): List<SavedTrip> =
+            if (trip in trips) listOf(trip) + trips.filterNot { it == trip } else trips
     }
 }

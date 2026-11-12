@@ -49,4 +49,28 @@ class RestAreaCleanerTest {
         assertTrue(RestAreaCleaner.keep(area("반포한강공원 주차장", RestAreaType.PARK, downtown)))
         assertEquals(1, RestAreaCleaner.clean(listOf(area("정자", RestAreaType.REST_STOP, rural), area("대포졸음쉼터", RestAreaType.DROWSY_SHELTER, rural))).size)
     }
+
+    private fun directed(id: String, name: String, label: String?, at: LatLng) =
+        RestArea(id, name, RestAreaType.SERVICE_AREA, at, directionLabel = label, onExpressway = true)
+
+    @Test
+    fun mergesTheSamePlaceListedTwice() {
+        val a = directed("a", "용인휴게소 강릉방향", "강릉", LatLng(37.24553, 127.24235))
+        val b = directed("b", "용인 휴게소 (강릉 방향)", "강릉", LatLng(37.24600, 127.24246))
+        val other = directed("c", "용인 휴게소 (인천 방향)", "인천", LatLng(37.24797, 127.23789))
+        val bare = directed("d", "평창", null, LatLng(37.61104, 128.46456))
+        val pc = directed("e", "평창 휴게소 (인천 방향)", "인천", LatLng(37.61041, 128.46363))
+        val kept = RestAreaCleaner.dedupe(listOf(a, b, other, bare, pc)).map { it.id }
+        // 같은 방향 두 이름은 하나로 (괄호로 적은 이름을 남김), 반대 방향은 그대로, 이름만 있는 '평창'은 옆 휴게소와 합친다.
+        assertEquals(listOf("b", "c", "e"), kept)
+        assertEquals("용인", RestAreaCleaner.baseKey(a))
+        assertEquals("용인", RestAreaCleaner.baseKey(b))
+    }
+
+    @Test
+    fun keepsBothSidesOfAShelter() {
+        val east = RestArea("x", "대신졸음쉼터 원주방향", RestAreaType.DROWSY_SHELTER, LatLng(37.38401, 127.60293), directionLabel = "원주", onExpressway = true)
+        val west = RestArea("y", "대신졸음쉼터 광주방향", RestAreaType.DROWSY_SHELTER, LatLng(37.38463, 127.60389), directionLabel = "광주", onExpressway = true)
+        assertEquals(2, RestAreaCleaner.dedupe(listOf(east, west)).size)
+    }
 }
