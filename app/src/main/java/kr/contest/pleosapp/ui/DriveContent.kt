@@ -1,18 +1,20 @@
 package kr.contest.pleosapp.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -21,12 +23,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kr.contest.pleosapp.app.RestMateActions
@@ -34,21 +37,17 @@ import kr.contest.pleosapp.app.UiState
 import kr.contest.pleosapp.core.CourseFlavor
 import kr.contest.pleosapp.core.CourseKind
 import kr.contest.pleosapp.core.CourseOption
-import kr.contest.pleosapp.core.DemoTrips
 import kr.contest.pleosapp.core.DriveEngine
 import kr.contest.pleosapp.core.DriveMode
 import kr.contest.pleosapp.core.DriveState
 import kr.contest.pleosapp.core.DriveStep
 import kr.contest.pleosapp.core.DriveText
 import kr.contest.pleosapp.core.FitStatus
-import kr.contest.pleosapp.core.Gear
-import kr.contest.pleosapp.core.LatLng
 import kr.contest.pleosapp.core.MINUTE_MS
 import kr.contest.pleosapp.core.Mood
 import kr.contest.pleosapp.core.OnTimeStyle
 import kr.contest.pleosapp.core.Place
 import kr.contest.pleosapp.core.PlaceKind
-import kr.contest.pleosapp.core.RestMateState
 import kr.contest.pleosapp.core.RestMateText
 import kr.contest.pleosapp.core.SECOND_MS
 import kr.contest.pleosapp.core.SavedTrip
@@ -57,6 +56,7 @@ import kr.contest.pleosapp.core.toSavedTrip
 /**
  * 온타임 모드·롱웨이 모드 화면.
  * 처음 → 설정(끝낼 곳·시각·분위기) → 코스 고르기 → 달리는 중(도착 예상과 목표의 차이) → 도착
+ * 넓은 화면에서는 왼쪽에 고를 것·숫자, 오른쪽에 미니맵을 둔다.
  */
 @Composable
 internal fun DriveContent(ui: UiState, actions: RestMateActions) {
@@ -81,26 +81,45 @@ private fun DriveHome(ui: UiState, actions: RestMateActions) {
             actions.openMode(DriveMode.LONGER)
         }
     }
-    SavedTripsPanel(ui.saved, actions)
+    TwoPane(
+        wide = LocalScreenSize.current.wide,
+        left = {
+            NaviDestinationPanel(ui)
+            SavedTripsPanel(ui.saved, actions)
+        },
+        right = {
+            MapPanel(ui)
+            RestStatusPanel(ui)
+        },
+    )
+}
+
+@Composable
+private fun NaviDestinationPanel(ui: UiState) {
     val d = ui.drive
     Panel {
         Label("지금 내비 목적지")
         val dest = d.naviDestination
         if (dest == null) {
-            Body("목적지가 없어요. 모드를 고르면 집·회사·즐겨찾기에서 끝낼 곳을 고를 수 있어요.")
+            Body("목적지가 없어요. 모드를 고르면 집·회사·즐겨찾기에서 끝낼 곳을 고를 수 있어요.", RM.textDim)
         } else {
             Text(
                 dest.name,
                 color = RM.text,
-                fontSize = 28.sp,
+                fontSize = 30.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            d.naviRemainingMs?.let { Caption("${DriveText.duration(it)} 남음 · ${DriveText.clock(ui.now + it)} 도착 예정") }
+            val remain = d.naviRemainingMs
+            if (remain != null) {
+                Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                    Stat("남은 시간", DriveText.duration(remain), RM.text, valueSize = 26.sp)
+                    Stat("도착 예정", DriveText.clock(ui.now + remain), RM.blue, valueSize = 26.sp)
+                }
+            }
         }
     }
-    RestStatusPanel(ui)
 }
 
 /** 자주 쓰는 설정 칩 (최대 4개). 누르면 그 설정으로 바로 코스를 찾는다. '편집'을 누르면 지울 수 있다. */
@@ -111,7 +130,7 @@ private fun SavedTripsPanel(saved: List<SavedTrip>, actions: RestMateActions) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Label("자주 쓰는 설정", modifier = Modifier.weight(1f))
             if (saved.isNotEmpty()) {
-                ActionButton(if (editing) "완료" else "편집", { editing = !editing }, Modifier.width(110.dp), minHeight = 48.dp, textSize = 17.sp)
+                ActionButton(if (editing) "완료" else "편집", { editing = !editing }, Modifier.width(100.dp), minHeight = 44.dp, textSize = 16.sp)
             }
         }
         if (saved.isEmpty()) {
@@ -138,20 +157,36 @@ private fun SavedTripsPanel(saved: List<SavedTrip>, actions: RestMateActions) {
     }
 }
 
+/** 모드 카드: 색 바탕 + 그림 + 한 줄 설명 + 쓰는 상황 */
 @Composable
 private fun ModeCard(mode: DriveMode, examples: String, modifier: Modifier, onClick: () -> Unit) {
-    val tone = modeTone(mode)
-    Button(
-        onClick = onClick,
-        modifier = modifier.heightIn(min = 168.dp),
-        shape = RoundedCornerShape(22.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = tone.container, contentColor = tone.content),
-        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 18.dp),
+    val onTime = mode == DriveMode.ON_TIME
+    val top = if (onTime) RM.teal else RM.violet
+    val bottom = if (onTime) RM.tealDeep else RM.violetDeep
+    val content = if (onTime) RM.onTeal else RM.onViolet
+    val shape = RoundedCornerShape(22.dp)
+    Row(
+        modifier
+            .heightIn(min = 150.dp)
+            .clip(shape)
+            .background(Brush.linearGradient(listOf(top, bottom)))
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 26.dp, vertical = 20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(22.dp),
     ) {
-        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(mode.title, fontSize = 36.sp, fontWeight = FontWeight.Bold)
-            Text(mode.subtitle, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-            Text(examples, fontSize = 16.sp, modifier = Modifier.alpha(0.8f))
+        Box(
+            Modifier
+                .size(76.dp)
+                .background(content.copy(alpha = 0.12f), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (onTime) ClockGlyph(content, Modifier.size(42.dp)) else RoadGlyph(content, Modifier.size(42.dp))
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(mode.title, color = content, fontSize = 34.sp, fontWeight = FontWeight.Bold)
+            Text(mode.subtitle, color = content, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            Text(examples, color = content.copy(alpha = 0.72f), fontSize = 16.sp)
         }
     }
 }
@@ -163,14 +198,23 @@ private fun DriveSetup(ui: UiState, actions: RestMateActions) {
     val d = ui.drive
     val mode = d.mode ?: return
     val tone = modeTone(mode)
-    Panel {
-        Label(if (mode == DriveMode.ON_TIME) "어디에 맞춰 갈까요?" else "어디서 끝낼까요?")
-        PlaceChoices(placeChoices(d), d.destination, tone, actions::setDriveDestination)
-    }
-    when (mode) {
-        DriveMode.ON_TIME -> TargetPanel(ui, actions, tone)
-        DriveMode.LONGER -> LongerPanel(ui, actions, tone)
-    }
+    TwoPane(
+        wide = LocalScreenSize.current.wide,
+        left = {
+            Panel {
+                Label(if (mode == DriveMode.ON_TIME) "어디에 맞춰 갈까요?" else "어디서 끝낼까요?")
+                PlaceChoices(placeChoices(d), d.destination, tone, actions::setDriveDestination)
+            }
+            when (mode) {
+                DriveMode.ON_TIME -> TargetPanel(ui, actions, tone)
+                DriveMode.LONGER -> LongerPanel(ui, actions, tone)
+            }
+        },
+        right = {
+            MapPanel(ui)
+            SetupSummary(ui)
+        },
+    )
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         ActionButton(
             if (d.planPending) "시간 확인 중…" else "코스 찾기",
@@ -182,6 +226,31 @@ private fun DriveSetup(ui: UiState, actions: RestMateActions) {
         ActionButton("뒤로", actions::driveBack, Modifier.weight(1f))
     }
     d.message?.let { Notice(it, RM.textDim) }
+}
+
+/** 설정 화면 오른쪽: 바로 가면 언제 닿는지와 무엇을 맞추는지 */
+@Composable
+private fun SetupSummary(ui: UiState) {
+    val d = ui.drive
+    val dest = d.destination ?: return
+    val direct = d.directMs
+    Panel {
+        Label(dest.name)
+        if (direct == null) {
+            Caption("바로 가면 얼마나 걸리는지 내비에 묻는 중이에요…")
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                Stat("바로 가면", DriveText.duration(direct), RM.text, valueSize = 26.sp)
+                Stat("도착", DriveText.clock(ui.now + direct), RM.blue, valueSize = 26.sp)
+                val target = d.targetAt
+                if (d.mode == DriveMode.ON_TIME && target != null) Stat("목표", DriveText.clock(target), RM.teal, valueSize = 26.sp)
+                if (d.mode == DriveMode.LONGER) {
+                    Stat("더 달리면", DriveText.clock(ui.now + direct + d.extraMinutes * MINUTE_MS), RM.violet, valueSize = 26.sp)
+                }
+            }
+            if (d.directEstimated) Caption("내비 값이 없어 거리로 추정했어요.")
+        }
+    }
 }
 
 /** 고를 수 있는 끝낼 곳: 내비의 지금 목적지, 즐겨찾기(집·회사 먼저), 최근 목적지 */
@@ -232,6 +301,7 @@ private fun TargetPanel(ui: UiState, actions: RestMateActions, tone: Tone) {
                 fontSize = 46.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
+                style = NumStyle,
                 modifier = Modifier.weight(1f),
             )
             StepButton("+5분") { actions.shiftTarget(5) }
@@ -244,26 +314,20 @@ private fun TargetPanel(ui: UiState, actions: RestMateActions, tone: Tone) {
                     { actions.setTarget(at) },
                     Modifier.weight(1f),
                     if (target == at) tone else Tone.NEUTRAL,
-                    minHeight = 60.dp,
-                    textSize = 20.sp,
+                    minHeight = 58.dp,
+                    textSize = 19.sp,
                 )
             }
         }
         val direct = d.directMs
-        if (direct == null) {
-            Caption("바로 가면 얼마나 걸리는지 내비에 묻는 중이에요…")
-        } else {
-            val source = if (d.directEstimated) " (거리로 추정)" else ""
-            Caption("바로 가면 ${DriveText.clock(ui.now + direct)} 도착 · ${DriveText.duration(direct)}$source · 목표보다 ${MARGIN_MINUTES}분 일찍 닿도록 맞춰요")
-            if (target != null) {
-                // 남는 시간 = 목표 − 지금 − 바로 가는 시간 − 여유 (코스 후보의 '쉬는·기다리는 시간'과 같은 기준)
-                val late = ui.now + direct - target
-                val spare = -late - MARGIN_MINUTES * MINUTE_MS
-                when {
-                    late > 30 * SECOND_MS -> Body("바로 가도 약 ${DriveText.duration(late)} 늦어요. 목표 시각을 늦추거나 바로 가세요.", RM.amber)
-                    spare >= MINUTE_MS -> Body("남는 시간 약 ${DriveText.duration(spare)}", RM.teal)
-                    else -> Body("바로 가면 시간에 거의 딱 맞아요. 남는 시간이 없어요.", RM.textDim)
-                }
+        if (direct != null && target != null) {
+            // 남는 시간 = 목표 − 지금 − 바로 가는 시간 − 여유 (코스 후보의 '쉬는·기다리는 시간'과 같은 기준)
+            val late = ui.now + direct - target
+            val spare = -late - MARGIN_MINUTES * MINUTE_MS
+            when {
+                late > 30 * SECOND_MS -> Body("바로 가도 약 ${DriveText.duration(late)} 늦어요. 목표 시각을 늦추거나 바로 가세요.", RM.amber)
+                spare >= MINUTE_MS -> Body("남는 시간 약 ${DriveText.duration(spare)} · 목표 ${MARGIN_MINUTES}분 전에 닿게 채워요", RM.teal)
+                else -> Body("바로 가면 시간에 거의 딱 맞아요. 남는 시간이 없어요.", RM.textDim)
             }
         }
         Label("남는 시간은 어떻게 쓸까요?")
@@ -300,9 +364,6 @@ private fun LongerPanel(ui: UiState, actions: RestMateActions, tone: Tone) {
                 )
             }
         }
-        d.directMs?.let { direct ->
-            Caption("바로 가면 ${DriveText.duration(direct)} · ${d.extraMinutes}분 더 달리면 ${DriveText.clock(ui.now + direct + d.extraMinutes * MINUTE_MS)} 도착")
-        }
         Label("차 안 분위기")
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             for (mood in Mood.entries) {
@@ -332,26 +393,36 @@ private fun DriveChoose(ui: UiState, actions: RestMateActions) {
     val d = ui.drive
     val mode = d.mode
     val tone = modeTone(mode)
-    Panel(border = modeColor(mode)) {
-        Label("코스 후보")
-        val target = d.targetAt
-        // 바로 가도 늦으면 '맞춰요' 대신 얼마나 늦는지
-        val late = d.directMs?.let { direct -> target?.let { ui.now + direct - it } }
-        val head = when {
-            mode == DriveMode.LONGER -> "${d.extraMinutes}분 더 달릴 코스"
-            target != null && late != null && late > 30 * SECOND_MS ->
-                "목표 ${DriveText.clock(target)} · 바로 가도 약 ${DriveText.duration(late)} 늦어요"
-            target != null -> "목표 ${DriveText.clock(target)} · ${MARGIN_MINUTES}분 일찍 닿게 맞춰요"
-            else -> null
-        }
-        if (head != null) Text(head, color = RM.text, fontSize = 30.sp, fontWeight = FontWeight.Bold)
-        d.destination?.let { Caption("끝낼 곳: ${it.name}") }
-        d.message?.let { Caption(it, RM.amber) }
-    }
-    if (mode == DriveMode.LONGER) FlavorChips(d.flavor, tone, actions)
-    for (option in d.options) {
-        CourseCard(option, arrivalFor(option, d, ui.now), d.targetAt.takeIf { mode == DriveMode.ON_TIME }, tone) { actions.chooseCourse(option) }
-    }
+    TwoPane(
+        wide = LocalScreenSize.current.wide,
+        left = {
+            Panel(border = modeColor(mode)) {
+                val target = d.targetAt
+                // 바로 가도 늦으면 '맞춰요' 대신 얼마나 늦는지
+                val late = d.directMs?.let { direct -> target?.let { ui.now + direct - it } }
+                val head = when {
+                    mode == DriveMode.LONGER -> "${d.extraMinutes}분 더 달릴 코스"
+                    target != null && late != null && late > 30 * SECOND_MS ->
+                        "목표 ${DriveText.clock(target)} · 바로 가도 약 ${DriveText.duration(late)} 늦어요"
+                    target != null -> "목표 ${DriveText.clock(target)} · ${MARGIN_MINUTES}분 일찍 닿게 맞춰요"
+                    else -> null
+                }
+                Label("코스 후보 ${d.options.size}개")
+                if (head != null) Text(head, color = RM.text, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                d.destination?.let { Caption("끝낼 곳: ${it.name}") }
+                d.message?.let { Caption(it, RM.amber) }
+            }
+            if (mode == DriveMode.LONGER) FlavorChips(d.flavor, tone, actions)
+            d.options.forEachIndexed { i, option ->
+                val target = d.targetAt.takeIf { mode == DriveMode.ON_TIME }
+                CourseCard(i, option, arrivalFor(option, d, ui.now), target, tone) { actions.chooseCourse(option) }
+            }
+        },
+        right = {
+            MapPanel(ui)
+            Caption("번호는 왼쪽 코스 카드와 같아요. 코스를 고르면 내비 경로에 경유지가 들어가요.")
+        },
+    )
     val candidate = d.toSavedTrip()
     val saved = candidate != null && ui.saved.any { it.sameAs(candidate) }
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -370,15 +441,15 @@ private fun DriveChoose(ui: UiState, actions: RestMateActions) {
 /** 롱웨이 모드: 어떤 길이 좋은지 고르면 후보를 다시 낸다 (시각·분위기로 기본값을 정해 둠). */
 @Composable
 private fun FlavorChips(selected: CourseFlavor?, tone: Tone, actions: RestMateActions) {
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         for (flavor in CourseFlavor.entries) {
             ActionButton(
                 flavor.label,
                 { actions.setFlavor(flavor) },
                 Modifier.weight(1f),
                 if (selected == flavor) tone else Tone.NEUTRAL,
-                minHeight = 56.dp,
-                textSize = 19.sp,
+                minHeight = 54.dp,
+                textSize = 17.sp,
             )
         }
     }
@@ -394,32 +465,47 @@ private fun arrivalFor(option: CourseOption, d: DriveState, now: Long): Long? {
 }
 
 @Composable
-private fun CourseCard(option: CourseOption, arrival: Long?, target: Long?, tone: Tone, onChoose: () -> Unit) {
+private fun CourseCard(index: Int, option: CourseOption, arrival: Long?, target: Long?, tone: Tone, onChoose: () -> Unit) {
+    val shape = RoundedCornerShape(20.dp)
+    val color = if (option.via.isEmpty()) RM.textDim else candidateColor(index)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(RM.card, RoundedCornerShape(20.dp))
-            .padding(horizontal = 22.dp, vertical = 16.dp),
+            .clip(shape)
+            .background(RM.card)
+            .border(1.dp, RM.border, shape)
+            .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+        NumberBadge("${index + 1}", color, size = 40.dp, ring = RM.card)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                option.title,
-                color = RM.text,
-                fontSize = 26.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Body(option.reason, RM.textDim)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    option.title,
+                    color = RM.text,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                Chip(kindLabel(option.kind), kindColor(option.kind), fontSize = 13.sp)
+            }
+            Caption(option.reason)
             if (arrival != null) {
                 // 바로 가기는 이유에 이미 몇 분 일찍·늦게인지 적혀 있다.
                 val note = if (option.kind == CourseKind.DIRECT) "" else fitNote(arrival, target)
-                Caption("${DriveText.clock(arrival)} 도착 예상$note", kindColor(option.kind))
+                Text(
+                    "${DriveText.clock(arrival)} 도착 예상$note",
+                    color = kindColor(option.kind),
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    style = NumStyle,
+                )
             }
         }
-        ActionButton("이 코스로", onChoose, Modifier.width(170.dp), tone, minHeight = 72.dp, textSize = 22.sp)
+        ActionButton("이 코스로", onChoose, Modifier.width(150.dp), tone, minHeight = 64.dp, textSize = 20.sp)
     }
 }
 
@@ -432,6 +518,13 @@ private fun fitNote(arrival: Long, target: Long?): String {
         early > (MARGIN_MINUTES + 2) * MINUTE_MS -> " · ${DriveText.duration(early)} 일찍"
         else -> ""
     }
+}
+
+private fun kindLabel(kind: CourseKind): String = when (kind) {
+    CourseKind.DIRECT -> "바로"
+    CourseKind.SCENIC -> "경치"
+    CourseKind.DETOUR -> "돌아가기"
+    CourseKind.REST_STOP -> "들렀다 가기"
 }
 
 private fun kindColor(kind: CourseKind): Color = when (kind) {
@@ -447,79 +540,78 @@ private fun DriveActive(ui: UiState, actions: RestMateActions) {
     val d = ui.drive
     val mode = d.mode
     val longer = mode == DriveMode.LONGER
-    val color = if (longer) longerColor(d.status) else statusColor(d.status)
-    Panel(border = color) {
-        val course = if (d.viaActive) d.chosen?.title else "목적지로 바로"
-        Label(listOfNotNull(mode?.title, course).joinToString(" · "))
-        val eta = d.arrivalEstimate
-        val diff = d.diffMs
-        if (eta == null || diff == null) {
-            Text("도착 시각을 계산하는 중이에요", color = RM.text, fontSize = 32.sp, fontWeight = FontWeight.Bold)
-        } else {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text("${DriveText.clock(eta)} 도착 예상", color = RM.text, fontSize = 40.sp, fontWeight = FontWeight.Bold)
-                // 분은 화면의 두 시각(도착 예상·목표) 차이로, 계획한 여유(3분 + 2분) 안이면 '여유'로
-                val shown = d.targetAt?.let { DriveText.gapMs(eta, it) } ?: diff
-                Chip(
-                    if (longer) DriveText.fitLonger(d.status, shown) else DriveText.fit(d.status, shown, (MARGIN_MINUTES + 2) * MINUTE_MS),
-                    color,
-                )
+    val border = if (d.status == FitStatus.UNKNOWN) RM.line else fitColor(d.status, longer)
+    TwoPane(
+        wide = LocalScreenSize.current.wide,
+        left = {
+            Panel(border = border, spacing = 14.dp) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    val course = if (d.viaActive) d.chosen?.title else "목적지로 바로"
+                    Label(listOfNotNull(mode?.title, course).joinToString(" · "), modifier = Modifier.weight(1f))
+                    if (longer) Chip("${d.mood.label} 분위기", RM.violet, fontSize = 14.sp)
+                }
+                TimeTrack(ui)
+                // 기다리는 코스: 그곳에 언제 닿고 언제 떠나는지
+                val stopArrive = d.stopArriveAt
+                val stopDepart = d.stopDepartAt
+                val stop = d.chosen?.restArea
+                if (d.viaActive && stop != null && stopArrive != null && stopDepart != null) {
+                    Body("${RestMateText.spokenName(stop.name)} ${DriveText.clock(stopArrive)} 도착 → ${DriveText.clock(stopDepart)} 출발")
+                }
             }
-            val target = d.targetAt
-            val parts = buildList {
-                if (target != null) add("${if (longer) "예정" else "목표"} ${DriveText.clock(target)}")
-                d.destination?.let { add(it.name) }
+            // 음성으로 말한 문구는 자막으로 이미 보이므로 겹쳐 띄우지 않는다.
+            val message = d.message
+            if (message != null && !(captionVisible(ui) && message == ui.lastMessage)) Notice(message, RM.text)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                val extend = d.extendOption
+                if (d.extendOffered && extend != null) {
+                    val label = if (extend.kind == CourseKind.REST_STOP) "기다렸다 가기" else "조금 더 돌기"
+                    ActionButton(label, actions::extendCourse, Modifier.weight(1f), modeTone(mode), sub = extend.title)
+                }
+                if (d.viaActive) {
+                    val home = d.destination?.kind == PlaceKind.HOME
+                    val label = if (longer && home) "바로 집으로" else "바로 가기"
+                    ActionButton(label, actions::goDirect, Modifier.weight(1f), sub = "경유지 빼기")
+                }
+                ActionButton("끝내기", actions::finishDrive, Modifier.weight(1f))
             }
-            Caption(parts.joinToString(" · "))
-            // 기다리는 코스: 그곳에 언제 닿고 언제 떠나는지
-            val stopArrive = d.stopArriveAt
-            val stopDepart = d.stopDepartAt
-            val stop = d.chosen?.restArea
-            if (d.viaActive && stop != null && stopArrive != null && stopDepart != null) {
-                Body("${RestMateText.spokenName(stop.name)} ${DriveText.clock(stopArrive)} 도착 → ${DriveText.clock(stopDepart)} 출발", RM.text)
+            // 달리는 중 시간 더하기: 온타임은 약속이 늦춰졌을 때, 롱웨이는 더 달리고 싶을 때
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (longer) {
+                    ActionButton("+15분 더", { actions.addDriveTime(15) }, Modifier.width(150.dp), minHeight = 58.dp, textSize = 19.sp)
+                    Caption("${d.mood.label} 분위기로 무드등·공조를 맞췄어요. 도착하거나 끝내면 원래대로 돌려요.", modifier = Modifier.weight(1f))
+                } else {
+                    ActionButton("+5분", { actions.addDriveTime(5) }, Modifier.width(120.dp), minHeight = 58.dp, textSize = 19.sp)
+                    ActionButton("+10분", { actions.addDriveTime(10) }, Modifier.width(120.dp), minHeight = 58.dp, textSize = 19.sp)
+                    Caption("약속이 늦춰지면 목표를 미뤄요. 더 돌 코스가 있으면 채워요.", modifier = Modifier.weight(1f))
+                }
             }
-        }
-        if (d.paused) Caption("쉬었다 가는 동안 시간 맞추기를 잠시 멈췄어요.", RM.amber)
-    }
-    d.message?.let { Notice(it, RM.text) }
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        val extend = d.extendOption
-        if (d.extendOffered && extend != null) {
-            val label = if (extend.kind == CourseKind.REST_STOP) "기다렸다 가기" else "조금 더 돌기"
-            ActionButton(label, actions::extendCourse, Modifier.weight(1f), modeTone(mode), sub = extend.title)
-        }
-        if (d.viaActive) {
-            val home = d.destination?.kind == PlaceKind.HOME
-            val label = if (longer && home) "바로 집으로" else "바로 가기"
-            ActionButton(label, actions::goDirect, Modifier.weight(1f), sub = "경유지 빼기")
-        }
-        ActionButton("끝내기", actions::finishDrive, Modifier.weight(1f))
-    }
-    // 달리는 중 시간 더하기: 온타임은 약속이 늦춰졌을 때, 롱웨이는 더 달리고 싶을 때
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        if (longer) {
-            ActionButton("+15분 더", { actions.addDriveTime(15) }, Modifier.width(170.dp), minHeight = 60.dp, textSize = 20.sp)
-            Caption("${d.mood.label} 분위기로 무드등·공조를 맞췄어요. 도착하거나 끝내면 원래대로 돌려요.", modifier = Modifier.weight(1f))
-        } else {
-            ActionButton("+5분", { actions.addDriveTime(5) }, Modifier.width(130.dp), minHeight = 60.dp, textSize = 20.sp)
-            ActionButton("+10분", { actions.addDriveTime(10) }, Modifier.width(130.dp), minHeight = 60.dp, textSize = 20.sp)
-            Caption("약속이 늦춰지면 목표를 미뤄요. 더 돌 코스가 있으면 채워요.", modifier = Modifier.weight(1f))
-        }
-    }
+        },
+        right = {
+            MapPanel(ui)
+            RouteLine(ui)
+        },
+    )
 }
 
-/** 롱웨이 모드는 마감이 없어 늦어도 경고 색을 쓰지 않는다. */
-private fun longerColor(status: FitStatus): Color = when (status) {
-    FitStatus.EARLY -> RM.teal
-    FitStatus.UNKNOWN -> RM.line
-    else -> RM.violet
-}
-
-private fun statusColor(status: FitStatus): Color = when (status) {
-    FitStatus.ON_TIME -> RM.teal
-    FitStatus.EARLY -> RM.violet
-    FitStatus.LATE -> RM.amber
-    FitStatus.UNKNOWN -> RM.line
+/** 미니맵 아래 한 줄: 남은 경유지 → 목적지 */
+@Composable
+private fun RouteLine(ui: UiState) {
+    val d = ui.drive
+    val dest = d.destination ?: return
+    val via = if (d.viaActive) (ui.route?.via ?: d.chosen?.via).orEmpty() else emptyList()
+    val stops = via.map { it.name } + dest.name
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Label("다음")
+        Text(
+            stops.joinToString("  →  "),
+            color = RM.text,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
 }
 
 // ---------------------------------------------------------------- 도착
@@ -527,89 +619,34 @@ private fun statusColor(status: FitStatus): Color = when (status) {
 @Composable
 private fun DriveArrived(ui: UiState, actions: RestMateActions) {
     val d = ui.drive
-    Panel(border = statusColor(d.status)) {
-        Label(d.destination?.name ?: "도착")
-        Text(d.message ?: "도착했어요.", color = RM.text, fontSize = 44.sp, fontWeight = FontWeight.Bold)
-        val arrived = d.arrivedAt
-        val target = d.targetAt
-        if (arrived != null && target != null) {
-            // 롱웨이 모드의 시각은 마감이 아니라 예정이다.
-            val label = if (d.mode == DriveMode.LONGER) "예정" else "목표"
-            Caption("도착 ${DriveText.clock(arrived)} · $label ${DriveText.clock(target)}")
-        }
-    }
-    ActionButton("처음으로", actions::finishDrive, Modifier.fillMaxWidth(), modeTone(d.mode))
+    val longer = d.mode == DriveMode.LONGER
+    val color = if (d.status == FitStatus.UNKNOWN) modeColor(d.mode) else fitColor(d.status, longer)
+    TwoPane(
+        wide = LocalScreenSize.current.wide,
+        left = {
+            Panel(border = color, spacing = 14.dp) {
+                Label(d.destination?.name ?: "도착")
+                Text(d.message ?: "도착했어요.", color = RM.text, fontSize = 40.sp, fontWeight = FontWeight.Bold, lineHeight = 50.sp)
+                val arrived = d.arrivedAt
+                val target = d.targetAt
+                if (arrived != null && target != null) {
+                    // 롱웨이 모드의 시각은 마감이 아니라 예정이다.
+                    val gap = DriveText.gapMs(arrived, target)
+                    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                        Stat("도착", DriveText.clock(arrived), color, valueSize = 36.sp)
+                        Stat(if (longer) "예정" else "목표", DriveText.clock(target), RM.text, valueSize = 36.sp)
+                        Chip(DriveText.diff(gap), color, fontSize = 18.sp)
+                    }
+                }
+            }
+            ActionButton("처음으로", actions::finishDrive, Modifier.fillMaxWidth(), modeTone(d.mode))
+        },
+        right = {
+            MapPanel(ui)
+        },
+    )
 }
 
 private val EXTRA_OPTIONS = listOf(15, 30, 45, 60)
 private const val MAX_PLACE_CHOICES = 6
-/** 도착 목표보다 이만큼 일찍 닿도록 맞춘다 (DriveConfig.marginMs) */
-private const val MARGIN_MINUTES = 3
 private const val DEFAULT_DIRECT_MS = 20 * MINUTE_MS
-
-// ---------------------------------------------------------------- 미리보기 (Android Studio)
-
-@Preview(widthDp = 1280, heightDp = 720)
-@Composable
-private fun ChoosePreview() {
-    val dest = Place("광화문 약속 장소", LatLng(37.5717, 126.9768), PlaceKind.CURRENT)
-    val options = listOf(
-        CourseOption(
-            "scenic-naksan", CourseKind.SCENIC, "낙산공원 거쳐 가기", "야경·공원 · 약 10분 더",
-            listOf(Place("낙산공원", LatLng(37.5806, 127.0076), PlaceKind.WAYPOINT)), 10 * MINUTE_MS,
-        ),
-        CourseOption(
-            "scenic-eungbong", CourseKind.SCENIC, "응봉산 거쳐 가기", "야경 · 약 7분 더",
-            listOf(Place("응봉산", LatLng(37.5506, 127.0322), PlaceKind.WAYPOINT)), 7 * MINUTE_MS,
-        ),
-    )
-    RestMateTheme {
-        RestMateScreen(
-            UiState(
-                now = PREVIEW_NOW,
-                core = RestMateState(now = PREVIEW_NOW, gear = Gear.DRIVE, speedKmh = 30.0),
-                drive = DriveState(
-                    now = PREVIEW_NOW,
-                    step = DriveStep.CHOOSE,
-                    mode = DriveMode.ON_TIME,
-                    destination = dest,
-                    naviDestination = dest,
-                    places = previewPlaces,
-                    targetAt = PREVIEW_NOW + 40 * MINUTE_MS,
-                    directMs = 20 * MINUTE_MS,
-                    options = options,
-                ),
-                demoMode = true,
-                demoTrip = DemoTrips.CITY,
-            ),
-            PreviewActions,
-        )
-    }
-}
-
-@Preview(widthDp = 1280, heightDp = 720)
-@Composable
-private fun ActivePreview() {
-    val dest = Place("광화문 약속 장소", LatLng(37.5717, 126.9768), PlaceKind.CURRENT)
-    val via = Place("낙산공원", LatLng(37.5806, 127.0076), PlaceKind.WAYPOINT)
-    RestMateTheme {
-        RestMateScreen(
-            UiState(
-                now = PREVIEW_NOW,
-                core = RestMateState(now = PREVIEW_NOW, gear = Gear.DRIVE, speedKmh = 32.0),
-                drive = DriveState(
-                    now = PREVIEW_NOW,
-                    step = DriveStep.ACTIVE,
-                    mode = DriveMode.ON_TIME,
-                    destination = dest,
-                    targetAt = PREVIEW_NOW + 30 * MINUTE_MS,
-                    chosen = CourseOption("scenic-naksan", CourseKind.SCENIC, "낙산공원 거쳐 가기", "야경·공원 · 약 10분 더", listOf(via), 10 * MINUTE_MS),
-                    arrivalEstimate = PREVIEW_NOW + 29 * MINUTE_MS,
-                    diffMs = -MINUTE_MS,
-                    status = FitStatus.ON_TIME,
-                ),
-            ),
-            PreviewActions,
-        )
-    }
-}

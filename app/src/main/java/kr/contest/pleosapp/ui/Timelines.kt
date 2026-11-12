@@ -1,0 +1,316 @@
+package kr.contest.pleosapp.ui
+
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import kr.contest.pleosapp.app.UiState
+import kr.contest.pleosapp.core.CourseKind
+import kr.contest.pleosapp.core.DriveConfig
+import kr.contest.pleosapp.core.DriveMode
+import kr.contest.pleosapp.core.DriveState
+import kr.contest.pleosapp.core.DriveText
+import kr.contest.pleosapp.core.FitStatus
+import kr.contest.pleosapp.core.MINUTE_MS
+import kr.contest.pleosapp.core.RestKind
+import kr.contest.pleosapp.core.RestMateText
+import kr.contest.pleosapp.core.RestTiming
+import kr.contest.pleosapp.core.SECOND_MS
+import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
+
+/** 도착 목표보다 이만큼 일찍 닿도록 맞춘다 (DriveConfig.marginMs) */
+internal const val MARGIN_MINUTES = 3
+
+private val LATE_OBSERVE_MS = DriveConfig().lateObserveMs
+
+// ---------------------------------------------------------------- 달리는 중: 도착 시각 막대
+
+/**
+ * 온타임·롱웨이 모드로 달리는 중: 출발부터 목표까지의 시간 위에 지금 · 도착 예상 · 목표 · 들렀다 가는 곳을 놓는다.
+ * 늦을 것 같으면 도착 예상이 목표 너머(호박색 구간)로 넘어가고, 길을 바꾸면 여유 구간(청록)으로 돌아오는 것이 보인다.
+ */
+@Composable
+internal fun TimeTrack(ui: UiState) {
+    val d = ui.drive
+    val now = ui.now
+    val target = d.targetAt
+    val eta = d.arrivalEstimate
+    val longer = d.mode == DriveMode.LONGER
+    val color = fitColor(d.status, longer)
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        if (target == null || eta == null) {
+            Body("도착 시각을 계산하는 중이에요", RM.textDim)
+        } else {
+            val gap = DriveText.gapMs(eta, target)
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                Stat("도착 예상", DriveText.clock(eta), color, valueSize = 44.sp)
+                Stat(if (longer) "예정" else "목표", DriveText.clock(target), RM.text, valueSize = 44.sp)
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                    Chip(
+                        if (longer) DriveText.fitLonger(d.status, gap) else DriveText.fit(d.status, gap, (MARGIN_MINUTES + 2) * MINUTE_MS),
+                        color,
+                        fontSize = 20.sp,
+                    )
+                }
+            }
+            TrackBar(
+                start = min(ui.driveStartedAt ?: now, now),
+                now = now,
+                eta = eta,
+                target = target,
+                stop = stopWindow(d),
+                margin = !longer,
+                accent = modeColor(d.mode),
+                etaColor = color,
+            )
+            Explain(ui)
+        }
+    }
+}
+
+/** 기다리는 코스: 그곳에 닿는 시각 → 떠나는 시각 */
+private fun stopWindow(d: DriveState): Pair<Long, Long>? {
+    if (!d.viaActive) return null
+    val a = d.stopArriveAt ?: return null
+    val b = d.stopDepartAt ?: return null
+    return a to b
+}
+
+/** 지금 무슨 일이 일어나는지 한 줄 (보는 사람이 기능을 바로 알 수 있게) */
+@Composable
+private fun Explain(ui: UiState) {
+    val d = ui.drive
+    val target = d.targetAt ?: return
+    val eta = d.arrivalEstimate ?: return
+    val gap = DriveText.gapMs(eta, target)
+    val lateSince = d.lateSince
+    val viaName = d.chosen?.via?.firstOrNull()?.name
+    val restName = d.chosen?.restArea?.name?.let { RestMateText.spokenName(it) }
+    val stopDepart = d.stopDepartAt
+    val extend = d.extendOption
+    val (text, color) = when {
+        d.paused -> "쉬었다 가는 동안 시간 맞추기를 잠시 멈췄어요. 다시 출발하면 이어서 맞춰요." to RM.amber
+        lateSince != null && d.viaActive -> {
+            val left = ((LATE_OBSERVE_MS - (ui.now - lateSince)) / SECOND_MS).coerceAtLeast(0)
+            "늦을 것 같아요. 잠깐 막힌 것일 수 있어 지켜보는 중이에요 · ${left}초 뒤에도 늦으면 더 짧은 길로 바꿔요." to RM.amber
+        }
+        d.mode != DriveMode.LONGER && d.status == FitStatus.LATE ->
+            "바로 가도 약 ${DriveText.duration(gap)} 늦어요. 서두르지 말고 안전하게 가세요." to RM.amber
+        d.extendOffered && extend != null -> {
+            val how = if (extend.kind == CourseKind.REST_STOP) "들렀다 기다리기" else "조금 더 돌기"
+            "${DriveText.duration(gap)} 일찍 닿을 것 같아요 · 남는 시간은 '$how'로 채울 수 있어요." to RM.violet
+        }
+        d.mode == DriveMode.LONGER ->
+            "${d.extraMinutes}분 더 달리는 코스예요. 예정보다 많이 늦어지면 짧은 코스로 바꿔요." to RM.textDim
+        d.viaActive && d.chosen?.kind == CourseKind.REST_STOP && stopDepart != null && restName != null ->
+            "${restName}에서 기다렸다 ${DriveText.clock(stopDepart)}에 출발하면 목표 ${MARGIN_MINUTES}분 전에 닿아요." to RM.textDim
+        d.viaActive && viaName != null ->
+            "${DriveText.withObject(viaName)} 거쳐 남는 시간을 채우고, 목표 ${MARGIN_MINUTES}분 전에 닿게 맞춰요." to RM.textDim
+        gap <= 30 * SECOND_MS -> "목표 시각 안에 도착해요. 길이 막히면 바로 다시 맞춰요." to RM.textDim
+        else -> "약 ${DriveText.duration(gap)} 늦을 수 있어요." to RM.amber
+    }
+    Caption(text, color)
+}
+
+@Composable
+private fun TrackBar(
+    start: Long,
+    now: Long,
+    eta: Long,
+    target: Long,
+    stop: Pair<Long, Long>?,
+    margin: Boolean,
+    accent: Color,
+    etaColor: Color,
+) {
+    val end = maxOf(target, eta, stop?.second ?: 0L) + 2 * MINUTE_MS
+    val from = min(start, now)
+    val span = max(end - from, 10 * MINUTE_MS).toFloat()
+    BoxWithConstraints(Modifier.fillMaxWidth().height(86.dp)) {
+        val w = constraints.maxWidth.toFloat()
+        val density = LocalDensity.current
+        val pad = with(density) { 14.dp.toPx() }
+        val cy = with(density) { 40.dp.toPx() }
+        val below = with(density) { 26.dp.toPx() }
+        fun x(t: Long): Float = pad + ((t - from) / span).coerceIn(0f, 1f) * (w - 2 * pad)
+        Canvas(Modifier.fillMaxSize()) {
+            val barH = 10.dp.toPx()
+            val r = CornerRadius(barH / 2, barH / 2)
+            drawRoundRect(RM.line, Offset(pad, cy - barH / 2), Size(w - 2 * pad, barH), r)
+            // 목표를 넘는 구간 (늦음)
+            drawRect(RM.amber.copy(alpha = 0.18f), Offset(x(target), cy - barH / 2), Size(max(0f, x(end) - x(target)), barH))
+            // 목표 바로 앞 여유 구간
+            if (margin) {
+                val m0 = x(target - MARGIN_MINUTES * MINUTE_MS)
+                drawRect(RM.teal.copy(alpha = 0.35f), Offset(m0, cy - barH / 2), Size(max(0f, x(target) - m0), barH))
+            }
+            // 지나온 시간
+            drawRoundRect(accent.copy(alpha = 0.75f), Offset(pad, cy - barH / 2), Size(max(0f, x(now) - pad), barH), r)
+            // 들렀다 가는 곳에서 머무는 시간
+            if (stop != null) {
+                val s0 = x(stop.first)
+                val s1 = x(stop.second)
+                drawRoundRect(
+                    RM.amber,
+                    Offset(s0, cy - 9.dp.toPx()),
+                    Size(max(4.dp.toPx(), s1 - s0), 18.dp.toPx()),
+                    CornerRadius(6.dp.toPx()),
+                )
+            }
+            // 목표: 깃발
+            val tx = x(target)
+            drawLine(Color.White, Offset(tx, cy - 22.dp.toPx()), Offset(tx, cy + 12.dp.toPx()), strokeWidth = 2.5.dp.toPx())
+            val flag = Path().apply {
+                moveTo(tx, cy - 22.dp.toPx())
+                lineTo(tx + 13.dp.toPx(), cy - 17.dp.toPx())
+                lineTo(tx, cy - 12.dp.toPx())
+                close()
+            }
+            drawPath(flag, Color.White)
+            // 지금
+            drawCircle(Color.White, 6.dp.toPx(), Offset(x(now), cy))
+            // 도착 예상
+            val ex = x(eta)
+            drawCircle(etaColor.copy(alpha = 0.25f), 17.dp.toPx(), Offset(ex, cy))
+            drawCircle(Color.White, 10.dp.toPx(), Offset(ex, cy))
+            drawCircle(etaColor, 7.dp.toPx(), Offset(ex, cy))
+        }
+        val pins = ArrayList<Pin>()
+        // 지금과 도착 예상이 붙어 있으면 '지금'은 뺀다
+        if (abs(x(eta) - x(now)) > with(density) { 72.dp.toPx() }) pins += TextPin(Offset(x(now), cy + below), "지금", RM.textDim)
+        pins += TextPin(Offset(x(eta), cy + below), "도착 예상", etaColor)
+        if (stop != null && abs(x(stop.first) - x(eta)) > with(density) { 80.dp.toPx() }) {
+            pins += TextPin(Offset(x(stop.first), cy + below), "기다리기", RM.amber)
+        }
+        pins += TextPin(Offset(x(target) + with(density) { 30.dp.toPx() }, cy - with(density) { 30.dp.toPx() }), "목표", RM.text)
+        PinLayer(pins, Modifier.fillMaxSize())
+    }
+}
+
+/** 도착 예상 색. 롱웨이 모드는 마감이 없어 늦어도 경고 색을 쓰지 않는다. */
+internal fun fitColor(status: FitStatus, longer: Boolean): Color = if (longer) {
+    when (status) {
+        FitStatus.EARLY -> RM.teal
+        FitStatus.UNKNOWN -> RM.textDim
+        else -> RM.violet
+    }
+} else {
+    when (status) {
+        FitStatus.ON_TIME -> RM.teal
+        FitStatus.EARLY -> RM.violet
+        FitStatus.LATE -> RM.amber
+        FitStatus.UNKNOWN -> RM.textDim
+    }
+}
+
+// ---------------------------------------------------------------- 쉬는 중: 시간표
+
+/**
+ * 쉬는 동안의 시간표: 눈 붙이기(또는 기다리기) → 깨우기 → 출발 → 도착, 그리고 목표.
+ * 온타임 모드에서 알람을 도착 시각에 어떻게 맞췄는지 한눈에 보인다.
+ */
+@Composable
+internal fun RestTrack(ui: UiState) {
+    val rest = ui.core.rest ?: return
+    val now = ui.now
+    val target = rest.targetAt
+    val route = rest.remainingRouteMs
+    val nap = rest.kind == RestKind.NAP
+    val segments = ArrayList<Segment>()
+    val depart: Long
+    if (nap) {
+        val napEnd = rest.wakeStartedAt ?: rest.alarmAt
+        val wakeMs = if (rest.wakeStartedAt != null) rest.wakeMs else RestTiming.wakeMsFor(rest.alarmAt - rest.startedAt, ui.config.wakeUpMs)
+        val wakeEnd = napEnd + wakeMs
+        segments += Segment(rest.startedAt, napEnd, "눈 붙이기", RM.teal)
+        if (wakeMs > 0) segments += Segment(napEnd, wakeEnd, "깨우기", RM.amber)
+        val call = rest.callAt
+        if (call != null && call > wakeEnd + MINUTE_MS) segments += Segment(wakeEnd, call, "기다리기", RM.textFaint)
+        depart = max(max(wakeEnd, call ?: wakeEnd), now)
+    } else {
+        val restEnd = rest.callAt ?: rest.alarmAt
+        segments += Segment(rest.startedAt, restEnd, if (rest.kind == RestKind.STAY) "머물기" else "기다리기", RM.teal)
+        depart = max(restEnd, now)
+    }
+    val arrive = route?.let { depart + it }
+    if (arrive != null) segments += Segment(depart, arrive, "주행", RM.blue)
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Label("쉬는 시간표", modifier = Modifier.weight(1f))
+            if (target != null && arrive != null) {
+                val gap = DriveText.gapMs(arrive, target)
+                val text = when {
+                    gap > 30 * SECOND_MS -> "약 ${DriveText.duration(gap)} 늦어요"
+                    gap < -30 * SECOND_MS -> "${DriveText.duration(gap)} 여유"
+                    else -> "정각"
+                }
+                Chip(text, if (gap > 30 * SECOND_MS) RM.amber else RM.teal)
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+            if (nap) Stat("알람", DriveText.clock(rest.alarmAt), RM.teal, Modifier.weight(1f), valueSize = 26.sp)
+            Stat("출발", DriveText.clock(depart), RM.text, Modifier.weight(1f), valueSize = 26.sp)
+            if (arrive != null) Stat("도착 예상", DriveText.clock(arrive), RM.blue, Modifier.weight(1f), valueSize = 26.sp)
+            if (target != null) Stat(if (rest.strictTarget) "목표" else "예정", DriveText.clock(target), RM.text, Modifier.weight(1f), valueSize = 26.sp)
+        }
+        SegmentBar(segments, now, target)
+    }
+}
+
+private data class Segment(val from: Long, val to: Long, val label: String, val color: Color)
+
+@Composable
+private fun SegmentBar(segments: List<Segment>, now: Long, target: Long?) {
+    if (segments.isEmpty()) return
+    val from = segments.minOf { it.from }
+    val end = maxOf(segments.maxOf { it.to }, target ?: 0L) + MINUTE_MS
+    val span = max(end - from, 10 * MINUTE_MS).toFloat()
+    BoxWithConstraints(Modifier.fillMaxWidth().height(64.dp)) {
+        val w = constraints.maxWidth.toFloat()
+        val density = LocalDensity.current
+        val pad = with(density) { 10.dp.toPx() }
+        val cy = with(density) { 20.dp.toPx() }
+        fun x(t: Long): Float = pad + ((t - from) / span).coerceIn(0f, 1f) * (w - 2 * pad)
+        Canvas(Modifier.fillMaxSize()) {
+            val h = 18.dp.toPx()
+            val r = CornerRadius(6.dp.toPx())
+            drawRoundRect(RM.line, Offset(pad, cy - h / 2), Size(w - 2 * pad, h), r)
+            for (s in segments) {
+                val x0 = x(s.from)
+                val x1 = x(s.to)
+                if (x1 - x0 > 1f) drawRoundRect(s.color.copy(alpha = 0.85f), Offset(x0, cy - h / 2), Size(x1 - x0, h), r)
+            }
+            if (target != null) {
+                val tx = x(target)
+                drawLine(Color.White, Offset(tx, cy - 16.dp.toPx()), Offset(tx, cy + 16.dp.toPx()), strokeWidth = 2.5.dp.toPx())
+            }
+            val nx = x(now)
+            drawLine(Color.White.copy(alpha = 0.9f), Offset(nx, cy - 13.dp.toPx()), Offset(nx, cy + 13.dp.toPx()), strokeWidth = 2.dp.toPx())
+            drawCircle(Color.White, 5.dp.toPx(), Offset(nx, cy - 13.dp.toPx()))
+        }
+        val minWidth = with(density) { 56.dp.toPx() }
+        val labelY = cy + with(density) { 26.dp.toPx() }
+        val pins = ArrayList<Pin>()
+        for (s in segments) {
+            if (x(s.to) - x(s.from) > minWidth) pins += TextPin(Offset((x(s.from) + x(s.to)) / 2f, labelY), s.label, s.color)
+        }
+        PinLayer(pins, Modifier.fillMaxSize())
+    }
+}
