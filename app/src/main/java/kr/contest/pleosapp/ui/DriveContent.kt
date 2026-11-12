@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -88,10 +89,10 @@ private fun DriveHome(ui: UiState, actions: RestMateActions) {
         left = {
             NaviDestinationPanel(ui)
             SavedTripsPanel(ui.saved, actions)
+            RestStatusPanel(ui)
         },
         right = {
             MapPanel(ui)
-            RestStatusPanel(ui)
         },
     )
 }
@@ -211,23 +212,24 @@ private fun DriveSetup(ui: UiState, actions: RestMateActions) {
                 DriveMode.ON_TIME -> TargetPanel(ui, actions, tone)
                 DriveMode.LONGER -> LongerPanel(ui, actions, tone)
             }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                ActionButton(
+                    if (d.planPending) "시간 확인 중…" else "코스 찾기",
+                    actions::planCourses,
+                    Modifier.weight(2f),
+                    tone,
+                    enabled = d.destination != null && !d.planPending,
+                )
+                ActionButton("뒤로", actions::driveBack, Modifier.weight(1f))
+            }
+            d.message?.let { Notice(it, RM.textDim) }
         },
         right = {
-            MapPanel(ui)
+            // 아래 요약이 함께 보이게 미니맵을 조금 낮춘다
+            MapPanel(ui, (LocalScreenSize.current.mapHeight - 200.dp).coerceAtLeast(260.dp))
             SetupSummary(ui)
         },
     )
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        ActionButton(
-            if (d.planPending) "시간 확인 중…" else "코스 찾기",
-            actions::planCourses,
-            Modifier.weight(2f),
-            tone,
-            enabled = d.destination != null && !d.planPending,
-        )
-        ActionButton("뒤로", actions::driveBack, Modifier.weight(1f))
-    }
-    d.message?.let { Notice(it, RM.textDim) }
 }
 
 /** 설정 화면 오른쪽: 바로 가면 언제 닿는지와 무엇을 맞추는지 */
@@ -616,6 +618,7 @@ private fun DriveActive(ui: UiState, actions: RestMateActions) {
                     Body("${RestMateText.spokenName(stop.name)} ${DriveText.clock(stopArrive)} 도착 → ${DriveText.clock(stopDepart)} 출발")
                 }
             }
+            CourseStops(ui)
             // 음성으로 말한 문구는 자막으로 이미 보이므로 겹쳐 띄우지 않는다.
             val message = d.message
             if (message != null && !(captionVisible(ui) && message == ui.lastMessage)) Notice(message, RM.text)
@@ -646,28 +649,102 @@ private fun DriveActive(ui: UiState, actions: RestMateActions) {
         },
         right = {
             MapPanel(ui)
-            RouteLine(ui)
         },
     )
 }
 
-/** 미니맵 아래 한 줄: 남은 경유지 → 목적지 */
+/** 코스 한 곳: 출발 · 경유지 · 쉼터 · 목적지 */
+private data class CourseStop(val name: String, val detail: String, val color: Color, val done: Boolean)
+
+/**
+ * 고른 코스를 세로로: 출발 → 경유지(지났는지) → 목적지(도착 예상). 미니맵의 점과 같은 색을 쓴다.
+ * 달리는 중과 도착 화면에서 '어떤 길로 시간을 맞췄는지'를 보여 준다.
+ */
 @Composable
-private fun RouteLine(ui: UiState) {
+private fun CourseStops(ui: UiState) {
     val d = ui.drive
     val dest = d.destination ?: return
-    val via = if (d.viaActive) (ui.route?.via ?: d.chosen?.via).orEmpty() else emptyList()
-    val stops = via.map { it.name } + dest.name
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Label("다음")
-        Text(
-            stops.joinToString("  →  "),
-            color = RM.text,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+    val chosen = d.chosen
+    val remaining = if (d.viaActive) (ui.route?.via ?: chosen?.via).orEmpty() else emptyList()
+    val stopArea = chosen?.restArea
+    val arrived = d.step == DriveStep.ARRIVED
+    val stops = ArrayList<CourseStop>()
+    stops += CourseStop("출발", ui.driveStartedAt?.let { DriveText.clock(it) }.orEmpty(), RM.textDim, done = true)
+    for (p in chosen?.via.orEmpty()) {
+        val isRest = stopArea != null && Place(stopArea.name, stopArea.position).sameSpot(p)
+        val passed = arrived || remaining.none { it.sameSpot(p) }
+        val arriveAt = d.stopArriveAt
+        val departAt = d.stopDepartAt
+        val detail = when {
+            passed -> "지났어요"
+            isRest && arriveAt != null && departAt != null ->
+                "${DriveText.clock(arriveAt)} 도착 → ${DriveText.clock(departAt)} 출발"
+            isRest -> "들러서 기다렸다 가요"
+            else -> listOf("경유").plus(chosen?.tags.orEmpty().map { it.label }).joinToString(" · ")
+        }
+        stops += CourseStop(p.name, detail, if (isRest) RM.amber else RM.violet, done = passed)
+    }
+    val eta = if (arrived) d.arrivedAt else d.arrivalEstimate
+    val target = d.targetAt
+    val targetText = target?.let { " · ${if (d.mode == DriveMode.LONGER) "예정" else "목표"} ${DriveText.clock(it)}" }.orEmpty()
+    val destDetail = when {
+        eta == null -> ""
+        arrived -> "${DriveText.clock(eta)} 도착$targetText"
+        else -> "${DriveText.clock(eta)} 도착 예상$targetText"
+    }
+    stops += CourseStop(dest.name, destDetail, RM.teal, done = arrived)
+    Panel(spacing = 0.dp) {
+        Label("코스", modifier = Modifier.padding(bottom = 12.dp))
+        stops.forEachIndexed { i, stop -> StopRow(stop, last = i == stops.lastIndex) }
+    }
+}
+
+@Composable
+private fun StopRow(stop: CourseStop, last: Boolean) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min),
+    ) {
+        Column(
+            Modifier
+                .width(30.dp)
+                .fillMaxHeight(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Box(
+                Modifier
+                    .padding(top = 6.dp)
+                    .size(16.dp)
+                    .background(if (stop.done) stop.color.copy(alpha = 0.45f) else stop.color, CircleShape),
+            )
+            if (!last) {
+                Box(
+                    Modifier
+                        .padding(vertical = 4.dp)
+                        .width(2.dp)
+                        .weight(1f)
+                        .background(RM.line),
+                )
+            }
+        }
+        Column(
+            Modifier
+                .weight(1f)
+                .padding(start = 8.dp, bottom = if (last) 0.dp else 16.dp),
+        ) {
+            Text(
+                stop.name,
+                color = if (stop.done && !last) RM.textDim else RM.text,
+                fontSize = 21.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (stop.detail.isNotEmpty()) {
+                Text(stop.detail, color = if (stop.done && !last) RM.textFaint else stop.color, fontSize = 16.sp, style = NumStyle)
+            }
+        }
     }
 }
 
@@ -697,6 +774,7 @@ private fun DriveArrived(ui: UiState, actions: RestMateActions) {
                     }
                 }
             }
+            CourseStops(ui)
             ActionButton("처음으로", actions::finishDrive, Modifier.fillMaxWidth(), modeTone(d.mode))
         },
         right = {

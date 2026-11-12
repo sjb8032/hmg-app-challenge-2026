@@ -2,11 +2,9 @@ package kr.contest.pleosapp.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -92,27 +90,20 @@ fun RestMateScreen(ui: UiState, actions: RestMateActions) {
 private fun MainPanel(ui: UiState, actions: RestMateActions, modifier: Modifier) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Header(ui)
-        Box(
-            Modifier
+        Column(
+            modifier = Modifier
                 .weight(1f)
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                when (ui.core.phase) {
-                    Phase.DRIVING -> DrivingContent(ui, actions)
-                    Phase.TO_REST_AREA -> GuidanceContent(ui, actions)
-                    Phase.RESTING -> RestingContent(ui, actions)
-                }
-                // 자막이 마지막 내용을 가려도 끝까지 올려 볼 수 있게
-                Spacer(Modifier.height(88.dp))
+            when (ui.core.phase) {
+                Phase.DRIVING -> DrivingContent(ui, actions)
+                Phase.TO_REST_AREA -> GuidanceContent(ui, actions)
+                Phase.RESTING -> RestingContent(ui, actions)
             }
-            CaptionBar(ui, Modifier.align(Alignment.BottomCenter))
         }
+        CaptionSlot(ui)
         BottomAction(ui, actions)
     }
 }
@@ -458,11 +449,11 @@ private fun RestingContent(ui: UiState, actions: RestMateActions) {
                     Caption("약속이 늦춰지면 도착 목표를 미뤄요.", modifier = Modifier.weight(1f))
                 }
             }
+            if (rest.kind == RestKind.NAP) RestEnvironmentPanel(ui, actions)
         },
         right = {
             Panel { RestTrack(ui) }
             ArrivalPanel(rest, ui)
-            if (rest.kind == RestKind.NAP) RestEnvironmentPanel(ui, actions)
             CabinPanel(ui.extras)
         },
     )

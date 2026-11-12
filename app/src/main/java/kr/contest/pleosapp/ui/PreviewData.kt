@@ -249,15 +249,15 @@ internal object PreviewSamples {
         )
     }
 
-    /** 롱웨이 모드: 데이트, 30분 더 달려 반포한강공원을 거쳐 집으로 */
+    /** 롱웨이 모드: 데이트, 30분 더 달려 응봉산 야경을 거쳐 집으로 */
     fun longerActive(): UiState {
         val now = CITY_START + 12 * MINUTE_MS
-        val banpo = Place("반포한강공원", LatLng(37.5103, 126.9959), PlaceKind.WAYPOINT)
+        val eungbong = Place("응봉산", LatLng(37.5506, 127.0322), PlaceKind.WAYPOINT)
         val home = places[0]
-        val at = lerp(nonhyeon, banpo.position, 0.7)
+        val at = lerp(nonhyeon, eungbong.position, 0.6)
         val option = CourseOption(
-            "scenic-banpo", CourseKind.SCENIC, "반포한강공원 거쳐 가기", "강변·야경 · 약 30분 더",
-            listOf(banpo), 30 * MINUTE_MS, tags = setOf(CourseTag.RIVER, CourseTag.NIGHT_VIEW),
+            "scenic-eungbong", CourseKind.SCENIC, "응봉산 거쳐 가기", "야경 · 약 30분 더",
+            listOf(eungbong), 30 * MINUTE_MS, tags = setOf(CourseTag.NIGHT_VIEW),
         )
         val planned = CITY_START + 58 * MINUTE_MS
         return base(now).copy(
@@ -267,7 +267,7 @@ internal object PreviewSamples {
                 gear = Gear.DRIVE,
                 speedKmh = 30.0,
                 position = at,
-                headingDeg = Geo.bearingDegrees(at, banpo.position),
+                headingDeg = Geo.bearingDegrees(at, eungbong.position),
                 onExpressway = false,
             ),
             drive = DriveState(
@@ -279,7 +279,7 @@ internal object PreviewSamples {
                 targetAt = planned,
                 extraMinutes = 30,
                 mood = Mood.DATE,
-                flavor = CourseFlavor.RIVER,
+                flavor = CourseFlavor.NIGHT_VIEW,
                 chosen = option,
                 arrivalEstimate = planned + 2 * MINUTE_MS,
                 diffMs = 2 * MINUTE_MS,
@@ -288,11 +288,11 @@ internal object PreviewSamples {
             demoDriving = true,
             driveStartedAt = CITY_START,
             trail = trail(nonhyeon, at, 1.0),
-            route = RouteView(home, listOf(banpo)),
+            route = RouteView(home, listOf(eungbong)),
             cabinNote = "분위기: 데이트 · 무드등 35% · 22°C",
             log = listOf(
                 LogEntry(CITY_START + MINUTE_MS, "분위기: 데이트 · 무드등 35% · 22°C", LogKind.VEHICLE),
-                LogEntry(CITY_START + MINUTE_MS, "내비에 반포한강공원 경유 경로를 요청했어요.", LogKind.NAVI),
+                LogEntry(CITY_START + MINUTE_MS, "내비에 응봉산 경유 경로를 요청했어요.", LogKind.NAVI),
             ),
             console = ConsoleStatus(ConsoleLinkState.ON, Gear.DRIVE, 30, browserActive = true),
         )

@@ -1,10 +1,15 @@
 package kr.contest.pleosapp.ui
 
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -15,10 +20,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -43,19 +46,27 @@ internal fun captionVisible(ui: UiState): Boolean =
     ui.lastMessage != null && ui.realNow - ui.lastMessageAt in 0..CAPTION_MS
 
 /**
- * 음성 안내 자막: 방금 말한 문구를 화면 아래에 크게 띄운다.
+ * 음성 안내 자막: 방금 말한 문구를 화면 아래(큰 버튼 위)에 크게 띄웠다가 [CAPTION_MS] 뒤 접는다.
  * 소리가 나지 않는 에뮬레이터와 녹화 영상에서도 차가 무엇을 말했는지 읽힌다.
  */
 @Composable
-internal fun CaptionBar(ui: UiState, modifier: Modifier = Modifier) {
-    val text = ui.lastMessage
-    val alpha by animateFloatAsState(if (captionVisible(ui)) 1f else 0f, label = "caption")
-    if (text == null || alpha <= 0.01f) return
+internal fun ColumnScope.CaptionSlot(ui: UiState) {
+    AnimatedVisibility(
+        visible = captionVisible(ui),
+        enter = fadeIn() + expandVertically(),
+        exit = fadeOut() + shrinkVertically(),
+        label = "caption",
+    ) {
+        CaptionBar(ui.lastMessage.orEmpty())
+    }
+}
+
+@Composable
+private fun CaptionBar(text: String) {
     val shape = RoundedCornerShape(18.dp)
     Row(
-        modifier
+        Modifier
             .fillMaxWidth()
-            .alpha(alpha)
             .clip(shape)
             .background(RM.caption)
             .border(1.dp, RM.amber.copy(alpha = 0.35f), shape)

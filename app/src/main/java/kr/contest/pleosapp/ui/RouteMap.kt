@@ -223,7 +223,7 @@ internal fun mapSceneFor(ui: UiState): MapScene {
 }
 
 /** 쉼터로 갈 때 화면에 담는 지나온 길 끝부분 (점 개수) */
-private const val FOCUS_TRAIL = 12
+private const val FOCUS_TRAIL = 4
 
 private fun destinationMark(p: Place) = MapMark(p.position, MarkKind.DESTINATION, p.name, RM.teal)
 
@@ -256,7 +256,9 @@ internal fun RouteMap(scene: MapScene, modifier: Modifier = Modifier, emptyText:
         val frame = if (scene.isEmpty || widthPx <= 0f || heightPx <= 0f) {
             null
         } else {
-            MapFrame.fit(scene.fitPoints(), widthPx / heightPx, padding = 0.14f, minSpanMeters = 1_200.0)
+            // 가까운 곳을 크게 볼 때는 가장자리를 넉넉히 둔다
+            val padding = if (scene.focus != null) 0.28f else 0.14f
+            MapFrame.fit(scene.fitPoints(), widthPx / heightPx, padding = padding, minSpanMeters = 1_200.0)
         }
         MapGrid(Modifier.fillMaxSize())
         if (frame == null) {

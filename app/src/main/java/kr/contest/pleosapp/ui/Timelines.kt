@@ -86,6 +86,7 @@ internal fun TimeTrack(ui: UiState) {
                 margin = !longer,
                 accent = modeColor(d.mode),
                 etaColor = color,
+                targetLabel = if (longer) "예정" else "목표",
             )
             Explain(ui)
         }
@@ -179,6 +180,7 @@ private fun TrackBar(
     margin: Boolean,
     accent: Color,
     etaColor: Color,
+    targetLabel: String,
 ) {
     val end = maxOf(target, eta, stop?.second ?: 0L) + 2 * MINUTE_MS
     val from = min(start, now)
@@ -243,7 +245,7 @@ private fun TrackBar(
         if (stop != null && abs(x(stop.first) - x(eta)) > with(density) { 80.dp.toPx() }) {
             pins += TextPin(Offset(x(stop.first), cy + below), "기다리기", RM.amber)
         }
-        pins += TextPin(Offset(x(target) + with(density) { 30.dp.toPx() }, cy - with(density) { 30.dp.toPx() }), "목표", RM.text)
+        pins += TextPin(Offset(x(target) + with(density) { 30.dp.toPx() }, cy - with(density) { 30.dp.toPx() }), targetLabel, RM.text)
         PinLayer(pins, Modifier.fillMaxSize())
     }
 }
