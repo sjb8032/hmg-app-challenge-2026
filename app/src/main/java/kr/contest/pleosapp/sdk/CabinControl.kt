@@ -20,7 +20,7 @@ import kr.contest.pleosapp.core.RestEnvironment
  * - 휴식: 무드등 은은하게, 원하는 온도, 약한 바람, (선택) 바깥 공기
  * - 깨우기: 무드등을 몇 단계에 걸쳐 밝게, 2도 낮춘 온도, 센 바람, 바깥 공기
  * - 출발: 휴식 시작 전에 읽어 둔 값으로 되돌림
- * - 롱웨이 모드 분위기: 데이트·혼자 쉬기에 맞춘 무드등 밝기와 온도. 도착하면 되돌림
+ * - 롱웨이 모드 분위기: 데이트·혼자 쉬기에 맞춘 무드등 밝기와 온도. 도착하면 무드등은 천천히 되돌림
  *
  * 제어할 수 있는 영역과 범위는 차량마다 달라 시작할 때 capability로 읽는다.
  * 제어가 실패해도 앱 흐름은 멈추지 않고, 결과를 문구로 알린다.
@@ -48,6 +48,8 @@ class CabinControl(
     private var generation = 0
     /** 마지막으로 되돌린 시각. 되돌린 직후에는 되돌린 값이 아직 반영되지 않았을 수 있어 다시 읽지 않는다. */
     private var restoredAt = Long.MIN_VALUE / 2
+    /** 켜 둔 분위기의 무드등 밝기 (0~1). 분위기를 천천히 끌 때 여기서부터 원래 밝기로 바꾼다. */
+    private var moodBrightness: Double? = null
 
     /** 차량 연결 뒤 한 번: 제어 가능한 영역과 범위를 읽는다. */
     fun prepare() {
@@ -103,10 +105,14 @@ class CabinControl(
         }
     }
 
-    /** 롱웨이 모드의 분위기를 켠다. null이면 분위기 전 설정으로 되돌린다. */
-    fun applyMood(mood: Mood?) {
+    /**
+     * 롱웨이 모드의 분위기를 켠다. null이면 분위기 전 설정으로 되돌린다.
+     * @param gently 되돌릴 때 무드등을 몇 단계에 걸쳐 천천히 (도착하자마자 확 밝아지지 않게)
+     */
+    fun applyMood(mood: Mood?, gently: Boolean = false) {
         if (mood == null) {
-            if (changed) restore("드라이브를 마쳐서 실내 환경을 원래대로 되돌렸어요.")
+            if (!changed) return
+            if (gently && moodBrightness != null) fadeOutMood() else restore("드라이브를 마쳐서 실내 환경을 원래대로 되돌렸어요.")
             return
         }
         if (!isConnected()) {
@@ -180,10 +186,11 @@ class CabinControl(
             setLightSwitch(area, LightSwitch.ON)
             setBrightness(area, fraction = p.brightness)
         }
+        moodBrightness = p.brightness
         report("${p.label} 분위기: 무드등 ${Math.round(p.brightness * 100)}% · ${formatTemp(p.temperatureC)} · 약한 바람")
     }
 
-    private fun restore(message: String) {
+    private fun restore(message: String?) {
         generation++
         savedTemp.forEach { (area, value) -> setTemperature(area, value) }
         savedFan.forEach { (area, value) -> setFanExact(area, value) }
@@ -191,8 +198,41 @@ class CabinControl(
         savedBrightness.forEach { (area, value) -> setBrightnessExact(area, value) }
         savedLightSwitch.forEach { (area, value) -> setLightSwitch(area, value) }
         changed = false
+        moodBrightness = null
         restoredAt = SystemClock.elapsedRealtime()
-        report(message)
+        message?.let(report)
+    }
+
+    /**
+     * 분위기를 천천히 끈다: 공조는 바로 되돌리고, 무드등은 몇 단계에 걸쳐 원래 밝기로 (도착하자마자 확 밝아지지 않게).
+     * 다 끝날 때까지는 바뀐 상태로 두어(changed), 그 사이 다른 단계가 시작되면 여기서 멈추고 읽어 둔 원래 설정을 그대로 쓴다.
+     */
+    private fun fadeOutMood() {
+        val from = moodBrightness ?: return
+        val gen = ++generation
+        savedTemp.forEach { (area, value) -> setTemperature(area, value) }
+        savedFan.forEach { (area, value) -> setFanExact(area, value) }
+        savedRecirc.forEach { (area, value) -> setRecirculation(area, value) }
+        val targets = HashMap(savedBrightness)
+        for (step in 1..MOOD_FADE_STEPS) {
+            main.postDelayed({
+                if (gen == generation) {
+                    if (step < MOOD_FADE_STEPS) {
+                        targets.forEach { (area, saved) ->
+                            val range = lightRanges[area]
+                            if (range != null) {
+                                val start = level(range, from)
+                                setBrightnessExact(area, start + (saved - start) * step / MOOD_FADE_STEPS)
+                            }
+                        }
+                    } else {
+                        // 마지막 단계: 읽어 둔 값 그대로 (무드등을 원래 껐으면 이때 끈다).
+                        restore(null)
+                    }
+                }
+            }, step * MOOD_FADE_STEP_MS)
+        }
+        report("드라이브를 마쳐서 무드등을 천천히 원래대로 되돌려요.")
     }
 
     // ---- 휴식 전 설정 읽기 ----
@@ -336,6 +376,8 @@ class CabinControl(
         private const val RESNAPSHOT_GUARD_MS = 5_000L
         private const val WAKE_LIGHT_STEPS = 5
         private const val WAKE_LIGHT_STEP_MS = 4_000L
+        private const val MOOD_FADE_STEPS = 5
+        private const val MOOD_FADE_STEP_MS = 4_000L
         private val DEFAULT_FAN_RANGE = 1..8
 
         private fun number(value: Any?): Number? = value as? Number

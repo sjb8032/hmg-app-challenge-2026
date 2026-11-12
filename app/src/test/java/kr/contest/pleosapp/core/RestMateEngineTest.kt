@@ -195,22 +195,56 @@ class RestMateEngineTest {
     }
 
     @Test
-    fun napIsFittedToOnTimeArrival() {
+    fun napWarnsOnceAndShortensOnlyWhenChosen() {
         val e = engine()
         e.driveAt(t0)
         // 도착 목표 35분 뒤, 남은 길 10분, 여유 3분 → 22분 뒤에는 출발해야 한다.
         e.setDeadline(TripDeadline(targetAt = t0 + 35 * MINUTE_MS, marginMs = 3 * MINUTE_MS, strict = true, remainingMs = 10 * MINUTE_MS))
         e.drainEffects()
         e.startRest(t0)
-        val rest = e.state.rest!!
-        assertTrue(rest.fitsTarget)
-        assertNull(rest.lateByMs)
+        var rest = e.state.rest!!
         assertEquals(t0 + 22 * MINUTE_MS, rest.departAt)
-        // 낮잠 + 깨우는 시간(낮잠의 절반)이 22분 안: 낮잠은 기본 20분보다 짧은 약 14분 40초
+        // 기본 20분을 그대로 재우고 (20분 + 깨우기 10분이면 5분 늦음), 늦는 것과 줄일 수 있다는 것을 한 번 알린다.
+        assertEquals(20 * MINUTE_MS, rest.alarmAt - rest.startedAt)
+        assertEquals(5 * MINUTE_MS, rest.lateByMs)
+        assertEquals(15, rest.fitNapMinutes)
+        assertNull(rest.fitNapLateMs)
+        val warning = e.drainEffects().filterIsInstance<Effect.Speak>().single().text
+        assertTrue(warning, warning.startsWith("20분 쉬면 도착이 약 5분 늦어져요") && warning.contains("늦지 않으려면 화면에서 15분으로 줄일 수 있어요"))
+        // 운전자가 '시간에 맞춰 15분만 쉬기'를 고르면 줄인다 (낮잠 + 깨우는 시간이 22분 안: 약 14분 40초).
+        e.fitNapToArrival(t0 + 1_000)
+        rest = e.state.rest!!
         val nap = rest.alarmAt - rest.startedAt
         assertTrue("${nap / SECOND_MS}초", nap in 14 * MINUTE_MS..15 * MINUTE_MS)
+        assertTrue(rest.fitsTarget)
+        assertNull(rest.lateByMs)
+        assertNull(rest.fitNapMinutes)
         val speech = e.drainEffects().filterIsInstance<Effect.Speak>().single().text
         assertTrue(speech, speech.contains("도착에 맞춰"))
+    }
+
+    @Test
+    fun fittingNapMidwayCountsFromNowAndOfferEndsOncePassed() {
+        val e = engine()
+        e.driveAt(t0)
+        e.setDeadline(TripDeadline(targetAt = t0 + 35 * MINUTE_MS, marginMs = 3 * MINUTE_MS, strict = true, remainingMs = 10 * MINUTE_MS))
+        e.startRest(t0)
+        e.drainEffects()
+        // 5분 자다가 줄이면: 약 14분 40초 낮잠 → 지금부터 약 10분 뒤에 깨운다.
+        e.onTick(t0 + 5 * MINUTE_MS)
+        assertEquals(15, e.state.rest!!.fitNapMinutes)
+        e.fitNapToArrival(t0 + 5 * MINUTE_MS)
+        val speech = e.drainEffects().filterIsInstance<Effect.Speak>().single().text
+        assertTrue(speech, speech.contains("10분 뒤에 깨워 드릴게요"))
+
+        // 줄이지 않고 14분 넘게 자면 '시간에 맞춰 15분만 쉬기'는 더 내놓지 않는다 (누르면 바로 깨우게 되므로).
+        val other = engine()
+        other.driveAt(t0)
+        other.setDeadline(TripDeadline(targetAt = t0 + 35 * MINUTE_MS, marginMs = 3 * MINUTE_MS, strict = true, remainingMs = 10 * MINUTE_MS))
+        other.startRest(t0)
+        other.onTick(t0 + 14 * MINUTE_MS)
+        assertNull(other.state.rest!!.fitNapMinutes)
+        assertEquals(5 * MINUTE_MS, other.state.rest!!.lateByMs)
     }
 
     @Test
@@ -222,12 +256,21 @@ class RestMateEngineTest {
         e.startRest(t0)
         val rest = e.state.rest!!
         assertFalse(rest.fitsTarget)
-        // 안전이 먼저: 10분보다 짧게 줄이지 않고, 얼마나 늦는지 알린다.
-        // 7분 뒤 출발해야 하는데 10분 자고 5분 깨우면 8분 늦게 출발: 여유 3분을 빼면 목표보다 5분 늦음
-        assertEquals(10 * MINUTE_MS, rest.alarmAt - rest.startedAt)
-        assertEquals(5 * MINUTE_MS, rest.lateByMs)
+        // 7분 뒤 출발해야 하는데 20분 자고 10분 깨우면 23분 늦게 출발: 여유 3분을 빼면 목표보다 20분 늦음
+        assertEquals(20 * MINUTE_MS, rest.alarmAt - rest.startedAt)
+        assertEquals(20 * MINUTE_MS, rest.lateByMs)
+        // 줄여도(최소 10분) 5분은 늦으므로 '늦지 않으려면'이라고 하지 않는다.
+        assertEquals(10, rest.fitNapMinutes)
+        assertEquals(5 * MINUTE_MS, rest.fitNapLateMs)
         val speech = e.drainEffects().filterIsInstance<Effect.Speak>().single().text
-        assertTrue(speech, speech.startsWith("지금 쉬면 도착이 약 5분 늦어져요"))
+        assertTrue(speech, speech.startsWith("20분 쉬면 도착이 약 20분 늦어져요") && speech.contains("10분으로 줄이면 늦는 시간이 약 5분으로 줄어요"))
+        // 줄여도 10분보다 짧게는 줄이지 않고, 그래도 늦는 만큼을 말한다.
+        // 10분 자고 5분 깨우면 8분 늦게 출발: 여유 3분을 빼면 목표보다 5분 늦음
+        e.fitNapToArrival(t0 + 1_000)
+        assertEquals(10 * MINUTE_MS, e.state.rest!!.alarmAt - e.state.rest!!.startedAt)
+        assertEquals(5 * MINUTE_MS, e.state.rest!!.lateByMs)
+        val fitted = e.drainEffects().filterIsInstance<Effect.Speak>().single().text
+        assertEquals("10분 뒤에 깨워 드릴게요. 그래도 도착은 약 5분 늦어져요.", fitted)
     }
 
     @Test

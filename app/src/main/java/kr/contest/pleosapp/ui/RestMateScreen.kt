@@ -423,7 +423,7 @@ private fun RestingContent(ui: UiState, actions: RestMateActions) {
         wokeAt != null && !rest.alarmRinging -> WakeUpPanel(wokeAt, rest, ui)
         else -> RestTimerPanel(rest, s.now)
     }
-    if (rest.kind == RestKind.NAP && wokeAt == null) FitNotice(rest, ui)
+    if (rest.kind == RestKind.NAP && wokeAt == null) FitNotice(rest, ui, actions)
     val minutesMatter = rest.kind == RestKind.NAP || rest.targetAt == null
     if (minutesMatter && wokeAt == null) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -440,6 +440,14 @@ private fun RestingContent(ui: UiState, actions: RestMateActions) {
         }
         if (rest.kind == RestKind.NAP && rest.plannedMinutes > 20) {
             Notice("20분 넘게 자면 깊은 잠에 들어 깬 뒤 더 멍할 수 있어요. 깨우는 시간을 넉넉히 두세요.", RM.amber)
+        }
+    }
+    // 눈 붙이기 전에 약속이 늦춰졌다는 연락을 받았을 때 (기다리는 화면의 +5·+10분과 같은 동작)
+    if (rest.kind == RestKind.NAP && wokeAt == null && ui.drive.step == DriveStep.ACTIVE && ui.drive.mode == DriveMode.ON_TIME) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            ActionButton("+5분", { actions.addDriveTime(5) }, Modifier.width(130.dp), minHeight = 60.dp, textSize = 20.sp)
+            ActionButton("+10분", { actions.addDriveTime(10) }, Modifier.width(130.dp), minHeight = 60.dp, textSize = 20.sp)
+            Caption("약속이 늦춰지면 도착 목표를 미뤄요.", modifier = Modifier.weight(1f))
         }
     }
     if (rest.kind == RestKind.NAP) RestEnvironmentPanel(ui, actions)
@@ -562,7 +570,7 @@ private fun StayInfo(rest: RestSession, now: Long) {
  * 남은 길이 바뀌어 알람을 옮겼으면 보여 준다.
  */
 @Composable
-private fun FitNotice(rest: RestSession, ui: UiState) {
+private fun FitNotice(rest: RestSession, ui: UiState, actions: RestMateActions) {
     val target = rest.targetAt ?: return
     if (!rest.strictTarget) return
     val late = rest.lateByMs
@@ -572,7 +580,16 @@ private fun FitNotice(rest: RestSession, ui: UiState) {
         late != null -> Notice("이대로 쉬면 ${DriveText.clock(target)} 도착이 약 ${DriveText.duration(late)} 늦어져요. 안전이 먼저예요.", RM.amber)
         call != null && call - wakeEnd > 2 * MINUTE_MS ->
             Notice("${DriveText.clock(rest.alarmAt)}에 깨우고, ${DriveText.clock(call)}에 출발하면 ${DriveText.clock(target)} 도착에 맞아요.", RM.teal)
-        else -> Notice("${DriveText.clock(target)} 도착에 맞춰 깨워 드려요.", RM.teal)
+        rest.fitNap -> Notice("${DriveText.clock(target)} 도착에 맞춰 깨워 드려요.", RM.teal)
+        else -> Notice("${DriveText.clock(target)} 도착에 맞아요.", RM.teal)
+    }
+    // 늦는 것은 알리기만 하고, 줄일지는 운전자가 고른다.
+    val fit = rest.fitNapMinutes
+    if (fit != null) {
+        // 줄여도 조금 늦으면(최소 10분은 잔다) '시간에 맞춰'라고 하지 않고 남는 늦음을 같이 보여 준다.
+        val still = rest.fitNapLateMs
+        val label = if (still == null) "시간에 맞춰 ${fit}분만 쉬기" else "${fit}분만 쉬기 (약 ${DriveText.duration(still)} 늦어요)"
+        ActionButton(label, { actions.fitNapToArrival() }, Modifier.fillMaxWidth())
     }
     val previous = rest.previousAlarmAt
     if (previous != null) {
@@ -1139,6 +1156,7 @@ internal object PreviewActions : RestMateActions {
     override fun startRest() = Unit
     override fun setRestMinutes(minutes: Int) = Unit
     override fun extendRest(minutes: Int) = Unit
+    override fun fitNapToArrival() = Unit
     override fun stopAlarm() = Unit
     override fun wakeUp() = Unit
     override fun departNow() = Unit

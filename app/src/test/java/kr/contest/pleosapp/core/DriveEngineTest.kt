@@ -854,4 +854,22 @@ class DriveEngineTest {
         val remaining = e.deadline()!!.remainingMs!!
         assertTrue(remaining.toString(), remaining > 15 * MINUTE_MS + 5 * MINUTE_MS)
     }
+
+    @Test
+    fun longWaitSaysWhenLeavingLaterStillFits() {
+        val e = engine()
+        e.openMode(t0, DriveMode.ON_TIME)
+        e.setTarget(t0, t0 + 2 * 60 * MINUTE_MS)
+        e.plan(t0)
+        // 2시간 뒤 도착 목표, 바로 가면 20분, 여유 3분 → 97분 뒤에 떠나도 맞는다 (분은 내려서).
+        val latest = DriveText.clock(t0 + 97 * MINUTE_MS - 30 * SECOND_MS)
+        val message = e.state.message.orEmpty()
+        assertTrue(message, message.contains("지금 길이면 ${latest}에 출발해도 맞아요."))
+    }
+
+    @Test
+    fun shortWaitDoesNotSayLeaveLater() {
+        val e = engine().planOnTime()
+        assertFalse(e.state.message.orEmpty().contains("출발해도 맞아요"))
+    }
 }

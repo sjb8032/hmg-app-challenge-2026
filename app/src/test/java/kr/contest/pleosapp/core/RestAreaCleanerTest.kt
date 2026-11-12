@@ -73,4 +73,17 @@ class RestAreaCleanerTest {
         val west = RestArea("y", "대신졸음쉼터 광주방향", RestAreaType.DROWSY_SHELTER, LatLng(37.38463, 127.60389), directionLabel = "광주", onExpressway = true)
         assertEquals(2, RestAreaCleaner.dedupe(listOf(east, west)).size)
     }
+
+    @Test
+    fun dropsCompanyOrBareNamesNextToAProperlyNamedRestArea() {
+        val company = RestArea("a", "연합진흥고성", RestAreaType.SERVICE_AREA, LatLng(35.04797, 128.26693), onExpressway = true)
+        val proper = RestArea("b", "공룡나라휴게소", RestAreaType.SERVICE_AREA, LatLng(35.04900, 128.26900), onExpressway = true)
+        val bare = RestArea("c", "하남", RestAreaType.SERVICE_AREA, LatLng(37.53108, 127.20675), onExpressway = true)
+        val dream = RestArea("d", "하남드림휴게소", RestAreaType.SERVICE_AREA, LatLng(37.53140, 127.20710), onExpressway = true)
+        // 제대로 된 이웃이 없는 고속도로 항목은 남긴다 (어디인지 모르는 것보다 낫다).
+        val alone = RestArea("e", "연합진흥문경", RestAreaType.SERVICE_AREA, LatLng(36.60000, 128.10000), onExpressway = true)
+        val operator = RestArea("f", "파라다이스코리아원주상부산방향휴게소", RestAreaType.SERVICE_AREA, LatLng(37.43364, 127.92949), onExpressway = true)
+        val kept = RestAreaCleaner.clean(listOf(company, proper, bare, dream, alone, operator)).map { it.id }
+        assertEquals(listOf("b", "d", "e"), kept)
+    }
 }

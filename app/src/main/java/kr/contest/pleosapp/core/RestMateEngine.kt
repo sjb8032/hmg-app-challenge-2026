@@ -388,6 +388,7 @@ class RestMateEngine(
             previousAlarmAt = null,
             callMovedFrom = null,
             userSetMinutes = false,
+            fitNap = false,
         )
         if (kind == RestKind.NAP) {
             // 기다리다가 눈을 붙이면 낮잠은 지금부터 잰다.
@@ -413,6 +414,7 @@ class RestMateEngine(
             plannedMinutes = minutes,
             alarmAt = rest.startedAt + minutes * MINUTE_MS,
             userSetMinutes = true,
+            fitNap = false,
             previousAlarmAt = null,
         )
         val next = fitted(now, chosen, chosen.remainingRouteMs)
@@ -431,6 +433,7 @@ class RestMateEngine(
             plannedMinutes = ((alarmAt - rest.startedAt) / MINUTE_MS).toInt(),
             alarmAt = alarmAt,
             userSetMinutes = true,
+            fitNap = false,
             previousAlarmAt = null,
         )
         val next = fitted(now, chosen, chosen.remainingRouteMs)
@@ -965,13 +968,16 @@ class RestMateEngine(
         val base = rest.copy(targetAt = d.targetAt, strictTarget = d.strict, departAt = departAt, remainingRouteMs = remaining)
         val open = !base.alarmRinging && !base.alarmDone && base.wakeStartedAt == null && base.remindedAt == null
         var alarmAt = base.alarmAt
+        // 도착 시각에 맞추면 몇 분 잘 수 있는지 (최소 10분). 줄일지는 운전자가 고른다 ([fitNapToArrival]).
+        val fitNapMs = if (base.kind == RestKind.NAP && d.strict && !base.warned) {
+            val longest = RestTiming.longestNapMs(departAt - base.startedAt, config.wakeUpMs)
+            max(minOf(wantedMs, longest), minOf(wantedMs, RestTiming.MIN_FITTED_NAP_MS))
+        } else {
+            null
+        }
         if (open && !base.userSetMinutes) {
             when (base.kind) {
-                RestKind.NAP -> if (d.strict && !base.warned) {
-                    val longest = RestTiming.longestNapMs(departAt - base.startedAt, config.wakeUpMs)
-                    val nap = max(minOf(wantedMs, longest), minOf(wantedMs, RestTiming.MIN_FITTED_NAP_MS))
-                    alarmAt = base.startedAt + nap
-                }
+                RestKind.NAP -> if (fitNapMs != null && base.fitNap) alarmAt = base.startedAt + fitNapMs
                 RestKind.WAIT -> {
                     // 출발 알림처럼 분 단위로 내려 맞춘 출발 시각의 2분 전
                     val call = max(departAt, base.startedAt + minRestMs(base)) / MINUTE_MS * MINUTE_MS
@@ -985,11 +991,50 @@ class RestMateEngine(
         // 여유(3분)까지 쓰면 목표 시각에는 닿는다: 늦음은 목표 시각 기준으로 센다.
         val late = max(ready, now) - departAt - d.marginMs
         val minutes = (((alarmAt - base.startedAt) + MINUTE_MS / 2) / MINUTE_MS).toInt().coerceAtLeast(1)
+        // 늦을 것 같고 줄이면 도움이 될 때만 '시간에 맞춰 N분만 쉬기'를 내놓는다
+        // (이미 그만큼 잤으면 내놓지 않는다: 누르자마자 깨우게 되므로).
+        val fitMinutes = fitNapMs?.let { ((it + MINUTE_MS / 2) / MINUTE_MS).toInt() }
+        val offerFit = open && !base.fitNap && late > LATE_MS && fitNapMs != null &&
+            fitNapMs < alarmAt - base.startedAt - MINUTE_MS / 2 && base.startedAt + fitNapMs > now + MINUTE_MS
+        // 줄여도(최소 10분) 남는 늦음: 버튼과 음성이 '늦지 않아요'라고 잘못 말하지 않게
+        val fitLate = if (offerFit && fitNapMs != null) {
+            val shortened = withCall(base.copy(alarmAt = base.startedAt + fitNapMs))
+            (max(readyAt(shortened) ?: departAt, now) - departAt - d.marginMs).takeIf { it > LATE_MS }
+        } else {
+            null
+        }
         return next.copy(
             plannedMinutes = if (base.userSetMinutes || !open) base.plannedMinutes else minutes,
             fitsTarget = late <= LATE_MS,
             lateByMs = late.takeIf { d.strict && it > LATE_MS },
+            fitNapMinutes = fitMinutes.takeIf { offerFit },
+            fitNapLateMs = fitLate,
         )
+    }
+
+    /**
+     * '시간에 맞춰 N분만 쉬기': 눈 붙이기를 도착 시각에 맞춰 줄인다 (최소 10분).
+     * 그 뒤로 남은 길이 바뀌면 알람도 따라 옮긴다.
+     */
+    fun fitNapToArrival(now: Long) {
+        advance(now)
+        val rest = state.rest ?: return
+        if (rest.kind != RestKind.NAP || rest.fitNapMinutes == null) return
+        val chosen = rest.copy(fitNap = true, userSetMinutes = false, previousAlarmAt = null)
+        val next = fitted(now, chosen, chosen.remainingRouteMs)
+        state = state.copy(rest = next)
+        // 몇 분 뒤에 깨우는지는 지금부터 센다 (쉬는 도중에 줄여도 맞게).
+        val minutes = ((next.alarmAt - now + MINUTE_MS / 2) / MINUTE_MS).coerceAtLeast(1)
+        val target = next.targetAt
+        val late = next.lateByMs
+        effects += Effect.Speak(
+            when {
+                late != null -> "${minutes}분 뒤에 깨워 드릴게요. 그래도 도착은 약 ${DriveText.duration(late)} 늦어져요."
+                target != null -> "${DriveText.spokenClock(target)} 도착에 맞춰 ${minutes}분 뒤에 깨워 드릴게요."
+                else -> "${minutes}분 뒤에 깨워 드릴게요."
+            },
+        )
+        evaluate(now)
     }
 
     /**
@@ -1119,7 +1164,13 @@ class RestMateEngine(
                 when {
                     target != null && rest.strictTarget && late != null -> {
                         val why = if (rest.warned) "주의 경고가 있었으니 충분히 쉬어 가요." else "그래도 안전이 먼저예요."
-                        "지금 쉬면 도착이 약 ${DriveText.duration(late)} 늦어져요. $why ${minutes}분 뒤에 깨워 드릴게요."
+                        // 늦는 것은 한 번 알리고, 줄일지는 운전자가 화면에서 고른다.
+                        val fit = rest.fitNapMinutes?.let { m ->
+                            val still = rest.fitNapLateMs
+                            if (still == null) " 늦지 않으려면 화면에서 ${m}분으로 줄일 수 있어요."
+                            else " 화면에서 ${m}분으로 줄이면 늦는 시간이 약 ${DriveText.duration(still)}으로 줄어요."
+                        }.orEmpty()
+                        "${minutes}분 쉬면 도착이 약 ${DriveText.duration(late)} 늦어져요. $why ${minutes}분 뒤에 깨워 드릴게요.$fit"
                     }
                     target != null && rest.strictTarget && call != null && call - wakeEnd >= 3 * MINUTE_MS ->
                         "${minutes}분 뒤에 깨워 드릴게요. 출발은 ${DriveText.spokenClock(call)}에 하면 돼요."

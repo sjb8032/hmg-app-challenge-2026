@@ -187,6 +187,15 @@ data class RestSession(
     /** 출발할 시각이라고 알린 때 (짧은 알림음 + 음성) */
     val departCalledAt: Long? = null,
     /**
+     * 눈 붙이기를 도착 시각에 맞춰 줄이기로 골랐는지. 고르지 않으면 정한 시간만큼 재우고 늦는 것만 한 번 알린다
+     * (줄일지는 운전자가 정한다).
+     */
+    val fitNap: Boolean = false,
+    /** 이대로 자면 늦을 때, 도착 시각에 맞추려면 몇 분까지 줄일 수 있는지 (화면 버튼). 줄여도 소용없으면 null */
+    val fitNapMinutes: Int? = null,
+    /** [fitNapMinutes]로 줄여도 남는 늦음 (최소 10분은 자므로). 줄이면 늦지 않으면 null */
+    val fitNapLateMs: Long? = null,
+    /**
      * 기다리는 동안(눈 붙이기는 깬 뒤) 남은 길이 바뀌어 [callAt]이 1분 넘게 옮겨졌으면 옮기기 전 시각
      * (화면에 '출발 시각 2:03 → 1:57'). 시각을 다시 알리면 지운다.
      */

@@ -812,6 +812,10 @@ class DriveEngine(
         ) {
             notes += "남는 시간이 길어 쉬었다 가는 곳을 먼저 보여 드려요."
         }
+        if (!longer && slack >= config.lateStartNoteMs) {
+            // 바로 가는 길 기준으로 가장 늦게 떠나도 되는 시각. 분은 내려서 보여 준다 (그 분에 떠나도 늦지 않게).
+            notes += "지금 길이면 ${DriveText.clock(now + slack - 30 * SECOND_MS)}에 출발해도 맞아요."
+        }
         if (longer && from != null) longerNote(options, slack)?.let { notes += it }
         state = state.copy(
             now = now,

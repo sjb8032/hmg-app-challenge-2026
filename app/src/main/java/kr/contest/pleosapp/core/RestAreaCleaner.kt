@@ -10,6 +10,8 @@ package kr.contest.pleosapp.core
  * - 이름만 있는 항목(정자·쉼터·휴게소)은 어디인지 말로 안내할 수 없어 뺀다.
  * - 큰 도시 한가운데의 고속도로 밖 휴게소·쉼터는 대부분 잘못 찍힌 좌표라 뺀다 (시내는 공원·공영 주차장으로 안내).
  * - 같은 곳이 이름만 조금 다르게 두 번 들어 있으면 ("용인휴게소 강릉방향"과 "용인 휴게소 (강릉 방향)") 하나만 남긴다.
+ * - 운영 회사 이름이나 지명만 적힌 고속도로 항목("연합진흥고성", "하남")은 300m 안에 제대로 된 이름의
+ *   같은 곳("공룡나라휴게소", "하남드림휴게소")이 있으면 뺀다 (안내 음성이 회사 이름을 읽지 않게).
  */
 object RestAreaCleaner {
     /** 이 거리 안에 같은 종류·같은 이름(방향 표시 뺀)이 또 있으면 같은 곳으로 본다 */
@@ -21,7 +23,12 @@ object RestAreaCleaner {
     private val NOISE_WORDS = listOf(
         "퀵", "택시", "승강장", "매표소", "방문자센터", "주유소", "도시가스", "오토큐",
         "서비스센터", "서비스 센터", "카서비스", "경비실", "휴게실", "자전거", "안전지대",
+        // 휴게소 운영 회사 이름이 붙은 항목 ("파라다이스코리아원주상부산방향휴게소": 바로 옆에 '원주휴게소'가 따로 있음)
+        "코리아",
     )
+
+    /** 이름이 이상한 항목을 뺄 때, 이 거리 안에 제대로 된 이름의 같은 종류가 있어야 한다 */
+    private const val ODD_TWIN_METERS = 300.0
 
     private val BARE_NAMES = setOf("휴게소", "쉼터", "정자", "팔각정", "팔각정자", "간이휴게소")
 
@@ -45,7 +52,19 @@ object RestAreaCleaner {
         Zone("전주", LatLng(35.8242, 127.1480), 7_000.0),
     )
 
-    fun clean(areas: List<RestArea>): List<RestArea> = dedupe(areas.filter(::keep))
+    fun clean(areas: List<RestArea>): List<RestArea> = dropOddTwins(dedupe(areas.filter(::keep)))
+
+    /**
+     * 이름에 휴게·쉼터 같은 말이 없는 항목(회사 이름·지명만)은 300m 안에 제대로 된 이름의 같은 종류가 있으면 뺀다.
+     * 그런 이웃이 없으면 (고속도로 본선 옆이라 남긴 곳) 그대로 둔다.
+     */
+    fun dropOddTwins(areas: List<RestArea>): List<RestArea> {
+        val proper = areas.filter { a -> REST_WORDS.any { it in a.name } }
+        return areas.filter { a ->
+            REST_WORDS.any { it in a.name } ||
+                proper.none { p -> p.type == a.type && Geo.distanceMeters(p.position, a.position) <= ODD_TWIN_METERS }
+        }
+    }
 
     /**
      * 같은 곳이 두 번 들어 있으면 하나만 남긴다: 같은 종류, 250m 안, 방향 표시를 뺀 이름이 같고, 방향이 서로 다르지 않을 때.

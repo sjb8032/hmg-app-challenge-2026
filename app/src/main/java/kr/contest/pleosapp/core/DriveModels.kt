@@ -275,6 +275,8 @@ data class DriveConfig(
     val restStopMaxDetourMs: Long = 12 * MINUTE_MS,
     /** 온타임 모드에서 경치·우회 코스로 더 쓰는 시간 상한 (넘으면 쉬다 가기를 권함) */
     val maxOnTimeCourseMs: Long = 35 * MINUTE_MS,
+    /** 남는 시간이 이만큼 넘으면 '○에 출발해도 맞아요'를 알린다 (지금 꼭 떠나지 않아도 되게) */
+    val lateStartNoteMs: Long = 60 * MINUTE_MS,
     /** 목적지에서 이만큼 가까우면 도착으로 본다 */
     val arriveMeters: Double = 150.0,
     /** 직선거리 → 도로 거리 (도심 기준) */

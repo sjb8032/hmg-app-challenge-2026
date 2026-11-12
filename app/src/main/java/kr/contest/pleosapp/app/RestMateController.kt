@@ -98,6 +98,8 @@ interface RestMateActions {
     fun startRest()
     fun setRestMinutes(minutes: Int)
     fun extendRest(minutes: Int)
+    /** 눈 붙이기를 도착 시각에 맞춰 줄이기 ('시간에 맞춰 N분만 쉬기') */
+    fun fitNapToArrival()
     fun stopAlarm()
     fun wakeUp()
     fun departNow()
@@ -351,7 +353,8 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
                 )
             }
             is DriveEffect.Speak -> say(effect.text)
-            is DriveEffect.CabinMood -> vehicle.cabin.applyMood(effect.mood)
+            // 드라이브를 마칠 때는 무드등을 천천히 되돌린다 (데이트 드라이브가 도착하자마자 확 밝아지지 않게).
+            is DriveEffect.CabinMood -> vehicle.cabin.applyMood(effect.mood, gently = true)
         }
     }
 
@@ -461,6 +464,7 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
     override fun dismissPrompt() = act { engine.dismissPrompt(it) }
     override fun setRestMinutes(minutes: Int) = act { engine.setRestMinutes(it, minutes) }
     override fun extendRest(minutes: Int) = act { engine.extendRest(it, minutes) }
+    override fun fitNapToArrival() = act { engine.fitNapToArrival(it) }
     override fun stopAlarm() = act { engine.stopAlarm(it) }
     override fun wakeUp() = act { engine.wakeUp(it) }
     override fun restHere(kind: RestKind) = act { engine.restHere(it, kind) }
