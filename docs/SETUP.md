@@ -24,7 +24,7 @@
 2. 대표 한 명이 Workspace > My Project에서 프로젝트를 만들고, 프로젝트의 SDK 메뉴에서 SDK 제공 상태를 확인합니다.
    - 문서상 Vehicle(상태 조회)과 NaviHelper는 신청 없이 바로 쓸 수 있습니다.
    - TextToSpeech, SpeechToText, FusedLocation, Vehicle 제어는 '준비 중'으로 안내돼 있어 콘솔에서 다시 확인해야 합니다.
-   - 다만 Vehicle SDK 2.3.2에는 공조·무드등·창문 제어 API가 들어 있고, 공식 샘플 앱도 제어 권한을 선언해 에뮬레이터에서 제어합니다. 레스트메이트는 휴식 모드에서 공조·무드등 제어를 씁니다.
+   - 다만 Vehicle SDK 2.3.2에는 공조·무드등·창문 제어 API가 들어 있고, 공식 샘플 앱도 제어 권한을 선언해 에뮬레이터에서 제어합니다. 드라이브메이트는 휴식 모드와 좀 더 달려요 분위기에서 공조·무드등 제어를 씁니다.
 
 ## 2. Android Studio
 
@@ -49,7 +49,7 @@
    - `adb`를 못 찾으면 Android SDK 폴더의 `platform-tools` 안에 있습니다 (Mac: `~/Library/Android/sdk/platform-tools`, Windows: `%LOCALAPPDATA%\Android\Sdk\platform-tools`).
 2. PC 브라우저에서 `http://127.0.0.1:8088/`을 엽니다.
 3. Emulation Controls 왼쪽에서 도메인(Vehicle, Motion, ADAS, Convenience, Safety, Energy, Climate)을 고르고 카드의 값을 바꿉니다.
-   - 레스트메이트 확인에 쓰는 카드: Motion > Gear Selection·Steering Angle·Brake Pedal, Convenience > Turn Signal State·Ambient Brightness, Safety > Telltales, Climate > Target Temperature·Fan Speed
+   - 드라이브메이트 확인에 쓰는 카드: Motion > Gear Selection·Steering Angle·Brake Pedal, Convenience > Turn Signal State·Ambient Brightness, Safety > Telltales, Climate > Target Temperature·Fan Speed
 4. 안 열리면: 에뮬레이터가 켜져 있는지 → `adb devices`에 잡히는지 → `adb forward`를 다시 → 8088 포트를 다른 프로그램이 쓰는지 → 브라우저 새로 고침 순서로 확인합니다.
 
 자세한 내용: [Virtual Console 연결](https://document.pleos.ai/docs/connect/guide/getting-started/application-development/use-vehicle-emulator), [Virtual Console 사용법](https://document.pleos.ai/docs/pleos-only/app-test-guide/virtual-console-guide)
@@ -65,7 +65,7 @@
 3. Pleos Connect AVD를 켜고 Run(▶)을 누르거나 `./gradlew installDebug`를 실행합니다.
 4. 화면 오른쪽 상태 영역에서 '차량 SDK'와 '내비 SDK'가 모두 '연결됨'이면 세팅이 끝난 것입니다.
 5. Virtual Console에서 기어를 P ↔ D로 바꿔 '기어' 값이 따라 바뀌는지 봅니다. 차 없이 흐름을 보려면 '시연 모드'를 켭니다(README 참고).
-6. 단위 테스트: `./gradlew testDebugUnitTest` (쉼터 검색·상태 전환·주행 비교 로직)
+6. 단위 테스트: `./gradlew testDebugUnitTest` (시간 맞춤·코스 후보·쉼터 찾기·휴식·모의 내비 로직)
 
 ## 5. 브랜치 규칙
 
@@ -82,7 +82,7 @@
 
 ## 7. 권한
 
-권한 이름은 [공식 Vehicle 샘플 앱](https://github.com/Pleos-Playground/pleos-sample-vehicle-app)의 Manifest를 따랐습니다. 레스트메이트가 쓰는 것만 선언합니다.
+권한 이름은 [공식 Vehicle 샘플 앱](https://github.com/Pleos-Playground/pleos-sample-vehicle-app)의 Manifest를 따랐습니다. 드라이브메이트가 쓰는 것만 선언합니다.
 
 | 용도 | 권한 (`pleos.car.permission.` 접두사) |
 | --- | --- |
