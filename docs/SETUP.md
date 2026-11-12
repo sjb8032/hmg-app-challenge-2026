@@ -65,7 +65,7 @@
 3. Pleos Connect AVD를 켜고 Run(▶)을 누르거나 `./gradlew installDebug`를 실행합니다.
 4. 화면 오른쪽 상태 영역에서 '차량 SDK'와 '내비 SDK'가 모두 '연결됨'이면 세팅이 끝난 것입니다.
 5. Virtual Console에서 기어를 P ↔ D로 바꿔 '기어' 값이 따라 바뀌는지 봅니다. 차 없이 흐름을 보려면 '시연 모드'를 켭니다(README 참고).
-6. 단위 테스트: `./gradlew testDebugUnitTest` (시간 맞춤·코스 후보·쉼터 찾기·휴식·모의 내비 로직)
+6. 단위 테스트: `./gradlew testDebugUnitTest` (시간 맞춤·코스 후보·쉼터 찾기·쉼터 데이터 정리·휴식 방식과 알람 맞춤·자주 쓰는 설정·모의 내비 로직)
 
 ## 5. 브랜치 규칙
 
