@@ -37,6 +37,58 @@ enum class CabinMode {
     RESTORE,
 }
 
+/**
+ * 어떻게 쉬는지. 어떻게 쉬게 됐는지로 기본값을 정하고, 휴식 화면에서 바꿀 수 있다.
+ * - 졸음 경고·레스트 모드 버튼으로 왔으면 [NAP]
+ * - 온타임 모드의 '쉬다 가기'·'근처에서 기다리기' 코스로 왔으면 [WAIT]
+ * - 롱웨이 모드 중 안내 없이 세웠으면 묻는다 ([STAY] 또는 [NAP])
+ */
+enum class RestKind(val label: String, val detail: String) {
+    /** 눈 붙이기: 알람으로 깨우고, 깬 뒤 몸을 깨우는 시간을 둔다 */
+    NAP("눈 붙이기", "알람으로 깨워 드려요"),
+
+    /** 그냥 기다리기: 출발할 시각만 알려 준다 (깨우기·센 바람 없음) */
+    WAIT("그냥 기다리기", "출발할 시각에 알려 드려요"),
+
+    /** 잠깐 머물기 (롱웨이 모드): 분위기를 그대로 두고, 출발할 때쯤 묻는다 */
+    STAY("잠깐 머물기", "분위기 그대로, 출발할 때 알려 드려요"),
+}
+
+/**
+ * 지금 달리는 드라이브의 도착 시각. 쉬는 동안 알람·출발 시각을 여기에 맞춘다.
+ *
+ * @param strict 온타임 모드처럼 늦으면 안 되는 시각인지 (롱웨이 모드는 느슨한 목표)
+ * @param remainingMs 지금 위치에서 목적지까지 바로 가는 시간 (내비 값, 없으면 추정). 모르면 null
+ */
+data class TripDeadline(
+    val targetAt: Long,
+    val marginMs: Long,
+    val strict: Boolean,
+    val remainingMs: Long?,
+)
+
+/** 낮잠·깨우기 시간 계산 */
+object RestTiming {
+    /** 이보다 짧게 쉬면 깨우는 시간을 두지 않는다 (깊이 잠들 시간이 없음) */
+    const val NO_WAKE_UNDER_MS = 5 * MINUTE_MS
+
+    /** 도착 시각에 맞추려고 줄이더라도 낮잠은 이만큼은 있어야 쉰 보람이 있다 */
+    const val MIN_FITTED_NAP_MS = 10 * MINUTE_MS
+
+    /** 깬 뒤 몸을 깨우는 시간: 쉰 시간의 절반, 최대 [maxWakeMs]. 5분 미만으로 쉬었으면 0 */
+    fun wakeMsFor(restedMs: Long, maxWakeMs: Long): Long =
+        if (restedMs < NO_WAKE_UNDER_MS) 0L else minOf(maxWakeMs, restedMs / 2)
+
+    /** [availableMs] 안에 깨우는 시간까지 마칠 수 있는 가장 긴 낮잠. 너무 짧으면 0 */
+    fun longestNapMs(availableMs: Long, maxWakeMs: Long): Long = when {
+        // 낮잠이 maxWake의 2배 이상이면 깨우는 시간은 maxWake: n + maxWake ≤ available
+        availableMs >= 3 * maxWakeMs -> availableMs - maxWakeMs
+        // 그보다 짧으면 깨우는 시간은 n/2: 1.5n ≤ available
+        availableMs * 2 / 3 >= NO_WAKE_UNDER_MS -> availableMs * 2 / 3
+        else -> 0L
+    }
+}
+
 /** 롱웨이 모드의 차 안 분위기 (무드등 밝기·온도) */
 data class MoodPreset(
     val label: String,
@@ -72,7 +124,7 @@ sealed interface Prompt {
     /** 앞 쉼터를 지나면 다음 쉼터까지 오래 걸릴 때. gapMinutes가 null이면 검색 범위 안에 다음 쉼터가 없음 */
     data class RestGapAhead(val next: RestAreaCandidate, val gapMinutes: Int?) : Prompt
 
-    /** 안내 없이 P단 주차했을 때 휴식인지 묻는다. */
+    /** 안내 없이 P단 주차했을 때 쉬어 갈지, 어떻게 쉴지 묻는다. */
     data object ParkedHere : Prompt
 
     /** 쉼터로 이동 중 상태 확인 */
@@ -91,11 +143,31 @@ sealed interface Effect {
 data class RestSession(
     val startedAt: Long,
     val plannedMinutes: Int,
+    /** 눈 붙이기: 깨우는 알람 / 기다리기·머물기: 출발을 알려 주는 시각 */
     val alarmAt: Long,
     val alarmRinging: Boolean = false,
     /** 알람을 끈 뒤에는 연장하기 전까지 다시 울리지 않는다. */
     val alarmDone: Boolean = false,
     val area: RestArea? = null,
+    val kind: RestKind = RestKind.NAP,
+    /** 맞춰야 할 도착 시각 (온타임 모드·롱웨이 모드로 달리는 중일 때). 없으면 null */
+    val targetAt: Long? = null,
+    /** [targetAt]이 늦으면 안 되는 시각인지 (온타임 모드) */
+    val strictTarget: Boolean = false,
+    /** 이때 출발하면 도착 시각에 맞는다 (여유 포함). 도착 시각이 없으면 null */
+    val departAt: Long? = null,
+    /** 알람을 도착 시각에 맞춰 잡았는지 ('○시 도착에 맞춰 깨워 드려요'는 이때만) */
+    val fitsTarget: Boolean = false,
+    /** 이대로 쉬면 도착이 늦어지는 시간. 늦지 않으면 null */
+    val lateByMs: Long? = null,
+    /** 쉬는 동안 남은 길이 바뀌어 알람을 옮겼으면 옮기기 전 시각 (화면에 '알람 9:30 → 9:33') */
+    val previousAlarmAt: Long? = null,
+    /** 쉴 시간을 직접 골랐는지. 고른 뒤에는 알람을 저절로 옮기지 않는다 */
+    val userSetMinutes: Boolean = false,
+    /** 기다리기·머물기에서 출발 시각을 알려 줬는지 */
+    val remindedAt: Long? = null,
+    /** 깬 뒤 몸을 깨우는 시간 (깨우기를 시작할 때 쉰 시간으로 정한다) */
+    val wakeMs: Long = 0L,
     /** 휴식 시작 시점에 목적지까지 남은 경로 시간 (ms). 모르면 null */
     val remainingRouteMs: Long? = null,
     /** remainingRouteMs가 내비 값이 아니라 직선거리로 추정한 값인지 */
@@ -164,10 +236,18 @@ data class RestMateConfig(
     val beforeWindowMs: Long = 20 * MINUTE_MS,
     /** 재출발 후 비교 구간 */
     val afterWindowMs: Long = 10 * MINUTE_MS,
-    /** 기본 휴식 시간. 30분 미만 낮잠이 깊은 잠을 피해 깬 뒤 멍함(수면 관성)이 덜하다 */
+    /** 기본 낮잠 시간 (고속도로). 30분 미만 낮잠이 깊은 잠을 피해 깬 뒤 멍함(수면 관성)이 덜하다 */
     val defaultRestMinutes: Int = 20,
-    /** 깨우기 시간: 깬 뒤 바로 출발하지 않고 몸을 깨우는 시간. 도착 예상에도 더한다 (시험값, 팀 결정 필요) */
+    /** 시내(일반 도로) 기본 낮잠 시간. 갈 길이 짧아 조금 짧게 쉰다 */
+    val cityRestMinutes: Int = 15,
+    /** 깨우기 시간의 최대값: 깬 뒤 바로 출발하지 않고 몸을 깨우는 시간 (쉰 시간의 절반, 최대 이만큼) */
     val wakeUpMs: Long = 10 * MINUTE_MS,
+    /** 기다리기: 출발 시각 이만큼 전에 알려 준다 */
+    val departNoticeMs: Long = 2 * MINUTE_MS,
+    /** 잠깐 머물기(롱웨이 모드): 세운 뒤 적어도 이만큼은 출발을 묻지 않는다 */
+    val minStayMs: Long = 10 * MINUTE_MS,
+    /** 쉬는 동안 남은 길을 다시 보고 알람·출발 시각을 고치는 간격 */
+    val refitIntervalMs: Long = MINUTE_MS,
     /** 다시 출발한 뒤 휴식 전후 주행을 비교할지 (드라이브메이트 기획에서 빠짐, 기본 꺼짐) */
     val compareAfterRest: Boolean = false,
     val stability: StabilityConfig = StabilityConfig(),

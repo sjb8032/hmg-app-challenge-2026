@@ -46,6 +46,17 @@ object Geo {
         return d * sin(rel)
     }
 
+    /**
+     * from→to 축을 기준으로 본 점의 위치: (축을 따라 간 거리, 옆으로 벗어난 거리) (m).
+     * 옆 거리는 오른쪽이 양수. 수백 km 안에서 쓰는 근사값이다.
+     */
+    fun alongAcross(from: LatLng, to: LatLng, point: LatLng): Pair<Double, Double> {
+        val d = distanceMeters(from, point)
+        if (d < 1.0) return 0.0 to 0.0
+        val rel = Math.toRadians(bearingDegrees(from, point) - bearingDegrees(from, to))
+        return d * cos(rel) to d * sin(rel)
+    }
+
     /** 한 점에서 방위각 방향으로 거리만큼 간 지점. */
     fun destinationPoint(from: LatLng, bearingDeg: Double, meters: Double): LatLng {
         val delta = meters / EARTH_RADIUS_M

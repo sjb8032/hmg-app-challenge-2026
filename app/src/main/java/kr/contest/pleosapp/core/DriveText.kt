@@ -37,6 +37,41 @@ object DriveText {
         else -> "정각"
     }
 
+    /** 롱웨이 모드는 마감이 없어 '늦어요' 대신: "예정대로", "약 6분 더", "8분 일찍" */
+    fun fitLonger(status: FitStatus, diffMs: Long): String = when {
+        status == FitStatus.EARLY -> "${minutes(diffMs)}분 일찍"
+        diffMs >= 2 * MINUTE_MS -> "약 ${minutes(diffMs)}분 더"
+        else -> "예정대로"
+    }
+
+    /** 자정부터 분 → "오후 4:50" */
+    fun clockOfDay(minuteOfDay: Int): String {
+        val h = minuteOfDay / 60
+        val m = minuteOfDay % 60
+        val ampm = if (h < 12) "오전" else "오후"
+        return "$ampm ${hour12(h)}:${m.toString().padStart(2, '0')}"
+    }
+
+    /** 그 시각이 하루 중 몇 분째인지 */
+    fun minuteOfDay(ms: Long, zone: TimeZone = TimeZone.getDefault()): Int {
+        val (h, m) = hourMinute(ms, zone)
+        return h * 60 + m
+    }
+
+    fun hourOfDay(ms: Long, zone: TimeZone = TimeZone.getDefault()): Int = hourMinute(ms, zone).first
+
+    /** [now]와 같은 날 [minuteOfDay]분의 시각 */
+    fun todayAt(now: Long, minuteOfDay: Int, zone: TimeZone = TimeZone.getDefault()): Long {
+        val c = Calendar.getInstance(zone).apply {
+            timeInMillis = now
+            set(Calendar.HOUR_OF_DAY, minuteOfDay / 60)
+            set(Calendar.MINUTE, minuteOfDay % 60)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        return c.timeInMillis
+    }
+
     /** 걸리는 시간: "25분", "1시간 10분" */
     fun duration(ms: Long): String {
         val total = minutes(ms)

@@ -44,10 +44,13 @@ enum class Mood(val label: String) {
     SOLO("혼자 쉬기"),
 }
 
-enum class RoadStyle(val label: String) {
-    /** 경치 가산 없이 남는 시간을 가장 잘 채우는 경유지 (경로별 정체 정보는 SDK에서 받을 수 없어 시간 맞춤을 우선) */
-    BEST_FIT("시간에 딱 맞는 길"),
-    SCENIC("경치 좋은 길"),
+/** 온타임 모드에서 남는 시간을 어떻게 쓸지 */
+enum class OnTimeStyle(val label: String, val detail: String) {
+    /** 경치 좋은 지점을 거쳐 돌면서 시간을 맞춘다 */
+    LOOP("돌면서 맞추기", "경치 좋은 곳을 거쳐 가요"),
+
+    /** 목적지 가까운 공원·공영 주차장에 세워 기다렸다가 간다 (학원 픽업처럼 앞에 세울 수 없을 때) */
+    WAIT_NEAR("근처에서 기다리기", "목적지 가까이 세워 두고 기다려요"),
 }
 
 enum class CourseTag(val label: String) {
@@ -57,7 +60,39 @@ enum class CourseTag(val label: String) {
     MOUNTAIN("산길"),
     LAKE("호숫가"),
     SEA("바닷가"),
+    BRIDGE("다리"),
 }
+
+/** 롱웨이 모드에서 어떤 길을 달리고 싶은지 (코스 후보 화면 위 칩) */
+enum class CourseFlavor(val label: String, val tags: Set<CourseTag>) {
+    NIGHT_VIEW("야경", setOf(CourseTag.NIGHT_VIEW)),
+    RIVER("강변", setOf(CourseTag.RIVER)),
+    BRIDGE("다리", setOf(CourseTag.BRIDGE)),
+    PARK("공원", setOf(CourseTag.PARK, CourseTag.LAKE)),
+
+    /** 차 많은 도심(시청·강남역 근처)을 피하고 강변·산길·호숫가·바닷가로 */
+    AVOID_CITY("도심 피하기", setOf(CourseTag.RIVER, CourseTag.MOUNTAIN, CourseTag.LAKE, CourseTag.SEA)),
+    ;
+
+    companion object {
+        /** 시각과 분위기로 기본값을 정한다: 밤이면 야경, 낮 데이트면 강변, 낮에 혼자면 도심 피하기 */
+        fun auto(hourOfDay: Int, mood: Mood): CourseFlavor = when {
+            hourOfDay >= 18 || hourOfDay < 6 -> NIGHT_VIEW
+            mood == Mood.DATE -> RIVER
+            else -> AVOID_CITY
+        }
+    }
+}
+
+/** 코스 후보를 고를 때 바라는 것 */
+data class CourseWish(
+    /** 이 태그가 붙은 지점을 앞에 둔다 (롱웨이 모드의 야경·강변·다리·공원) */
+    val prefer: Set<CourseTag> = emptySet(),
+    /** 도심(시청·강남역 3km 안) 지점을 뒤로 미룬다 */
+    val avoidCity: Boolean = false,
+    /** 온타임 모드: 짧은 길(45분 미만)이면 목적지 쪽 반경 안의 지점만 본다 (반대쪽으로 멀리 돌지 않게) */
+    val onTime: Boolean = false,
+)
 
 /** 경유지로 넣을 만한 경치 좋은 지점 (팀이 고른 목록) */
 data class CoursePoint(
@@ -94,6 +129,10 @@ data class CourseOption(
     val stayMs: Long = 0L,
     /** 쉬다 가는 코스의 쉼터 */
     val restArea: RestArea? = null,
+    /** 경치 지점의 특징 (고른 분위기와 맞는지 볼 때 쓴다) */
+    val tags: Set<CourseTag> = emptySet(),
+    /** 쉬다 가는 코스에서 어떻게 쉬는지 (기본: 그냥 기다리기) */
+    val restKind: RestKind? = null,
 )
 
 enum class DriveStep {
@@ -132,7 +171,10 @@ data class DriveState(
     val targetAt: Long? = null,
     val extraMinutes: Int = 30,
     val mood: Mood = Mood.SOLO,
-    val style: RoadStyle = RoadStyle.SCENIC,
+    /** 온타임 모드: 돌면서 맞추기 / 근처에서 기다리기 */
+    val onTimeStyle: OnTimeStyle = OnTimeStyle.LOOP,
+    /** 롱웨이 모드: 야경·강변·다리·공원·도심 피하기 */
+    val flavor: CourseFlavor? = null,
 
     // ---- 계획 ----
     /** 바로 가면 걸리는 시간 */
@@ -153,13 +195,41 @@ data class DriveState(
     val diffMs: Long? = null,
     /** 일찍 도착할 것 같아 '조금 더 돌기'를 권하는 중 */
     val extendOffered: Boolean = false,
+    /** '조금 더 돌기'를 누르면 거쳐 갈 코스 (권할 때 미리 골라 둔다) */
+    val extendOption: CourseOption? = null,
     val message: String? = null,
+    /** [message]를 띄운 시각. 달리는 중에는 조금 지나면 지운다 */
+    val messageAt: Long? = null,
     /** 레스트 모드가 진행 중이라 시간 맞추기를 잠시 멈춤 */
     val paused: Boolean = false,
     val arrivedAt: Long? = null,
 ) {
     /** 아직 지나지 않은 경유지가 있는지 */
     val viaActive: Boolean get() = !viaCleared && chosen?.via?.isNotEmpty() == true
+}
+
+/** 지금 설정(설정·코스 고르기 화면)을 자주 쓰는 설정으로 저장할 수 있으면 그 내용 */
+fun DriveState.toSavedTrip(): SavedTrip? {
+    if (step != DriveStep.SETUP && step != DriveStep.CHOOSE) return null
+    val m = mode ?: return null
+    val dest = destination ?: return null
+    // '지금 목적지'는 다음에 쓸 때 지금이 아니므로 최근 목적지로 둔다.
+    val place = if (dest.kind == PlaceKind.CURRENT) dest.copy(kind = PlaceKind.RECENT) else dest
+    return when (m) {
+        DriveMode.ON_TIME -> SavedTrip(
+            mode = m,
+            place = place,
+            minuteOfDay = targetAt?.let { DriveText.minuteOfDay(it) },
+            onTimeStyle = onTimeStyle,
+        )
+        DriveMode.LONGER -> SavedTrip(
+            mode = m,
+            place = place,
+            extraMinutes = extraMinutes,
+            mood = mood,
+            flavor = flavor,
+        )
+    }
 }
 
 /** 드라이브 엔진이 앱에 요청하는 동작 */
@@ -201,4 +271,102 @@ data class DriveConfig(
     val fallbackSpeedKmh: Double = 30.0,
     /** 바로 가는 시간을 내비에 물은 뒤 이만큼 답이 없으면 직선거리로 추정한다 */
     val directTimeWaitMs: Long = 4 * SECOND_MS,
+    /** 늦음이 이만큼 이어져야 경유지를 바꾼다 (잠깐 막힌 것에 흔들리지 않게) */
+    val lateObserveMs: Long = 90 * SECOND_MS,
+    /** 롱웨이 모드는 이만큼(또는 더 달리기로 한 시간의 1/3) 넘게 늦어질 때만 코스를 줄인다 */
+    val longerLateToleranceMs: Long = 10 * MINUTE_MS,
+    /** 경로를 바꾼 뒤 이만큼은 '조금 더 돌기'를 권하지 않는다 */
+    val extendQuietMs: Long = 10 * MINUTE_MS,
+    /** 달리는 중 안내 문구를 화면에 두는 시간 */
+    val messageTtlMs: Long = 2 * MINUTE_MS,
 )
+
+/**
+ * 자주 쓰는 설정 (학원 픽업 4:50, 집 +30분 같은). 처음 화면 칩으로 한 번에 다시 쓴다.
+ * 휴대폰 없이 차 안에서만 저장한다.
+ */
+data class SavedTrip(
+    val mode: DriveMode,
+    val place: Place,
+    /** 온타임 모드: 도착 목표 (자정부터 분) */
+    val minuteOfDay: Int? = null,
+    /** 롱웨이 모드: 더 달릴 시간 */
+    val extraMinutes: Int? = null,
+    val mood: Mood? = null,
+    val onTimeStyle: OnTimeStyle? = null,
+    val flavor: CourseFlavor? = null,
+) {
+    /** 칩 아랫줄: "온타임 · 오후 4:50 · 근처에서 기다리기", "롱웨이 · +30분 · 데이트" */
+    val detail: String
+        get() = listOfNotNull(
+            if (mode == DriveMode.ON_TIME) "온타임" else "롱웨이",
+            minuteOfDay?.let { DriveText.clockOfDay(it) },
+            extraMinutes?.let { "+${it}분" },
+            onTimeStyle?.takeIf { it == OnTimeStyle.WAIT_NEAR }?.label,
+            mood?.takeIf { mode == DriveMode.LONGER }?.label,
+        ).joinToString(" · ")
+
+    /** 같은 곳·같은 시각이면 같은 설정으로 본다 (다시 저장하면 바꿔 쓴다) */
+    fun sameAs(other: SavedTrip): Boolean =
+        mode == other.mode && place.sameSpot(other.place) && minuteOfDay == other.minuteOfDay && extraMinutes == other.extraMinutes
+
+    /** 한 줄 글자로 (탭으로 나눔). 장소 이름의 탭·줄바꿈은 빈칸으로 바꾼다 */
+    fun encode(): String = listOf(
+        VERSION,
+        mode.name,
+        clean(place.name),
+        place.position.lat.toString(),
+        place.position.lon.toString(),
+        place.kind.name,
+        clean(place.poiId),
+        clean(place.poiSubId),
+        clean(place.address),
+        minuteOfDay?.toString().orEmpty(),
+        extraMinutes?.toString().orEmpty(),
+        mood?.name.orEmpty(),
+        onTimeStyle?.name.orEmpty(),
+        flavor?.name.orEmpty(),
+    ).joinToString("\t")
+
+    companion object {
+        const val MAX = 4
+        private const val VERSION = "v1"
+
+        private fun clean(text: String) = text.replace('\t', ' ').replace('\n', ' ')
+
+        fun decode(line: String): SavedTrip? {
+            val f = line.split('\t')
+            if (f.size < 14 || f[0] != VERSION) return null
+            val mode = DriveMode.entries.firstOrNull { it.name == f[1] } ?: return null
+            val lat = f[3].toDoubleOrNull() ?: return null
+            val lon = f[4].toDoubleOrNull() ?: return null
+            if (f[2].isBlank()) return null
+            val place = Place(
+                name = f[2],
+                position = LatLng(lat, lon),
+                kind = PlaceKind.entries.firstOrNull { it.name == f[5] } ?: PlaceKind.BOOKMARK,
+                poiId = f[6],
+                poiSubId = f[7],
+                address = f[8],
+            )
+            return SavedTrip(
+                mode = mode,
+                place = place,
+                minuteOfDay = f[9].toIntOrNull()?.takeIf { it in 0 until 24 * 60 },
+                extraMinutes = f[10].toIntOrNull(),
+                mood = Mood.entries.firstOrNull { it.name == f[11] },
+                onTimeStyle = OnTimeStyle.entries.firstOrNull { it.name == f[12] },
+                flavor = CourseFlavor.entries.firstOrNull { it.name == f[13] },
+            )
+        }
+
+        fun encodeAll(trips: List<SavedTrip>): String = trips.joinToString("\n") { it.encode() }
+
+        fun decodeAll(text: String?): List<SavedTrip> =
+            text.orEmpty().lines().filter { it.isNotBlank() }.mapNotNull(::decode).take(MAX)
+
+        /** 새 설정을 맨 앞에 넣는다. 같은 설정은 바꿔 쓰고, [MAX]개를 넘으면 오래된 것부터 뺀다 */
+        fun added(trips: List<SavedTrip>, trip: SavedTrip): List<SavedTrip> =
+            (listOf(trip) + trips.filterNot { it.sameAs(trip) }).take(MAX)
+    }
+}

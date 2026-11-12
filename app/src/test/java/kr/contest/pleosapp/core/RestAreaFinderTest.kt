@@ -99,6 +99,27 @@ class RestAreaFinderTest {
     }
 
     @Test
+    fun surfaceModeSkipsMotorwayAreasAndUsesCitySpeed() {
+        val motorway = area("motorway", southKm(5.0)).copy(onExpressway = true)
+        val local = area("local", southKm(8.0))
+        val result = RestAreaFinder(listOf(motorway, local)).findAhead(origin, 180.0, speedKmh = 60.0, surface = true)
+        assertEquals(listOf("local"), result.candidates.map { it.area.id })
+        // 8km × 1.25 = 10km, 시내 평균 30km/h → 20분 (지금 속도 60km/h로 잡지 않는다)
+        val best = result.best!!
+        assertEquals(20.0, best.etaMinutes, 0.2)
+        assertEquals(10.0, best.updatedFor(southKm(4.0), 60.0).etaMinutes, 0.2)
+    }
+
+    @Test
+    fun surfaceModePutsParksFirstWhenAlmostAsClose() {
+        val stop = area("stop", southKm(3.0), type = RestAreaType.REST_STOP)
+        val park = area("park", southKm(3.8), type = RestAreaType.PARK)
+        val farPark = area("farpark", southKm(9.0), type = RestAreaType.PARK)
+        val ids = RestAreaFinder(listOf(stop, park, farPark)).findAhead(origin, 180.0, surface = true).candidates.map { it.area.id }
+        assertEquals(listOf("park", "stop", "farpark"), ids)
+    }
+
+    @Test
     fun destinationPointRoundTrips() {
         val p = Geo.destinationPoint(origin, 135.0, 10_000.0)
         assertEquals(10_000.0, Geo.distanceMeters(origin, p), 1.0)

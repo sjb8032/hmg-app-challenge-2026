@@ -162,21 +162,138 @@ class RestMateEngineTest {
         assertEquals(Prompt.ParkedHere, e.state.prompt)
     }
 
+    /** P단으로 세워 '주차하셨네요' 물음까지 */
+    private fun RestMateEngine.parkWithoutGuidance(start: Long): Long {
+        driveAt(start)
+        onSpeed(start + 1_000, 0.0)
+        onGear(start + 1_000, Gear.PARK)
+        onTick(start + 12_000)
+        return start + 12_000
+    }
+
     @Test
-    fun restUntilUsesGivenAlarmTime() {
+    fun cityNapDefaultsToFifteenMinutes() {
+        val e = engine()
+        e.setOnExpressway(false)
+        val at = e.parkWithoutGuidance(t0)
+        assertEquals(Prompt.ParkedHere, e.state.prompt)
+        e.restHere(at, RestKind.NAP)
+        assertEquals(RestKind.NAP, e.state.rest?.kind)
+        assertEquals(15, e.state.rest?.plannedMinutes)
+    }
+
+    @Test
+    fun napIsFittedToOnTimeArrival() {
         val e = engine()
         e.driveAt(t0)
+        // 도착 목표 35분 뒤, 남은 길 10분, 여유 3분 → 22분 뒤에는 출발해야 한다.
+        e.setDeadline(TripDeadline(targetAt = t0 + 35 * MINUTE_MS, marginMs = 3 * MINUTE_MS, strict = true, remainingMs = 10 * MINUTE_MS))
+        e.drainEffects()
+        e.startRest(t0)
+        val rest = e.state.rest!!
+        assertTrue(rest.fitsTarget)
+        assertNull(rest.lateByMs)
+        assertEquals(t0 + 22 * MINUTE_MS, rest.departAt)
+        // 낮잠 + 깨우는 시간(낮잠의 절반)이 22분 안: 낮잠은 기본 20분보다 짧은 약 14분 40초
+        val nap = rest.alarmAt - rest.startedAt
+        assertTrue("${nap / SECOND_MS}초", nap in 14 * MINUTE_MS..15 * MINUTE_MS)
+        val speech = e.drainEffects().filterIsInstance<Effect.Speak>().single().text
+        assertTrue(speech, speech.contains("도착에 맞춰"))
+    }
+
+    @Test
+    fun napThatCannotFitSaysHowLateFirst() {
+        val e = engine()
+        e.driveAt(t0)
+        e.setDeadline(TripDeadline(t0 + 20 * MINUTE_MS, 3 * MINUTE_MS, strict = true, remainingMs = 10 * MINUTE_MS))
+        e.drainEffects()
+        e.startRest(t0)
+        val rest = e.state.rest!!
+        assertFalse(rest.fitsTarget)
+        // 안전이 먼저: 10분보다 짧게 줄이지 않고, 얼마나 늦는지 알린다.
+        // 7분 뒤 출발해야 하는데 10분 자고 5분 깨우면 8분 늦게 출발: 여유 3분을 빼면 목표보다 5분 늦음
+        assertEquals(10 * MINUTE_MS, rest.alarmAt - rest.startedAt)
+        assertEquals(5 * MINUTE_MS, rest.lateByMs)
+        val speech = e.drainEffects().filterIsInstance<Effect.Speak>().single().text
+        assertTrue(speech, speech.startsWith("지금 쉬면 도착이 약 5분 늦어져요"))
+    }
+
+    @Test
+    fun waitingAtPlannedStopRemindsWithoutAlarmOrWakeUp() {
+        val e = engine()
+        e.driveAt(t0)
+        e.setDeadline(TripDeadline(t0 + 40 * MINUTE_MS, 3 * MINUTE_MS, strict = true, remainingMs = 8 * MINUTE_MS))
         e.onSpeed(t0 + 1_000, 0.0)
         e.onGear(t0 + 1_000, Gear.PARK)
         e.drainEffects()
-        e.startRestUntil(t0 + 2_000, t0 + 2_000 + 37 * MINUTE_MS, a5)
-        assertEquals(Phase.RESTING, e.state.phase)
-        assertEquals(t0 + 2_000 + 37 * MINUTE_MS, e.state.rest?.alarmAt)
-        assertEquals(37, e.state.rest?.plannedMinutes)
-        assertTrue(e.drainEffects().contains(Effect.Cabin(CabinMode.REST)))
+        e.startRest(t0 + 2_000, RestKind.WAIT, a5)
+        val rest = e.state.rest!!
+        assertEquals(RestKind.WAIT, rest.kind)
+        assertEquals(t0 + 29 * MINUTE_MS, rest.departAt)
+        // 출발 2분 전에 알린다.
+        assertEquals(t0 + 27 * MINUTE_MS, rest.alarmAt)
+        val start = e.drainEffects()
+        assertTrue(start.none { it is Effect.Cabin })
+        assertTrue(start.filterIsInstance<Effect.Speak>().single().text.contains("출발하면"))
 
-        e.onTick(t0 + 2_000 + 37 * MINUTE_MS)
-        assertTrue(e.state.rest!!.alarmRinging)
+        e.onTick(t0 + 27 * MINUTE_MS)
+        val reminder = e.drainEffects()
+        assertTrue(reminder.none { it is Effect.Alarm || it is Effect.Cabin })
+        assertEquals(1, reminder.count { it is Effect.Speak })
+        assertNotNull(e.state.rest?.remindedAt)
+        assertNull(e.state.rest?.wakeStartedAt)
+    }
+
+    @Test
+    fun alarmMovesWhenTrafficChangesWhileWaiting() {
+        val e = engine()
+        e.driveAt(t0)
+        e.setDeadline(TripDeadline(t0 + 40 * MINUTE_MS, 3 * MINUTE_MS, strict = true, remainingMs = 8 * MINUTE_MS))
+        e.onSpeed(t0 + 1_000, 0.0)
+        e.onGear(t0 + 1_000, Gear.PARK)
+        e.startRest(t0 + 2_000, RestKind.WAIT, a5)
+        // 쉬는 동안 남은 길이 5분 더 막힘
+        e.setDeadline(TripDeadline(t0 + 40 * MINUTE_MS, 3 * MINUTE_MS, strict = true, remainingMs = 13 * MINUTE_MS))
+        e.onTick(t0 + 2_000 + 61 * SECOND_MS)
+        assertEquals(t0 + 22 * MINUTE_MS, e.state.rest?.alarmAt)
+        assertEquals(t0 + 27 * MINUTE_MS, e.state.rest?.previousAlarmAt)
+    }
+
+    @Test
+    fun parkedPromptCanStartWaitingInsteadOfNap() {
+        val e = engine()
+        val at = e.parkWithoutGuidance(t0)
+        e.drainEffects()
+        e.restHere(at, RestKind.WAIT)
+        assertEquals(Phase.RESTING, e.state.phase)
+        assertEquals(RestKind.WAIT, e.state.rest?.kind)
+        assertTrue(e.drainEffects().none { it is Effect.Cabin })
+    }
+
+    @Test
+    fun switchingRestKindSwitchesCabin() {
+        val e = engine()
+        val restAt = e.restAtNearest(t0)
+        e.drainEffects()
+        e.setRestKind(restAt + MINUTE_MS, RestKind.WAIT)
+        assertTrue(e.drainEffects().contains(Effect.Cabin(CabinMode.RESTORE)))
+        e.setRestKind(restAt + 2 * MINUTE_MS, RestKind.NAP)
+        assertTrue(e.drainEffects().contains(Effect.Cabin(CabinMode.REST)))
+    }
+
+    @Test
+    fun wakeUpTimeIsHalfOfRestUpToTenMinutes() {
+        assertEquals(0L, RestTiming.wakeMsFor(4 * MINUTE_MS, 10 * MINUTE_MS))
+        assertEquals(6 * MINUTE_MS, RestTiming.wakeMsFor(12 * MINUTE_MS, 10 * MINUTE_MS))
+        assertEquals(10 * MINUTE_MS, RestTiming.wakeMsFor(40 * MINUTE_MS, 10 * MINUTE_MS))
+        assertEquals(30 * MINUTE_MS, RestTiming.longestNapMs(40 * MINUTE_MS, 10 * MINUTE_MS))
+        assertEquals(10 * MINUTE_MS, RestTiming.longestNapMs(15 * MINUTE_MS, 10 * MINUTE_MS))
+        assertEquals(0L, RestTiming.longestNapMs(6 * MINUTE_MS, 10 * MINUTE_MS))
+
+        val e = engine()
+        val restAt = e.restAtNearest(t0)
+        e.wakeUp(restAt + 8 * MINUTE_MS)
+        assertEquals(4 * MINUTE_MS, e.state.rest?.wakeMs)
     }
 
     @Test

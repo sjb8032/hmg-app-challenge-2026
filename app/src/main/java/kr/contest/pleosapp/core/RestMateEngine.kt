@@ -44,6 +44,11 @@ class RestMateEngine(
     private var lastPosition: LatLng? = null
     private var lastPrune = 0L
     private var tripArrivedAt = Long.MIN_VALUE / 2
+    /** 달리는 드라이브의 도착 시각 (앱이 드라이브 엔진에서 받아 넣어 준다) */
+    private var deadline: TripDeadline? = null
+    /** 지금 휴식에서 원래 쉬려던 시간 (도착 시각에 맞추려고 줄여도 기억해 둔다) */
+    private var wantedMs = 0L
+    private var lastRefitAt = Long.MIN_VALUE / 2
 
     fun drainEffects(): List<Effect> {
         if (effects.isEmpty()) return emptyList()
@@ -108,6 +113,11 @@ class RestMateEngine(
 
     fun onRemainingRoute(ms: Long?) {
         state = state.copy(remainingRouteMs = ms)
+    }
+
+    /** 온타임 모드·롱웨이 모드로 달리는 중이면 도착 시각. 쉬는 동안 알람·출발 시각을 여기에 맞춘다 */
+    fun setDeadline(value: TripDeadline?) {
+        deadline = value
     }
 
     fun onSteeringAngle(now: Long, degrees: Double) = stability.onSteeringAngle(now, degrees)
@@ -193,6 +203,13 @@ class RestMateEngine(
         }
     }
 
+    /** '주차하셨네요' 물음에 어떻게 쉴지 골라 답한다 (그냥 기다리기·잠깐 머물기·눈 붙이기). */
+    fun restHere(now: Long, kind: RestKind) {
+        advance(now)
+        if (state.prompt == Prompt.ParkedHere) state = state.copy(prompt = null)
+        startRest(now, kind, area = null)
+    }
+
     fun dismissPrompt(now: Long) {
         advance(now)
         val prompt = state.prompt ?: return
@@ -205,39 +222,32 @@ class RestMateEngine(
         }
     }
 
-    /** 휴식 시작. P단 주차가 확정되면 자동으로 불리고, '주차했어요' 버튼으로도 부른다. */
-    fun startRest(now: Long) {
-        advance(now)
-        if (state.phase == Phase.RESTING) return
-        val planned = config.defaultRestMinutes
-        val navRemaining = state.remainingRouteMs
-        val remaining = navRemaining ?: estimateRemainingRouteMs()
-        state = state.copy(
-            phase = Phase.RESTING,
-            prompt = null,
-            quiet = false,
-            recovery = null,
-            rest = RestSession(
-                startedAt = now,
-                plannedMinutes = planned,
-                alarmAt = now + planned * MINUTE_MS,
-                area = state.target?.area,
-                remainingRouteMs = remaining,
-                remainingRouteEstimated = navRemaining == null && remaining != null,
-            ),
-        )
-        effects += Effect.Cabin(CabinMode.REST)
-        effects += Effect.Speak("휴식을 시작할게요. ${planned}분 뒤에 알람으로 알려 드릴게요.")
-    }
-
     /**
-     * 온타임 모드의 '쉬다 가는 코스'에서 쉼터에 주차했을 때: 도착 시각에 맞춰 깨우도록 알람 시각을 정해 쉰다.
+     * 휴식 시작. P단 주차가 확정되면 자동으로 불리고, '주차했어요' 버튼으로도 부른다.
+     * 온타임 모드로 달리는 중이면 알람을 도착 시각에 맞추고, 맞출 수 없으면 얼마나 늦어지는지 먼저 알린다.
+     *
+     * @param kind 졸음·레스트 모드 버튼으로 왔으면 눈 붙이기, 쉬다 가는 코스면 그냥 기다리기
      */
-    fun startRestUntil(now: Long, alarmAt: Long, area: RestArea?) {
+    fun startRest(now: Long, kind: RestKind = RestKind.NAP, area: RestArea? = state.target?.area) {
         advance(now)
         if (state.phase == Phase.RESTING) return
-        val at = max(alarmAt, now + MINUTE_MS)
-        val minutes = ((at - now + MINUTE_MS - 1) / MINUTE_MS).toInt()
+        val navRemaining = state.remainingRouteMs
+        val remaining = deadline?.remainingMs ?: navRemaining ?: estimateRemainingRouteMs()
+        wantedMs = defaultMinutes() * MINUTE_MS
+        lastRefitAt = now
+        val d = deadline
+        val base = RestSession(
+            startedAt = now,
+            plannedMinutes = defaultMinutes(),
+            alarmAt = now + wantedMs,
+            area = area,
+            kind = kind,
+            targetAt = d?.targetAt,
+            strictTarget = d?.strict == true,
+            remainingRouteMs = remaining,
+            remainingRouteEstimated = d?.remainingMs == null && navRemaining == null && remaining != null,
+        )
+        val rest = fitted(now, base, remaining)
         state = state.copy(
             phase = Phase.RESTING,
             prompt = null,
@@ -246,51 +256,85 @@ class RestMateEngine(
             target = null,
             targetRemainingMeters = null,
             alternatives = emptyList(),
-            rest = RestSession(
-                startedAt = now,
-                plannedMinutes = minutes,
-                alarmAt = at,
-                area = area,
-                remainingRouteMs = state.remainingRouteMs,
-            ),
+            rest = rest,
         )
-        effects += Effect.Cabin(CabinMode.REST)
-        effects += Effect.Speak("도착 시각에 맞춰 쉬다 가요. ${minutes}분 뒤에 깨워 드릴게요.")
+        if (kind == RestKind.NAP) effects += Effect.Cabin(CabinMode.REST)
+        startSpeech(rest)?.let { effects += Effect.Speak(it) }
     }
 
+    /** 휴식 중에 어떻게 쉴지 바꾼다. 눈 붙이기로 바꾸면 휴식 환경을 켜고, 그만두면 되돌린다. */
+    fun setRestKind(now: Long, kind: RestKind) {
+        advance(now)
+        val rest = state.rest ?: return
+        if (rest.kind == kind) return
+        if (rest.alarmRinging) effects += Effect.Alarm(false)
+        when {
+            kind == RestKind.NAP -> effects += Effect.Cabin(CabinMode.REST)
+            rest.kind == RestKind.NAP -> effects += Effect.Cabin(CabinMode.RESTORE)
+        }
+        var reset = rest.copy(
+            kind = kind,
+            alarmRinging = false,
+            alarmDone = false,
+            wakeStartedAt = null,
+            wakeMs = 0L,
+            remindedAt = null,
+            previousAlarmAt = null,
+            userSetMinutes = false,
+        )
+        if (kind == RestKind.NAP) {
+            // 기다리다가 눈을 붙이면 낮잠은 지금부터 잰다.
+            wantedMs = defaultMinutes() * MINUTE_MS
+            reset = reset.copy(startedAt = now, plannedMinutes = defaultMinutes(), alarmAt = now + wantedMs)
+        }
+        state = state.copy(rest = fitted(now, reset, reset.remainingRouteMs))
+        evaluate(now)
+    }
+
+    /** 쉴 시간을 직접 고른다. 고른 뒤에는 알람을 저절로 옮기지 않고, 도착이 늦어지면 알려 준다. */
     fun setRestMinutes(now: Long, minutes: Int) {
         advance(now)
         val rest = state.rest ?: return
-        if (rest.alarmRinging) effects += Effect.Alarm(false)
-        if (rest.wakeStartedAt != null) effects += Effect.Cabin(CabinMode.REST)
-        state = state.copy(
-            rest = rest.copy(
-                plannedMinutes = minutes,
-                alarmAt = rest.startedAt + minutes * MINUTE_MS,
-                alarmRinging = false,
-                alarmDone = false,
-                wakeStartedAt = null,
-            ),
+        reopen(rest)
+        wantedMs = minutes * MINUTE_MS
+        val chosen = reopened(rest).copy(
+            plannedMinutes = minutes,
+            alarmAt = rest.startedAt + minutes * MINUTE_MS,
+            userSetMinutes = true,
+            previousAlarmAt = null,
         )
+        state = state.copy(rest = fitted(now, chosen, chosen.remainingRouteMs))
         evaluate(now)
     }
 
     fun extendRest(now: Long, minutes: Int) {
         advance(now)
         val rest = state.rest ?: return
-        if (rest.alarmRinging) effects += Effect.Alarm(false)
-        if (rest.wakeStartedAt != null) effects += Effect.Cabin(CabinMode.REST)
+        reopen(rest)
         val alarmAt = max(rest.alarmAt, now) + minutes * MINUTE_MS
-        state = state.copy(
-            rest = rest.copy(
-                plannedMinutes = ((alarmAt - rest.startedAt) / MINUTE_MS).toInt(),
-                alarmAt = alarmAt,
-                alarmRinging = false,
-                alarmDone = false,
-                wakeStartedAt = null,
-            ),
+        wantedMs = alarmAt - rest.startedAt
+        val chosen = reopened(rest).copy(
+            plannedMinutes = ((alarmAt - rest.startedAt) / MINUTE_MS).toInt(),
+            alarmAt = alarmAt,
+            userSetMinutes = true,
+            previousAlarmAt = null,
         )
+        state = state.copy(rest = fitted(now, chosen, chosen.remainingRouteMs))
     }
+
+    /** 알람을 다시 잡기 전에: 울리는 알람을 끄고, 깨우는 중이었으면 휴식 환경으로 돌린다. */
+    private fun reopen(rest: RestSession) {
+        if (rest.alarmRinging) effects += Effect.Alarm(false)
+        if (rest.wakeStartedAt != null && rest.kind == RestKind.NAP) effects += Effect.Cabin(CabinMode.REST)
+    }
+
+    private fun reopened(rest: RestSession) = rest.copy(
+        alarmRinging = false,
+        alarmDone = false,
+        wakeStartedAt = null,
+        wakeMs = 0L,
+        remindedAt = null,
+    )
 
     fun stopAlarm(now: Long) {
         advance(now)
@@ -303,10 +347,11 @@ class RestMateEngine(
     fun wakeUp(now: Long) {
         advance(now)
         val rest = state.rest ?: return
-        if (rest.wakeStartedAt != null) return
+        if (rest.wakeStartedAt != null || rest.kind != RestKind.NAP) return
         if (rest.alarmRinging) effects += Effect.Alarm(false)
-        state = state.copy(rest = rest.copy(alarmRinging = false, alarmDone = true, wakeStartedAt = now))
-        startWakeUp(byAlarm = false)
+        val wake = RestTiming.wakeMsFor(now - rest.startedAt, config.wakeUpMs)
+        state = state.copy(rest = rest.copy(alarmRinging = false, alarmDone = true, wakeStartedAt = now, wakeMs = wake))
+        startWakeUp(byAlarm = false, wake)
     }
 
     /** 기어 정보를 못 받을 때 쓰는 '출발' 버튼. */
@@ -330,11 +375,19 @@ class RestMateEngine(
 
     // ---- 시연용 ----
 
-    /** 시연용: 알람 시각을 지금으로 당긴다. */
+    /** 시연용: 알람 시각을 지금으로 당긴다. 쉰 시간도 알람 시각까지 쉰 것으로 친다 (깨우는 시간이 그만큼 정해짐). */
     fun skipToAlarm(now: Long) {
         advance(now)
         val rest = state.rest ?: return
-        state = state.copy(rest = rest.copy(alarmAt = now, alarmDone = false))
+        val shift = (rest.alarmAt - now).coerceAtLeast(0L)
+        state = state.copy(
+            rest = rest.copy(
+                startedAt = rest.startedAt - shift,
+                alarmAt = now,
+                alarmDone = false,
+                departAt = rest.departAt,
+            ),
+        )
         evaluate(now)
     }
 
@@ -505,26 +558,143 @@ class RestMateEngine(
             endRest(now)
             return
         }
-        if (!rest.alarmRinging && !rest.alarmDone && now >= rest.alarmAt) {
-            state = state.copy(rest = rest.copy(alarmRinging = true, wakeStartedAt = rest.wakeStartedAt ?: now))
-            effects += Effect.Alarm(true)
-            startWakeUp(byAlarm = true)
+        if (rest.targetAt != null && now - lastRefitAt >= config.refitIntervalMs) {
+            lastRefitAt = now
+            refit(now)
+            rest = state.rest ?: return
+        }
+        if (rest.alarmRinging || rest.alarmDone || now < rest.alarmAt) return
+        when (rest.kind) {
+            RestKind.NAP -> {
+                val wake = rest.wakeStartedAt?.let { rest.wakeMs } ?: RestTiming.wakeMsFor(now - rest.startedAt, config.wakeUpMs)
+                state = state.copy(rest = rest.copy(alarmRinging = true, wakeStartedAt = rest.wakeStartedAt ?: now, wakeMs = wake))
+                effects += Effect.Alarm(true)
+                startWakeUp(byAlarm = true, wake)
+            }
+            RestKind.WAIT, RestKind.STAY -> {
+                // 깨우지 않는다: 소리 알람 없이 출발할 때라고 말로만 알린다.
+                state = state.copy(rest = rest.copy(alarmDone = true, remindedAt = now))
+                effects += Effect.Speak(departReminder(rest))
+            }
         }
     }
 
     /** 깨우기: 차 환경을 바꾸고, 깬 뒤 바로 출발하지 않도록 안내한다 (수면 관성). */
-    private fun startWakeUp(byAlarm: Boolean) {
+    private fun startWakeUp(byAlarm: Boolean, wakeMs: Long) {
         effects += Effect.Cabin(CabinMode.WAKE)
         val opening = if (byAlarm) "휴식 시간이 끝났어요." else "잘 쉬셨어요."
-        effects += Effect.Speak(
-            "$opening 무드등을 밝히고 시원한 바람을 넣을게요. " +
-                "깬 직후에는 멍할 수 있으니 ${RestMateText.duration(config.wakeUpMs)} 정도 몸을 깨운 뒤 출발해 주세요.",
+        val tail = if (wakeMs > 0) {
+            "깬 직후에는 멍할 수 있으니 ${RestMateText.duration(wakeMs)} 정도 몸을 깨운 뒤 출발해 주세요."
+        } else {
+            "준비되면 천천히 출발해 주세요."
+        }
+        effects += Effect.Speak("$opening 무드등을 밝히고 시원한 바람을 넣을게요. $tail")
+    }
+
+    /** 기다리기·머물기에서 출발할 때가 됐을 때 하는 말 */
+    private fun departReminder(rest: RestSession): String {
+        if (rest.kind == RestKind.STAY) return "슬슬 출발할까요?"
+        val depart = rest.departAt
+        val target = rest.targetAt
+        return when {
+            depart != null && target != null && depart > state.now ->
+                "${DriveText.spokenClock(depart)}에 출발하면 ${DriveText.spokenClock(target)} 도착에 딱 맞아요. 출발 준비해 주세요."
+            target != null -> "지금 출발하면 ${DriveText.spokenClock(target)} 도착에 맞출 수 있어요."
+            else -> "${rest.plannedMinutes}분 지났어요. 준비되면 출발해 주세요."
+        }
+    }
+
+    /**
+     * 알람(기다리기·머물기는 출발 알림) 시각을 정한다. 도착 시각이 없으면 [rest]의 알람을 그대로 쓴다.
+     * - 눈 붙이기 (온타임): 깨우는 시간까지 마치고 제때 출발하도록 줄이되, 10분보다 짧게는 줄이지 않는다 (안전이 먼저).
+     * - 그냥 기다리기: 출발 시각 [RestMateConfig.departNoticeMs] 전에 알린다.
+     * - 잠깐 머물기: 출발 시각에 묻는다.
+     * 쉴 시간을 직접 골랐으면 알람은 그대로 두고 늦어지는지만 계산한다.
+     */
+    private fun fitted(now: Long, rest: RestSession, remaining: Long?): RestSession {
+        val d = deadline
+        if (d == null || remaining == null) return rest.copy(departAt = null, fitsTarget = false, lateByMs = null)
+        val departAt = d.targetAt - remaining - d.marginMs
+        var alarmAt = rest.alarmAt
+        var readyAt = rest.alarmAt
+        when (rest.kind) {
+            RestKind.NAP -> {
+                if (d.strict && !rest.userSetMinutes) {
+                    val longest = RestTiming.longestNapMs(departAt - rest.startedAt, config.wakeUpMs)
+                    val nap = max(minOf(wantedMs, longest), minOf(wantedMs, RestTiming.MIN_FITTED_NAP_MS))
+                    alarmAt = rest.startedAt + nap
+                }
+                readyAt = alarmAt + RestTiming.wakeMsFor(alarmAt - rest.startedAt, config.wakeUpMs)
+            }
+            RestKind.WAIT -> {
+                if (!rest.userSetMinutes) alarmAt = max(departAt - config.departNoticeMs, now)
+                readyAt = max(alarmAt, now)
+            }
+            RestKind.STAY -> {
+                // 롱웨이 모드는 마감이 느슨하다: 세우자마자 출발을 재촉하지 않는다.
+                if (!rest.userSetMinutes) alarmAt = max(departAt, rest.startedAt + config.minStayMs)
+                readyAt = max(alarmAt, now)
+            }
+        }
+        // 여유(3분)까지 쓰면 목표 시각에는 닿는다: 늦음은 목표 시각 기준으로 센다.
+        val late = readyAt - departAt - d.marginMs
+        val minutes = (((alarmAt - rest.startedAt) + MINUTE_MS / 2) / MINUTE_MS).toInt().coerceAtLeast(1)
+        return rest.copy(
+            alarmAt = alarmAt,
+            plannedMinutes = if (rest.userSetMinutes) rest.plannedMinutes else minutes,
+            targetAt = d.targetAt,
+            strictTarget = d.strict,
+            departAt = departAt,
+            remainingRouteMs = remaining,
+            fitsTarget = late <= MINUTE_MS,
+            lateByMs = late.takeIf { d.strict && it > MINUTE_MS },
         )
+    }
+
+    /** 쉬는 동안 남은 길(정체)이 바뀌면 알람·출발 시각을 다시 맞춘다. 1분 넘게 바뀌면 화면에 옮긴 것을 보여 준다. */
+    private fun refit(now: Long) {
+        val rest = state.rest ?: return
+        if (rest.alarmRinging || rest.wakeStartedAt != null || rest.remindedAt != null) return
+        val remaining = deadline?.remainingMs ?: state.remainingRouteMs ?: return
+        val next = fitted(now, rest, remaining)
+        val moved = abs(next.alarmAt - rest.alarmAt) >= MINUTE_MS
+        state = state.copy(
+            rest = if (moved) next.copy(previousAlarmAt = rest.alarmAt) else next.copy(alarmAt = rest.alarmAt, plannedMinutes = rest.plannedMinutes),
+        )
+    }
+
+    private fun startSpeech(rest: RestSession): String? {
+        val target = rest.targetAt
+        val minutes = ((rest.alarmAt - rest.startedAt + MINUTE_MS / 2) / MINUTE_MS).coerceAtLeast(1)
+        return when (rest.kind) {
+            RestKind.NAP -> {
+                val late = rest.lateByMs
+                when {
+                    target != null && rest.strictTarget && late != null ->
+                        "지금 쉬면 도착이 약 ${DriveText.minutes(late)}분 늦어져요. 그래도 안전이 먼저예요. ${minutes}분 뒤에 깨워 드릴게요."
+                    target != null && rest.strictTarget ->
+                        "${DriveText.spokenClock(target)} 도착에 맞춰 ${minutes}분 뒤에 깨워 드릴게요."
+                    else -> "휴식을 시작할게요. ${minutes}분 뒤에 알람으로 깨워 드릴게요."
+                }
+            }
+            RestKind.WAIT -> {
+                val depart = rest.departAt
+                when {
+                    target == null || depart == null -> "${minutes}분 뒤에 알려 드릴게요."
+                    rest.lateByMs != null -> "지금 출발해도 약 ${DriveText.minutes(rest.lateByMs)}분 늦어요."
+                    depart <= state.now + MINUTE_MS -> "지금 출발하면 ${DriveText.spokenClock(target)} 도착에 맞아요."
+                    else -> "${DriveText.spokenClock(depart)}에 출발하면 ${DriveText.spokenClock(target)} 도착에 맞아요. 출발할 때 알려 드릴게요."
+                }
+            }
+            // 롱웨이 모드: 분위기를 깨지 않게 화면으로만 알린다.
+            RestKind.STAY -> null
+        }
     }
 
     private fun endRest(now: Long) {
         val rest = state.rest ?: return
         if (rest.alarmRinging) effects += Effect.Alarm(false)
+        wantedMs = 0L
         val restedMs = now - rest.startedAt
         state = state.copy(
             phase = Phase.DRIVING,
@@ -540,9 +710,12 @@ class RestMateEngine(
         longDriveSnoozeUntil = 0L
         // '출발' 버튼으로 끝냈는데 아직 P단이면, 방금 쉰 자리에서 다시 '여기서 쉬어 갈까요?'를 묻지 않는다.
         parkedPromptShown = true
-        effects += Effect.Cabin(CabinMode.RESTORE)
+        // 휴식 환경은 눈 붙이기에서만 바꾼다.
+        if (rest.kind == RestKind.NAP) effects += Effect.Cabin(CabinMode.RESTORE)
+        if (rest.kind == RestKind.STAY) return
         val wokeAt = rest.wakeStartedAt
-        val groggy = wokeAt == null || now - wokeAt < config.wakeUpMs
+        val groggy = rest.kind == RestKind.NAP && restedMs >= RestTiming.NO_WAKE_UNDER_MS &&
+            (wokeAt == null || now - wokeAt < rest.wakeMs)
         val caution = if (groggy) " 깬 지 얼마 안 됐으니 처음 몇 분은 천천히 가 주세요." else ""
         val tail = if (config.compareAfterRest) {
             " 처음 ${RestMateText.duration(config.afterWindowMs)} 동안 휴식 전과 주행을 비교해 볼게요."
@@ -639,13 +812,19 @@ class RestMateEngine(
             destination = state.destination,
             speedKmh = state.speedKmh,
             expresswayOnly = state.onExpressway == true,
+            surface = state.onExpressway == false,
         )
     }
+
+    /** 처음 잡는 쉴 시간: 시내(일반 도로)는 조금 짧게 */
+    private fun defaultMinutes(): Int =
+        if (state.onExpressway == false) config.cityRestMinutes else config.defaultRestMinutes
 
     private fun estimateRemainingRouteMs(): Long? {
         val position = state.position ?: return null
         val destination = state.destination ?: return null
         val km = Geo.distanceMeters(position, destination) / 1_000.0 * 1.25
-        return (km / 90.0 * HOUR_MS).toLong()
+        val kmh = if (state.onExpressway == false) RestAreaFinder.SURFACE_SPEED_KMH else 90.0
+        return (km / kmh * HOUR_MS).toLong()
     }
 }
