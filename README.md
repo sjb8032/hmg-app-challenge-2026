@@ -43,7 +43,15 @@
 - **왼쪽 아래**: 음성 안내 자막, 늘 있는 '레스트 모드' 버튼
 - **오른쪽**: 기어·속도·연속 주행, 차량·내비 SDK와 음성 연결 상태, 안내 기록(음성·내비 요청·차량 제어·시연 조작을 시각과 함께), 시연 조작
 
-화면 표본은 `ui/PreviewData.kt`에 있고, Android Studio 미리보기와 CI의 화면 캡처(Screen snapshots 작업의 `screens` 아티팩트)가 같은 표본을 씁니다.
+화면 표본은 `ui/PreviewData.kt`에 있고, Android Studio 미리보기와 CI의 화면 캡처(Screen snapshots 작업의 `screens` 아티팩트)가 같은 표본을 씁니다. 아래는 그 캡처입니다(시연 모드, 1696×1180dp).
+
+| 처음 화면 | 코스 고르기 (온타임) |
+| --- | --- |
+| ![처음 화면](docs/screens/1-home.png) | ![코스 고르기](docs/screens/2-choose.png) |
+| **달리는 중**: 도착 시각 막대·코스 목록·미니맵·음성 자막 | **막혀서 늦을 것 같을 때**: 1분 30초 지켜본 뒤 더 짧은 길로 |
+| ![달리는 중](docs/screens/3-active.png) | ![늦음 지켜보는 중](docs/screens/4-watching-late.png) |
+| **레스트 모드**: 가장 빨리 닿는 쉼터로 안내 | **휴식**: 오후 3시 체크인에 맞춘 알람·출발 |
+| ![쉼터 안내](docs/screens/5-rest-guidance.png) | ![휴식](docs/screens/6-resting.png) |
 
 ## 쓰는 SDK
 
