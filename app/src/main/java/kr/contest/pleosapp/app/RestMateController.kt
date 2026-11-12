@@ -13,6 +13,7 @@ import kr.contest.pleosapp.audio.AlarmPlayer
 import kr.contest.pleosapp.audio.Speaker
 import kr.contest.pleosapp.core.CabinMode
 import kr.contest.pleosapp.core.CheckInAnswer
+import kr.contest.pleosapp.core.CourseFlavor
 import kr.contest.pleosapp.core.CourseOption
 import kr.contest.pleosapp.core.DemoNavi
 import kr.contest.pleosapp.core.DemoNaviEvent
@@ -23,12 +24,14 @@ import kr.contest.pleosapp.core.DriveEngine
 import kr.contest.pleosapp.core.DriveMode
 import kr.contest.pleosapp.core.DriveState
 import kr.contest.pleosapp.core.DriveStep
+import kr.contest.pleosapp.core.DriveText
 import kr.contest.pleosapp.core.Effect
 import kr.contest.pleosapp.core.Gear
 import kr.contest.pleosapp.core.HOUR_MS
 import kr.contest.pleosapp.core.LatLng
 import kr.contest.pleosapp.core.MINUTE_MS
 import kr.contest.pleosapp.core.Mood
+import kr.contest.pleosapp.core.OnTimeStyle
 import kr.contest.pleosapp.core.Phase
 import kr.contest.pleosapp.core.Place
 import kr.contest.pleosapp.core.PlaceKind
@@ -36,11 +39,12 @@ import kr.contest.pleosapp.core.RestArea
 import kr.contest.pleosapp.core.RestAreaCandidate
 import kr.contest.pleosapp.core.RestAreaFinder
 import kr.contest.pleosapp.core.RestEnvironment
+import kr.contest.pleosapp.core.RestKind
 import kr.contest.pleosapp.core.RestMateConfig
 import kr.contest.pleosapp.core.RestMateEngine
 import kr.contest.pleosapp.core.RestMateState
-import kr.contest.pleosapp.core.RoadStyle
 import kr.contest.pleosapp.core.SECOND_MS
+import kr.contest.pleosapp.core.SavedTrip
 import kr.contest.pleosapp.core.VehicleEvent
 import kr.contest.pleosapp.data.CityRestPlaces
 import kr.contest.pleosapp.data.CourseCatalog
@@ -78,6 +82,8 @@ data class UiState(
     val cabinNote: String? = null,
     val env: RestEnvironment = RestEnvironment(),
     val config: RestMateConfig = RestMateConfig(),
+    /** 자주 쓰는 설정 (처음 화면 칩, 최대 4개) */
+    val saved: List<SavedTrip> = emptyList(),
 )
 
 /** 화면에서 부르는 동작. */
@@ -96,20 +102,31 @@ interface RestMateActions {
     fun wakeUp()
     fun departNow()
     fun setRestEnvironment(env: RestEnvironment)
+    /** '주차하셨네요' 물음에 답: 그냥 기다리기·잠깐 머물기·눈 붙이기 */
+    fun restHere(kind: RestKind)
+    /** 휴식 중에 어떻게 쉴지 바꾸기 */
+    fun setRestKind(kind: RestKind)
 
     // ---- 온타임 모드·롱웨이 모드 ----
     fun openMode(mode: DriveMode)
     fun driveBack()
     fun setDriveDestination(place: Place)
     fun shiftTarget(minutes: Int)
+    fun setTarget(at: Long)
     fun setExtraMinutes(minutes: Int)
     fun setMood(mood: Mood)
-    fun setRoadStyle(style: RoadStyle)
+    fun setOnTimeStyle(style: OnTimeStyle)
+    fun setFlavor(flavor: CourseFlavor)
     fun planCourses()
     fun chooseCourse(option: CourseOption)
     fun goDirect()
     fun extendCourse()
+    /** 달리는 중 시간 더하기 (온타임 +5·+10분, 롱웨이 +15분) */
+    fun addDriveTime(minutes: Int)
     fun finishDrive()
+    fun saveTrip()
+    fun applySavedTrip(trip: SavedTrip)
+    fun removeSavedTrip(trip: SavedTrip)
 
     // ---- 시연 ----
     fun setDemoMode(on: Boolean)
@@ -130,7 +147,10 @@ interface RestMateActions {
  * 내비 경로는 여기서만 요청한다.
  * - 시간 모드가 고른 코스: 목적지 + 경유지
  * - 레스트 모드: 가던 목적지가 있으면 쉼터를 경유지로 넣고, 없으면 쉼터를 목적지로
+ * - 쉼터 안내를 취소하면: 가던 목적지 + 원래 경유지로 되돌림
  * - 쉬고 다시 출발하면: 가던 목적지로 바로
+ *
+ * 시간 모드로 달리는 중이면 도착 시각을 레스트 모드에 넘겨, 쉬는 동안 알람·출발 시각을 거기에 맞춘다.
  */
 class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sink, NaviSignals.Sink {
     private val appContext = context.applicationContext
@@ -149,7 +169,7 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
     private val prefs: SharedPreferences = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
     private var env = loadEnvironment()
 
-    private val _ui = MutableStateFlow(UiState(restAreaCount = areas.size, env = env))
+    private val _ui = MutableStateFlow(UiState(restAreaCount = areas.size, env = env, saved = loadSaved()))
     val ui: StateFlow<UiState> = _ui
 
     private var nextManeuverMeters: Double? = null
@@ -195,6 +215,7 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
     private val ticker = object : Runnable {
         override fun run() {
             val t = now()
+            shareDeadline()
             engine.onTick(t)
             drive.onTick(t)
             checkRestStopParking(t)
@@ -237,8 +258,14 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
 
     private fun newDriveEngine() = DriveEngine(CourseCatalog.POINTS, areas)
 
+    /** 시간 모드의 도착 시각을 레스트 모드에 넘긴다 (쉬는 동안 알람을 맞추는 데 씀). */
+    private fun shareDeadline() {
+        engine.setDeadline(drive.deadline())
+    }
+
     private fun publish() {
         val t = now()
+        shareDeadline()
         for (effect in engine.drainEffects()) handle(effect)
         syncRest(t)
         for (effect in drive.drainEffects()) handleDrive(t, effect)
@@ -259,13 +286,19 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
     /** 레스트 모드가 진행 중이면 시간 맞추기를 멈추고, 쉬고 출발하면 가던 목적지로 다시 안내한다. */
     private fun syncRest(t: Long) {
         val phase = engine.state.phase
-        drive.onRestActive(t, phase != Phase.DRIVING)
+        drive.onRestPhase(t, phase)
+        if (lastPhase != Phase.RESTING && phase == Phase.RESTING) {
+            // 쉬기 시작하면 쉰 곳이 경유지를 대신한다: 남은 시간이 바로 가는 길 기준이 되도록 경유지를 뺀다.
+            val dest = currentTrip()
+            if (dest != null && !restAsDestination) routeNavi(dest, emptyList())
+        }
         if (lastPhase == Phase.RESTING && phase == Phase.DRIVING) {
             val dest = currentTrip()
             if (dest != null && !restAsDestination) {
                 routeNavi(dest, emptyList())
                 note("내비에 ${dest.name}까지 다시 안내를 요청했어요.")
             }
+            shareDeadline()
             restAsDestination = false
         }
         lastPhase = phase
@@ -277,7 +310,11 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
             Effect.CancelGuidance -> cancelRestRoute()
             is Effect.Speak -> say(effect.text)
             is Effect.Alarm -> if (effect.on) alarm.start() else alarm.stop()
-            is Effect.Cabin -> vehicle.cabin.apply(effect.mode, env)
+            is Effect.Cabin -> {
+                vehicle.cabin.apply(effect.mode, env)
+                // 휴식 환경을 되돌리면 롱웨이 모드 분위기도 같이 꺼지므로 다시 켠다.
+                if (effect.mode == CabinMode.RESTORE) drive.moodInEffect?.let { vehicle.cabin.applyMood(it) }
+            }
         }
     }
 
@@ -354,14 +391,25 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
             when {
                 !sent -> "내비가 연결되지 않아 화면으로만 안내해요."
                 restAsDestination -> "내비에 ${area.name} 안내를 요청했어요."
-                else -> "내비에 ${area.name}을(를) 경유지로 넣었어요. 쉬고 나면 ${dest?.name}(으)로 이어서 가요."
+                else -> "내비에 ${DriveText.withObject(area.name)} 경유지로 넣었어요. " +
+                    "쉬고 나면 ${DriveText.toward(dest?.name ?: "목적지")} 이어서 가요."
             },
         )
     }
 
+    /** 쉼터 안내를 취소하면 가던 목적지와 원래 경유지(시간 모드 코스)로 되돌린다. */
     private fun cancelRestRoute() {
         val dest = currentTrip()
-        if (dest != null && !restAsDestination) routeNavi(dest, emptyList()) else cancelNavi()
+        if (dest != null && !restAsDestination) {
+            val via = drive.activeVia()
+            routeNavi(dest, via)
+            note(
+                if (via.isEmpty()) "내비를 ${DriveText.toward(dest.name)} 가는 길로 되돌렸어요."
+                else "내비를 ${via.joinToString(", ") { it.name }} 거쳐 가는 원래 길로 되돌렸어요.",
+            )
+        } else {
+            cancelNavi()
+        }
         restAsDestination = false
     }
 
@@ -371,12 +419,12 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
         tripDestination = place
     }
 
-    /** 쉬다 가는 코스에서 쉴 곳에 P단으로 세우면 도착 시각에 맞춰 깨우도록 휴식을 시작한다. */
+    /** 쉬다 가는(기다리는) 코스에서 그곳에 P단으로 세우면 도착 시각에 맞춰 출발을 알려 주도록 휴식을 시작한다. */
     private fun checkRestStopParking(t: Long) {
         if (engine.state.gear != Gear.PARK || engine.state.phase != Phase.DRIVING) return
         val area = drive.restStopHere(engine.state.position) ?: return
-        val alarmAt = drive.restStopAlarmAt(t, engine.config.wakeUpMs) ?: return
-        engine.startRestUntil(t, alarmAt, area)
+        shareDeadline()
+        engine.startRest(t, drive.plannedRestKind, area)
     }
 
     private inline fun act(block: (Long) -> Unit) {
@@ -396,6 +444,8 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
     override fun extendRest(minutes: Int) = act { engine.extendRest(it, minutes) }
     override fun stopAlarm() = act { engine.stopAlarm(it) }
     override fun wakeUp() = act { engine.wakeUp(it) }
+    override fun restHere(kind: RestKind) = act { engine.restHere(it, kind) }
+    override fun setRestKind(kind: RestKind) = act { engine.setRestKind(it, kind) }
 
     override fun departNow() {
         val d = demo
@@ -440,14 +490,38 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
     override fun driveBack() = act { drive.back(it) }
     override fun setDriveDestination(place: Place) = act { drive.setDestination(it, place) }
     override fun shiftTarget(minutes: Int) = act { drive.shiftTarget(it, minutes) }
+    override fun setTarget(at: Long) = act { drive.setTarget(it, at) }
     override fun setExtraMinutes(minutes: Int) = act { drive.setExtraMinutes(minutes) }
     override fun setMood(mood: Mood) = act { drive.setMood(mood) }
-    override fun setRoadStyle(style: RoadStyle) = act { drive.setStyle(style) }
+    override fun setOnTimeStyle(style: OnTimeStyle) = act { drive.setOnTimeStyle(style) }
+    override fun setFlavor(flavor: CourseFlavor) = act { drive.setFlavor(it, flavor) }
     override fun planCourses() = act { drive.plan(it) }
     override fun chooseCourse(option: CourseOption) = act { drive.choose(it, option) }
     override fun goDirect() = act { drive.goDirect(it) }
     override fun extendCourse() = act { drive.extend(it) }
+    override fun addDriveTime(minutes: Int) = act { drive.addTime(it, minutes) }
     override fun finishDrive() = act { drive.finish(it) }
+
+    // ---- 자주 쓰는 설정 ----
+
+    override fun saveTrip() {
+        val trip = drive.saveable() ?: return
+        val list = SavedTrip.added(_ui.value.saved, trip)
+        saveSaved(list)
+        _ui.update { it.copy(saved = list) }
+        note("자주 쓰는 설정에 저장했어요: ${trip.place.name} · ${trip.detail}")
+    }
+
+    override fun applySavedTrip(trip: SavedTrip) {
+        if (demo == null) navi.requestPlaces()
+        act { drive.applySaved(it, trip) }
+    }
+
+    override fun removeSavedTrip(trip: SavedTrip) {
+        val list = _ui.value.saved.filterNot { it == trip }
+        saveSaved(list)
+        _ui.update { it.copy(saved = list) }
+    }
 
     // ---- 시연 모드 ----
 
@@ -493,6 +567,7 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
             d.shift(30 * SECOND_MS)
             stepDemo()
             val t = now()
+            shareDeadline()
             engine.onTick(t)
             drive.onTick(t)
             checkRestStopParking(t)
@@ -740,6 +815,12 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
         )
     }
 
+    private fun loadSaved(): List<SavedTrip> = SavedTrip.decodeAll(prefs.getString(KEY_SAVED, null))
+
+    private fun saveSaved(list: List<SavedTrip>) {
+        prefs.edit().putString(KEY_SAVED, SavedTrip.encodeAll(list)).apply()
+    }
+
     private fun saveEnvironment(env: RestEnvironment) {
         prefs.edit()
             .putBoolean(KEY_ENV_ENABLED, env.enabled)
@@ -756,6 +837,7 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
         private const val KEY_ENV_TEMP = "env_temp"
         private const val KEY_ENV_DIM = "env_dim"
         private const val KEY_ENV_FRESH = "env_fresh"
+        private const val KEY_SAVED = "saved_trips"
         private const val TAG = "DriveMate"
         private const val TICK_MS = 1_000L
         private const val HOLD_SPEECH_METERS = 300.0

@@ -46,6 +46,7 @@ import kr.contest.pleosapp.app.RestMateActions
 import kr.contest.pleosapp.app.RestMateController
 import kr.contest.pleosapp.app.UiState
 import kr.contest.pleosapp.core.CheckInAnswer
+import kr.contest.pleosapp.core.CourseFlavor
 import kr.contest.pleosapp.core.CourseOption
 import kr.contest.pleosapp.core.DemoTrips
 import kr.contest.pleosapp.core.DriveMode
@@ -57,6 +58,7 @@ import kr.contest.pleosapp.core.HOUR_MS
 import kr.contest.pleosapp.core.LatLng
 import kr.contest.pleosapp.core.MINUTE_MS
 import kr.contest.pleosapp.core.Mood
+import kr.contest.pleosapp.core.OnTimeStyle
 import kr.contest.pleosapp.core.Phase
 import kr.contest.pleosapp.core.Place
 import kr.contest.pleosapp.core.PlaceKind
@@ -65,10 +67,13 @@ import kr.contest.pleosapp.core.RestArea
 import kr.contest.pleosapp.core.RestAreaCandidate
 import kr.contest.pleosapp.core.RestAreaType
 import kr.contest.pleosapp.core.RestEnvironment
+import kr.contest.pleosapp.core.RestKind
 import kr.contest.pleosapp.core.RestMateState
 import kr.contest.pleosapp.core.RestMateText
 import kr.contest.pleosapp.core.RestSession
-import kr.contest.pleosapp.core.RoadStyle
+import kr.contest.pleosapp.core.RestTiming
+import kr.contest.pleosapp.core.SECOND_MS
+import kr.contest.pleosapp.core.SavedTrip
 import kr.contest.pleosapp.data.CityRestPlaces
 import kr.contest.pleosapp.data.RestAreaRepository
 import kr.contest.pleosapp.sdk.VehicleExtras
@@ -120,11 +125,17 @@ private fun MainPanel(ui: UiState, actions: RestMateActions, modifier: Modifier)
 
 @Composable
 private fun Header(ui: UiState) {
-    val waking = ui.core.rest?.wakeStartedAt != null
+    val rest = ui.core.rest
+    val waking = rest?.wakeStartedAt != null
     val (title, dot) = when (ui.core.phase) {
         Phase.DRIVING -> driveTitle(ui.drive)
         Phase.TO_REST_AREA -> "레스트 모드 · 쉴 곳으로 안내 중" to RM.amber
-        Phase.RESTING -> if (waking) "레스트 모드 · 깨우는 중" to RM.amber else "레스트 모드 · 휴식 중" to RM.teal
+        Phase.RESTING -> when {
+            rest?.kind == RestKind.WAIT -> "레스트 모드 · 기다리는 중" to RM.teal
+            rest?.kind == RestKind.STAY -> "레스트 모드 · 잠깐 머무는 중" to RM.violet
+            waking -> "레스트 모드 · 깨우는 중" to RM.amber
+            else -> "레스트 모드 · 휴식 중" to RM.teal
+        }
     }
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -235,15 +246,7 @@ private fun PromptCard(prompt: Prompt, ui: UiState, actions: RestMateActions) {
             secondary = "괜찮아요",
             onSecondary = actions::dismissPrompt,
         )
-        Prompt.ParkedHere -> ChoiceCard(
-            title = "주차하셨네요. 여기서 쉬어 갈까요?",
-            detail = "휴식 타이머와 알람을 켜 드릴게요.",
-            primary = "휴식 시작",
-            onPrimary = actions::acceptPrompt,
-            secondary = "아니요",
-            onSecondary = actions::dismissPrompt,
-            tone = Tone.TEAL,
-        )
+        Prompt.ParkedHere -> ParkedCard(ui, actions)
         Prompt.CheckIn -> CheckInCard(actions)
     }
 }
@@ -264,6 +267,36 @@ private fun ChoiceCard(
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             ActionButton(primary, onPrimary, Modifier.weight(1f), tone)
             ActionButton(secondary, onSecondary, Modifier.weight(1f), Tone.NEUTRAL)
+        }
+    }
+}
+
+/** 안내 없이 P단으로 세웠을 때: 어떻게 쉴지 큰 버튼 두 개로 묻는다 (롱웨이 모드면 '잠깐 머물기'). */
+@Composable
+private fun ParkedCard(ui: UiState, actions: RestMateActions) {
+    val longer = ui.drive.step == DriveStep.ACTIVE && ui.drive.mode == DriveMode.LONGER
+    val other = if (longer) RestKind.STAY else RestKind.WAIT
+    val napMinutes = if (ui.core.onExpressway == false) ui.config.cityRestMinutes else ui.config.defaultRestMinutes
+    Panel(color = RM.cardHigh, border = RM.teal) {
+        Text("주차하셨네요. 여기서 쉬어 갈까요?", color = RM.text, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            ActionButton(
+                other.label,
+                { actions.restHere(other) },
+                Modifier.weight(1f),
+                if (longer) Tone.VIOLET else Tone.TEAL,
+                minHeight = 88.dp,
+                sub = if (longer) "분위기 그대로" else "출발 시각만 알려 드려요",
+            )
+            ActionButton(
+                RestKind.NAP.label,
+                { actions.restHere(RestKind.NAP) },
+                Modifier.weight(1f),
+                Tone.TEAL,
+                minHeight = 88.dp,
+                sub = "알람 ${napMinutes}분 · 깨우기까지",
+            )
+            ActionButton("아니요", actions::dismissPrompt, Modifier.weight(0.7f), Tone.NEUTRAL, minHeight = 88.dp)
         }
     }
 }
@@ -367,34 +400,126 @@ private fun RestingContent(ui: UiState, actions: RestMateActions) {
     val s = ui.core
     val rest = s.rest ?: return
     val wokeAt = rest.wakeStartedAt
-    if (wokeAt != null && !rest.alarmRinging) {
-        WakeUpPanel(wokeAt, ui)
-    } else {
-        RestTimerPanel(rest, s.now)
+    RestKindRow(rest, ui, actions)
+    when {
+        rest.kind != RestKind.NAP -> DepartPanel(rest, ui)
+        wokeAt != null && !rest.alarmRinging -> WakeUpPanel(wokeAt, rest, ui)
+        else -> RestTimerPanel(rest, s.now)
     }
-    val drive = ui.drive
-    val target = drive.targetAt
-    if (drive.step == DriveStep.ACTIVE && target != null) {
-        Notice("${DriveText.clock(target)} 도착에 맞춰 깨워 드려요. 시간을 바꾸면 도착 시각도 달라져요.", RM.teal)
-    }
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        for (m in REST_OPTIONS) {
-            ActionButton(
-                "${m}분",
-                { actions.setRestMinutes(m) },
-                Modifier.weight(1f),
-                if (rest.plannedMinutes == m) Tone.TEAL else Tone.NEUTRAL,
-            )
+    FitNotice(rest)
+    val minutesMatter = rest.kind == RestKind.NAP || rest.targetAt == null
+    if (minutesMatter && wokeAt == null) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            for (m in REST_OPTIONS) {
+                ActionButton(
+                    "${m}분",
+                    { actions.setRestMinutes(m) },
+                    Modifier.weight(1f),
+                    if (rest.plannedMinutes == m) Tone.TEAL else Tone.NEUTRAL,
+                )
+            }
+            ActionButton("+10분", { actions.extendRest(10) }, Modifier.weight(1f))
         }
-        ActionButton("+10분", { actions.extendRest(10) }, Modifier.weight(1f))
+        if (rest.kind == RestKind.NAP && rest.plannedMinutes > 20) {
+            Notice("20분 넘게 자면 깊은 잠에 들어 깬 뒤 더 멍할 수 있어요. 깨우는 시간을 넉넉히 두세요.", RM.amber)
+        }
     }
-    if (rest.plannedMinutes > 20) {
-        Notice("20분 넘게 자면 깊은 잠에 들어 깬 뒤 더 멍할 수 있어요. 깨우는 시간을 넉넉히 두세요.", RM.amber)
-    }
-    RestEnvironmentPanel(ui, actions)
+    if (rest.kind == RestKind.NAP) RestEnvironmentPanel(ui, actions)
     ArrivalPanel(rest, ui)
     CabinPanel(ui.extras)
     Notice("공회전 제한 지역에서 시동을 켠 채 오래 머물면 과태료가 나올 수 있어요.", RM.textDim)
+}
+
+/** 어떻게 쉴지 바꾸기: 눈 붙이기 / 그냥 기다리기 (롱웨이 모드면 잠깐 머물기) */
+@Composable
+private fun RestKindRow(rest: RestSession, ui: UiState, actions: RestMateActions) {
+    val longer = ui.drive.step == DriveStep.ACTIVE && ui.drive.mode == DriveMode.LONGER
+    val kinds = if (longer || rest.kind == RestKind.STAY) listOf(RestKind.NAP, RestKind.STAY) else listOf(RestKind.NAP, RestKind.WAIT)
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        for (kind in kinds) {
+            ActionButton(
+                kind.label,
+                { actions.setRestKind(kind) },
+                Modifier.weight(1f),
+                if (rest.kind == kind) Tone.TEAL else Tone.NEUTRAL,
+                minHeight = 60.dp,
+                textSize = 20.sp,
+                sub = kind.detail,
+            )
+        }
+    }
+}
+
+/** 그냥 기다리기·잠깐 머물기: 출발할 시각을 크게 보여 준다. */
+@Composable
+private fun DepartPanel(rest: RestSession, ui: UiState) {
+    val now = ui.core.now
+    val depart = rest.departAt
+    val target = rest.targetAt
+    Panel(border = if (rest.remindedAt != null) RM.amber else RM.teal) {
+        Label(rest.area?.name ?: "지금 있는 곳에서 ${if (rest.kind == RestKind.STAY) "잠깐 머물기" else "기다리기"}")
+        when {
+            rest.kind == RestKind.STAY -> StayInfo(rest, now)
+            depart != null && target != null -> {
+                val headline = when {
+                    depart > now + 30 * SECOND_MS -> "${DriveText.clock(depart)} 출발"
+                    now - depart <= MINUTE_MS -> "지금 출발하면 맞아요"
+                    else -> "지금 출발해 주세요"
+                }
+                Text(headline, color = if (rest.remindedAt != null) RM.amber else RM.text, fontSize = 64.sp, fontWeight = FontWeight.Bold)
+                val route = rest.remainingRouteMs
+                if (route != null) {
+                    val arriveNow = now + route
+                    val early = target - arriveNow
+                    val lead = when {
+                        early > MINUTE_MS -> "지금 출발하면 ${DriveText.clock(arriveNow)} 도착 (${DriveText.minutes(early)}분 일찍)"
+                        early < -MINUTE_MS -> "지금 출발해도 ${DriveText.clock(arriveNow)} 도착 (약 ${DriveText.minutes(early)}분 늦어요)"
+                        else -> "지금 출발하면 ${DriveText.clock(arriveNow)} 도착"
+                    }
+                    val tail = if (depart > now) " · ${DriveText.clock(depart)}에 출발하면 ${DriveText.clock(target)} 도착에 맞아요" else ""
+                    Caption(lead + tail)
+                }
+            }
+            else -> {
+                val left = rest.alarmAt - now
+                Text(if (left > 0) clock(left) else "시간이 됐어요", color = RM.text, fontSize = 72.sp, fontWeight = FontWeight.Bold)
+                Caption("${DriveText.clock(rest.alarmAt)}에 알려 드려요 · 깨우는 알람은 울리지 않아요")
+            }
+        }
+    }
+}
+
+/** 잠깐 머물기 (롱웨이 모드): 마감이 느슨하므로 '늦어요' 없이 언제쯤 출발하면 되는지만 */
+@Composable
+private fun StayInfo(rest: RestSession, now: Long) {
+    val headline = if (rest.alarmAt > now) "${DriveText.clock(rest.alarmAt)}쯤 출발" else "슬슬 출발할 때예요"
+    Text(headline, color = RM.text, fontSize = 64.sp, fontWeight = FontWeight.Bold)
+    val route = rest.remainingRouteMs
+    val target = rest.targetAt
+    if (route != null) {
+        val arriveNow = now + route
+        val more = if (target != null && arriveNow - target >= 2 * MINUTE_MS) " (예정보다 약 ${DriveText.minutes(arriveNow - target)}분 더)" else ""
+        Caption("지금 출발하면 ${DriveText.clock(arriveNow)} 도착$more")
+    }
+    Caption("분위기는 그대로예요. 출발할 때쯤 알려 드릴게요.")
+}
+
+/** 도착 시각에 맞춰 알람을 잡았는지, 남은 길이 바뀌어 알람을 옮겼는지 */
+@Composable
+private fun FitNotice(rest: RestSession) {
+    val target = rest.targetAt ?: return
+    if (!rest.strictTarget) return
+    val late = rest.lateByMs?.takeIf { rest.wakeStartedAt == null && rest.remindedAt == null }
+    when {
+        late != null -> Notice("이대로 쉬면 ${DriveText.clock(target)} 도착이 약 ${DriveText.minutes(late)}분 늦어져요. 안전이 먼저예요.", RM.amber)
+        rest.kind == RestKind.NAP && rest.fitsTarget && rest.wakeStartedAt == null ->
+            Notice("${DriveText.clock(target)} 도착에 맞춰 깨워 드려요.", RM.teal)
+    }
+    val previous = rest.previousAlarmAt
+    if (previous != null && rest.wakeStartedAt == null && rest.remindedAt == null) {
+        val what = if (rest.kind == RestKind.NAP) "알람" else "출발 알림"
+        Caption("남은 길이 바뀌어 $what ${DriveText.clock(previous)} → ${DriveText.clock(rest.alarmAt)}", RM.amber)
+    }
 }
 
 @Composable
@@ -420,10 +545,11 @@ private fun RestTimerPanel(rest: RestSession, now: Long) {
     }
 }
 
-/** 깬 뒤 바로 출발하지 않도록 몸을 깨우는 시간 (수면 관성). */
+/** 깬 뒤 바로 출발하지 않도록 몸을 깨우는 시간 (수면 관성). 쉰 시간의 절반, 최대 10분 */
 @Composable
-private fun WakeUpPanel(wokeAt: Long, ui: UiState) {
-    val left = wokeAt + ui.config.wakeUpMs - ui.core.now
+private fun WakeUpPanel(wokeAt: Long, rest: RestSession, ui: UiState) {
+    val wake = rest.wakeMs
+    val left = wokeAt + wake - ui.core.now
     val ready = left <= 0
     Panel(border = if (ready) RM.teal else RM.amber) {
         Label("깬 직후에는 반응이 느릴 수 있어요")
@@ -431,9 +557,9 @@ private fun WakeUpPanel(wokeAt: Long, ui: UiState) {
             Text("이제 출발해도 좋아요", color = RM.teal, fontSize = 44.sp, fontWeight = FontWeight.Bold)
         } else {
             Text(clock(left), color = RM.text, fontSize = 72.sp, fontWeight = FontWeight.Bold)
-            Caption("${RestMateText.duration(ui.config.wakeUpMs)} 동안 몸을 깨운 뒤 출발해 주세요.")
+            Caption("${RestMateText.duration(wake)} 동안 몸을 깨운 뒤 출발해 주세요.")
         }
-        val elapsed = (ui.core.now - wokeAt).toFloat() / ui.config.wakeUpMs.toFloat()
+        val elapsed = if (wake <= 0) 1f else (ui.core.now - wokeAt).toFloat() / wake.toFloat()
         Bar(elapsed, if (ready) RM.teal else RM.amber)
         for (item in WAKE_CHECKLIST) Body("· $item")
     }
@@ -506,16 +632,26 @@ private fun RestEnvironmentPanel(ui: UiState, actions: RestMateActions) {
 
 @Composable
 private fun ArrivalPanel(rest: RestSession, ui: UiState) {
+    val route = rest.remainingRouteMs
+    // 기다리기·머물기는 출발 시각 화면에 이미 보여 준다.
+    if (rest.kind != RestKind.NAP && rest.departAt != null) return
     Panel {
-        Label("휴식 시간별 도착 예상")
-        val route = rest.remainingRouteMs
         if (route == null) {
+            Label("도착 예상")
             Body("내비에 목적지를 설정하면 쉬는 시간에 따라 언제 도착할지 보여 드려요.")
+            return@Panel
+        }
+        val now = ui.core.now
+        if (rest.wakeStartedAt != null || rest.kind != RestKind.NAP) {
+            // 깬 뒤에는 표 대신 한 줄
+            Label("도착 예상")
+            Text("지금 출발하면 ${DriveText.clock(now + route)} 도착", color = RM.text, fontSize = 26.sp, fontWeight = FontWeight.Bold)
         } else {
-            val wakeMs = ui.config.wakeUpMs
+            Label("휴식 시간별 도착 예상")
             val options = (REST_OPTIONS + rest.plannedMinutes).distinct().sorted()
             for (m in options) {
-                val departAt = maxOf(rest.startedAt + m * MINUTE_MS, ui.core.now)
+                val wakeMs = RestTiming.wakeMsFor(m * MINUTE_MS, ui.config.wakeUpMs)
+                val departAt = maxOf(rest.startedAt + m * MINUTE_MS, now)
                 val arriveAt = departAt + wakeMs + route
                 val chosen = m == rest.plannedMinutes
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -533,13 +669,14 @@ private fun ArrivalPanel(rest: RestSession, ui: UiState) {
                     )
                 }
             }
-            val source = if (rest.remainingRouteEstimated) {
-                "목적지까지 남은 시간은 직선거리로 추정했어요."
-            } else {
-                "목적지까지 남은 시간은 휴식을 시작할 때 내비 기준이에요."
-            }
-            Caption("깨우는 시간(${RestMateText.duration(wakeMs)})을 더했어요. $source")
+            Caption("깨우는 시간(쉰 시간의 절반, 최대 ${RestMateText.duration(ui.config.wakeUpMs)})을 더했어요.")
         }
+        val source = if (rest.remainingRouteEstimated) {
+            "목적지까지 남은 시간은 직선거리로 추정했어요."
+        } else {
+            "목적지까지 남은 시간은 내비 기준이에요."
+        }
+        Caption(source)
     }
 }
 
@@ -580,6 +717,8 @@ private fun BottomAction(ui: UiState, actions: RestMateActions) {
             when {
                 rest?.alarmRinging == true ->
                     BigButton("알람 끄기", null, Tone.AMBER, actions::stopAlarm)
+                rest != null && rest.kind != RestKind.NAP ->
+                    BigButton("출발할게요", "D단으로 바꾸면 자동으로 출발로 알아봐요", Tone.TEAL, actions::departNow)
                 rest?.wakeStartedAt == null ->
                     BigButton("일어났어요", "알람 전에 깼다면 깨우기를 시작해요", Tone.TEAL, actions::wakeUp)
                 else ->
@@ -688,7 +827,7 @@ private fun DemoControls(ui: UiState, actions: RestMateActions) {
         "휴식 시간 건너뛰기",
         actions::demoSkipRest,
         Modifier.fillMaxWidth(),
-        enabled = ui.core.phase == Phase.RESTING && ui.core.rest?.wakeStartedAt == null,
+        enabled = ui.core.phase == Phase.RESTING && ui.core.rest?.wakeStartedAt == null && ui.core.rest?.remindedAt == null,
     )
     SmallButton("처음부터", actions::demoRestart, Modifier.fillMaxWidth())
     Caption("시연 모드의 위치·속도·시각은 실제 값이 아니에요.")
@@ -760,8 +899,8 @@ internal fun Panel(
 }
 
 @Composable
-internal fun Label(text: String, color: Color = RM.textDim) {
-    Text(text, color = color, fontSize = 17.sp, fontWeight = FontWeight.Medium)
+internal fun Label(text: String, color: Color = RM.textDim, modifier: Modifier = Modifier) {
+    Text(text, color = color, fontSize = 17.sp, fontWeight = FontWeight.Medium, modifier = modifier)
 }
 
 @Composable
@@ -770,8 +909,8 @@ internal fun Body(text: String, color: Color = RM.text) {
 }
 
 @Composable
-internal fun Caption(text: String, color: Color = RM.textDim) {
-    Text(text, color = color, fontSize = 16.sp, lineHeight = 23.sp)
+internal fun Caption(text: String, color: Color = RM.textDim, modifier: Modifier = Modifier) {
+    Text(text, color = color, fontSize = 16.sp, lineHeight = 23.sp, modifier = modifier)
 }
 
 @Composable
@@ -925,18 +1064,26 @@ internal object PreviewActions : RestMateActions {
     override fun wakeUp() = Unit
     override fun departNow() = Unit
     override fun setRestEnvironment(env: RestEnvironment) = Unit
+    override fun restHere(kind: RestKind) = Unit
+    override fun setRestKind(kind: RestKind) = Unit
     override fun openMode(mode: DriveMode) = Unit
     override fun driveBack() = Unit
     override fun setDriveDestination(place: Place) = Unit
     override fun shiftTarget(minutes: Int) = Unit
+    override fun setTarget(at: Long) = Unit
     override fun setExtraMinutes(minutes: Int) = Unit
     override fun setMood(mood: Mood) = Unit
-    override fun setRoadStyle(style: RoadStyle) = Unit
+    override fun setOnTimeStyle(style: OnTimeStyle) = Unit
+    override fun setFlavor(flavor: CourseFlavor) = Unit
     override fun planCourses() = Unit
     override fun chooseCourse(option: CourseOption) = Unit
     override fun goDirect() = Unit
     override fun extendCourse() = Unit
+    override fun addDriveTime(minutes: Int) = Unit
     override fun finishDrive() = Unit
+    override fun saveTrip() = Unit
+    override fun applySavedTrip(trip: SavedTrip) = Unit
+    override fun removeSavedTrip(trip: SavedTrip) = Unit
     override fun setDemoMode(on: Boolean) = Unit
     override fun selectDemoTrip(id: String) = Unit
     override fun demoDrive() = Unit
@@ -990,6 +1137,10 @@ private fun HomePreview() {
                 demoMode = true,
                 demoTrip = DemoTrips.CITY,
                 restAreaCount = 1132,
+                saved = listOf(
+                    SavedTrip(DriveMode.ON_TIME, previewPlaces[2], minuteOfDay = 16 * 60 + 50, onTimeStyle = OnTimeStyle.WAIT_NEAR),
+                    SavedTrip(DriveMode.LONGER, previewPlaces[0], extraMinutes = 30, mood = Mood.DATE, flavor = CourseFlavor.NIGHT_VIEW),
+                ),
             ),
             PreviewActions,
         )

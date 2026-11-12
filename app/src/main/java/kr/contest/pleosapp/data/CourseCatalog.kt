@@ -2,6 +2,7 @@ package kr.contest.pleosapp.data
 
 import kr.contest.pleosapp.core.CoursePoint
 import kr.contest.pleosapp.core.CourseTag
+import kr.contest.pleosapp.core.CourseTag.BRIDGE
 import kr.contest.pleosapp.core.CourseTag.LAKE
 import kr.contest.pleosapp.core.CourseTag.MOUNTAIN
 import kr.contest.pleosapp.core.CourseTag.NIGHT_VIEW
@@ -26,13 +27,14 @@ object CourseCatalog {
         point("sowol", "남산 소월로", 37.5535, 126.9800, NIGHT_VIEW, MOUNTAIN),
         point("eungbong", "응봉산", 37.5506, 127.0322, NIGHT_VIEW),
         // 서울: 한강
-        point("banpo", "반포한강공원", 37.5103, 126.9959, RIVER, NIGHT_VIEW, PARK),
-        point("nodeul", "노들섬", 37.5176, 126.9594, RIVER, NIGHT_VIEW),
+        point("banpo", "반포한강공원", 37.5103, 126.9959, RIVER, NIGHT_VIEW, PARK, BRIDGE),
+        point("jamsugyo", "잠수교", 37.5155, 126.9945, RIVER, BRIDGE),
+        point("nodeul", "노들섬", 37.5176, 126.9594, RIVER, NIGHT_VIEW, BRIDGE),
         point("yeouido", "여의도한강공원", 37.5284, 126.9326, RIVER, PARK),
         point("ttukseom", "뚝섬한강공원", 37.5296, 127.0695, RIVER, PARK),
         point("jamsil", "잠실한강공원", 37.5179, 127.0860, RIVER),
         point("mangwon", "망원한강공원", 37.5547, 126.8950, RIVER, PARK),
-        point("seonyudo", "선유도공원", 37.5433, 126.8995, RIVER, PARK),
+        point("seonyudo", "선유도공원", 37.5433, 126.8995, RIVER, PARK, BRIDGE),
         // 서울: 공원·호수
         point("seoulforest", "서울숲", 37.5444, 127.0374, PARK),
         point("olympic", "올림픽공원", 37.5207, 127.1214, PARK),

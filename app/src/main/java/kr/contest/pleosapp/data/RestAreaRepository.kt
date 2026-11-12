@@ -3,6 +3,7 @@ package kr.contest.pleosapp.data
 import android.content.Context
 import kr.contest.pleosapp.core.LatLng
 import kr.contest.pleosapp.core.RestArea
+import kr.contest.pleosapp.core.RestAreaCleaner
 import kr.contest.pleosapp.core.RestAreaType
 import org.json.JSONArray
 
@@ -11,6 +12,7 @@ import org.json.JSONArray
  *
  * 출처: © OpenStreetMap contributors, ODbL 1.0 (Geofabrik 한국 추출본에서 highway=rest_area·services 추출).
  * 공공데이터(한국도로공사 휴게소·졸음쉼터 현황)로 바꿀 때도 같은 형식으로 만들면 된다.
+ * 읽은 뒤 쉴 수 없는 항목(퀵서비스·주유소·잘못 찍힌 좌표 등)은 [RestAreaCleaner]로 거른다.
  */
 object RestAreaRepository {
     const val ATTRIBUTION = "쉼터 위치 © OpenStreetMap contributors"
@@ -36,6 +38,6 @@ object RestAreaRepository {
                 onExpressway = o.optInt("e", 0) == 1,
             )
         }
-        return out
+        return RestAreaCleaner.clean(out)
     }
 }
