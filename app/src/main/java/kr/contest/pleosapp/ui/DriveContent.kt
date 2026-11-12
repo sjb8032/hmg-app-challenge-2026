@@ -280,9 +280,11 @@ private fun TimeBudget(now: Long, direct: Long, target: Long) {
                 .clip(RoundedCornerShape(8.dp)),
             horizontalArrangement = Arrangement.spacedBy(3.dp),
         ) {
-            BudgetPart("바로 가는 길", direct, RM.blue, Modifier.weight(direct.toFloat()))
-            if (spare >= MINUTE_MS) BudgetPart("남는 시간", spare, RM.violet, Modifier.weight(spare.toFloat()))
-            BudgetPart("여유", margin, RM.teal, Modifier.weight(margin.toFloat()))
+            // 칸이 좁으면(전체의 15% 미만) 글자를 빼고 아래 설명으로 대신한다
+            fun label(text: String, ms: Long) = if (ms.toFloat() / total >= 0.15f) "$text ${DriveText.minutes(ms)}분" else ""
+            BudgetPart(label("바로 가는 길", direct), RM.blue, Modifier.weight(direct.toFloat()))
+            if (spare >= MINUTE_MS) BudgetPart(label("남는 시간", spare), RM.violet, Modifier.weight(spare.toFloat()))
+            BudgetPart(label("여유", margin), RM.teal, Modifier.weight(margin.toFloat()))
         }
         Caption(
             "목표까지 ${DriveText.duration(total)} = 바로 가는 길 ${DriveText.duration(direct)} + 남는 시간 ${DriveText.duration(spare)}" +
@@ -292,7 +294,7 @@ private fun TimeBudget(now: Long, direct: Long, target: Long) {
 }
 
 @Composable
-private fun BudgetPart(label: String, ms: Long, color: Color, modifier: Modifier) {
+private fun BudgetPart(label: String, color: Color, modifier: Modifier) {
     Box(
         modifier
             .fillMaxHeight()
@@ -300,7 +302,7 @@ private fun BudgetPart(label: String, ms: Long, color: Color, modifier: Modifier
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            "$label ${DriveText.minutes(ms)}분",
+            label,
             color = RM.background,
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
@@ -564,7 +566,8 @@ private fun CourseCard(index: Int, option: CourseOption, arrival: Long?, target:
                 )
             }
         }
-        ActionButton("이 코스로", onChoose, Modifier.width(150.dp), tone, minHeight = 64.dp, textSize = 20.sp)
+        val compact = LocalScreenSize.current.compact
+        ActionButton("이 코스로", onChoose, Modifier.width(if (compact) 118.dp else 150.dp), tone, minHeight = 64.dp, textSize = if (compact) 18.sp else 20.sp)
     }
 }
 
@@ -716,7 +719,7 @@ private fun StopRow(stop: CourseStop, last: Boolean) {
                 Modifier
                     .padding(top = 6.dp)
                     .size(16.dp)
-                    .background(if (stop.done) stop.color.copy(alpha = 0.45f) else stop.color, CircleShape),
+                    .background(if (stop.done && !last) stop.color.copy(alpha = 0.45f) else stop.color, CircleShape),
             )
             if (!last) {
                 Box(

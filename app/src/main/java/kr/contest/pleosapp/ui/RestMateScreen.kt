@@ -63,12 +63,17 @@ import kotlin.math.roundToInt
 @Composable
 fun RestMateScreen(ui: UiState, actions: RestMateActions) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val sideWidth = if (maxWidth >= 1500.dp) 400.dp else 340.dp
+        val sideWidth = when {
+            maxWidth >= 1500.dp -> 400.dp
+            maxWidth >= 1200.dp -> 320.dp
+            else -> 300.dp
+        }
         val mainWidth = maxWidth - sideWidth - 72.dp
         // 미니맵은 남는 높이를 채운다 (머리말·아래 버튼·여백을 뺀 만큼, 280~640dp)
         val screen = ScreenSize(
-            wide = mainWidth >= 960.dp,
+            wide = mainWidth >= 840.dp,
             mapHeight = (maxHeight - 560.dp).coerceIn(280.dp, 640.dp),
+            compact = mainWidth < 1100.dp,
         )
         CompositionLocalProvider(LocalScreenSize provides screen) {
             Row(
@@ -116,17 +121,18 @@ private fun Header(ui: UiState) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+        val compact = LocalScreenSize.current.compact
         Dot(dot, 14.dp)
         Text(
             title,
             color = RM.text,
-            fontSize = 30.sp,
+            fontSize = if (compact) 26.sp else 30.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        if (LocalScreenSize.current.wide && ui.core.phase == Phase.DRIVING) StepIndicator(ui.drive.step, ui.drive.mode)
+        if (!compact && ui.core.phase == Phase.DRIVING) StepIndicator(ui.drive.step, ui.drive.mode)
         if (ui.demoMode) Chip("시연 모드", RM.amber)
         if (ui.now > 0L) {
             Text(DriveText.clockNow(ui.now), color = RM.text, fontSize = 28.sp, fontWeight = FontWeight.SemiBold, style = NumStyle)
@@ -368,11 +374,41 @@ private fun GuidanceContent(ui: UiState, actions: RestMateActions) {
                 }
             }
             s.searchFailure?.let { Notice(it, RM.amber) }
+            RestFlowPanel(ui)
         },
         right = {
             MapPanel(ui)
         },
     )
+}
+
+/** 쉼터로 안내받는 동안: 닿으면 어떻게 되는지 순서대로 (처음 보는 사람도 흐름을 알 수 있게) */
+@Composable
+private fun RestFlowPanel(ui: UiState) {
+    val napMinutes = if (ui.core.onExpressway == false) ui.config.cityRestMinutes else ui.config.defaultRestMinutes
+    val d = ui.drive
+    val target = d.targetAt
+    val dest = d.destination?.name
+    val resume = when {
+        d.step == DriveStep.ACTIVE && d.mode == DriveMode.ON_TIME && target != null ->
+            "${dest ?: "목적지"} ${DriveText.clock(target)} 도착에 맞춰 출발 시각을 알려 드려요"
+        d.step == DriveStep.ACTIVE && dest != null -> "${DriveText.toward(dest)} 고른 코스를 이어서 가요"
+        else -> "출발하면 가던 목적지로 다시 안내해요"
+    }
+    val steps = listOf(
+        "쉼터에 세우고 P단으로 바꾸면 쉬기 시작해요",
+        "눈 붙이기 ${napMinutes}분 → 알람 → 깬 뒤 몸 깨우기 (최대 ${RestMateText.duration(ui.config.wakeUpMs)})",
+        resume,
+    )
+    Panel {
+        Label("쉼터에 닿으면")
+        steps.forEachIndexed { i, text ->
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                NumberBadge("${i + 1}", RM.amber, size = 26.dp, ring = RM.card)
+                Text(text, color = RM.text, fontSize = 18.sp, lineHeight = 25.sp, modifier = Modifier.weight(1f))
+            }
+        }
+    }
 }
 
 @Composable

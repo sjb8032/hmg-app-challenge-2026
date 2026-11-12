@@ -66,14 +66,16 @@ internal fun TimeTrack(ui: UiState) {
             Body("도착 시각을 계산하는 중이에요", RM.textDim)
         } else {
             val gap = DriveText.gapMs(eta, target)
-            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                Stat("도착 예상", DriveText.clock(eta), color, valueSize = 44.sp)
-                Stat(if (longer) "예정" else "목표", DriveText.clock(target), RM.text, valueSize = 44.sp)
+            val compact = LocalScreenSize.current.compact
+            val big = if (compact) 34.sp else 44.sp
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(if (compact) 16.dp else 24.dp)) {
+                Stat("도착 예상", DriveText.clock(eta), color, valueSize = big)
+                Stat(if (longer) "예정" else "목표", DriveText.clock(target), RM.text, valueSize = big)
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
                     Chip(
                         if (longer) DriveText.fitLonger(d.status, gap) else DriveText.fit(d.status, gap, (MARGIN_MINUTES + 2) * MINUTE_MS),
                         color,
-                        fontSize = 20.sp,
+                        fontSize = if (compact) 17.sp else 20.sp,
                     )
                 }
             }

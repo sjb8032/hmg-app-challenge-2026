@@ -65,6 +65,9 @@ class SmallScreenSnapshots {
 
     @Test
     fun small_choose() = paparazzi.snapshot { PreviewScreen(PreviewSamples.choose()) }
+
+    @Test
+    fun small_home() = paparazzi.snapshot { PreviewScreen(PreviewSamples.home()) }
 }
 
 /** 1px = 1dp인 가로 화면 */

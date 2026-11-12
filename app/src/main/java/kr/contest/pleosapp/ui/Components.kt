@@ -47,9 +47,10 @@ import java.util.Locale
 /**
  * 화면 크기에 따라 바뀌는 배치 값.
  * @param wide 왼쪽 내용 영역이 넓어 두 칸(내용 | 지도)으로 나눌 수 있는지
+ * @param compact 두 칸이지만 폭이 빠듯해 큰 숫자·제목을 조금 줄이는지 (1280dp 안팎의 화면)
  * @param mapHeight 미니맵 높이
  */
-internal data class ScreenSize(val wide: Boolean, val mapHeight: Dp)
+internal data class ScreenSize(val wide: Boolean, val mapHeight: Dp, val compact: Boolean = false)
 
 internal val LocalScreenSize = staticCompositionLocalOf { ScreenSize(wide = true, mapHeight = 380.dp) }
 
