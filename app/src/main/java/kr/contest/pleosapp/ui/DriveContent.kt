@@ -45,7 +45,7 @@ import kr.contest.pleosapp.core.RestMateState
 import kr.contest.pleosapp.core.RoadStyle
 
 /**
- * 딱 맞춰 가요·좀 더 달려요 화면.
+ * 온타임 모드·롱웨이 모드 화면.
  * 처음 → 설정(끝낼 곳·시각·분위기) → 코스 고르기 → 달리는 중(도착 예상과 목표의 차이) → 도착
  */
 @Composable

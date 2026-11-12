@@ -77,7 +77,7 @@ import kotlin.math.roundToInt
 
 /**
  * 드라이브메이트 화면 (가로형 차량 디스플레이).
- * 왼쪽: 지금 상태에 맞는 내용과, 아래에 늘 있는 '쉬었다 가요' 버튼 / 오른쪽: 차량·내비 연결 상태, 최근 안내, 시연 모드
+ * 왼쪽: 지금 상태에 맞는 내용과, 아래에 늘 있는 '레스트 모드' 버튼 / 오른쪽: 차량·내비 연결 상태, 최근 안내, 시연 모드
  *
  * 운전 중에 읽을 글은 짧게, 누를 곳은 크게 둔다. 화면이 하는 말은 음성으로도 나간다.
  */
@@ -123,8 +123,8 @@ private fun Header(ui: UiState) {
     val waking = ui.core.rest?.wakeStartedAt != null
     val (title, dot) = when (ui.core.phase) {
         Phase.DRIVING -> driveTitle(ui.drive)
-        Phase.TO_REST_AREA -> "쉬었다 가요 · 쉴 곳으로 안내 중" to RM.amber
-        Phase.RESTING -> if (waking) "쉬었다 가요 · 깨우는 중" to RM.amber else "쉬었다 가요 · 휴식 중" to RM.teal
+        Phase.TO_REST_AREA -> "레스트 모드 · 쉴 곳으로 안내 중" to RM.amber
+        Phase.RESTING -> if (waking) "레스트 모드 · 깨우는 중" to RM.amber else "레스트 모드 · 휴식 중" to RM.teal
     }
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -566,13 +566,13 @@ private fun CabinPanel(extras: VehicleExtras) {
     }
 }
 
-/** 화면 아래 큰 버튼. 달리는 중에는 어느 화면에서나 '쉬었다 가요'를 누를 수 있다. */
+/** 화면 아래 큰 버튼. 달리는 중에는 어느 화면에서나 '레스트 모드'를 누를 수 있다. */
 @Composable
 private fun BottomAction(ui: UiState, actions: RestMateActions) {
     val s = ui.core
     when (s.phase) {
         Phase.DRIVING ->
-            BigButton("쉬었다 가요", "가까운 휴게소·졸음쉼터·주차장으로 바로 안내해요", Tone.AMBER, actions::pressDrowsy)
+            BigButton("레스트 모드", "가까운 휴게소·졸음쉼터·주차장으로 바로 안내해요", Tone.AMBER, actions::pressDrowsy)
         Phase.TO_REST_AREA ->
             BigButton("더 빨리 쉴래요", "더 빨리 닿는 곳이 있으면 바꿔서 안내해요", Tone.AMBER, actions::pressDrowsy)
         Phase.RESTING -> {

@@ -37,7 +37,7 @@ enum class CabinMode {
     RESTORE,
 }
 
-/** 좀 더 달려요의 차 안 분위기 (무드등 밝기·온도) */
+/** 롱웨이 모드의 차 안 분위기 (무드등 밝기·온도) */
 data class MoodPreset(
     val label: String,
     val temperatureC: Float,

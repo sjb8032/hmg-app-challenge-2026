@@ -4,13 +4,13 @@ import kotlin.math.abs
 import kotlin.math.max
 
 /**
- * '딱 맞춰 가요'와 '좀 더 달려요'의 상태 전환과 도착 시각 맞추기. 안드로이드에 의존하지 않고, 시간은 밖에서 넣어 준다.
+ * '온타임 모드'와 '롱웨이 모드'의 상태 전환과 도착 시각 맞추기. 안드로이드에 의존하지 않고, 시간은 밖에서 넣어 준다.
  *
  * 홈 → 설정(목적지·시각·분위기) → 코스 후보 → 주행(내비 남은 시간으로 계속 맞춤) → 도착
  *
  * - 늦지 않는 게 먼저: 늦을 것 같으면 경유지를 바로 뺀다.
  * - 일찍 도착할 것 같으면 '조금 더 돌기'를 권한다 (자동으로 넣지는 않는다).
- * - '쉬었다 가요'가 진행 중이면 시간 맞추기를 멈췄다가, 다시 출발하면 이어서 맞춘다.
+ * - '레스트 모드'가 진행 중이면 시간 맞추기를 멈췄다가, 다시 출발하면 이어서 맞춘다.
  *
  * 내비 경로 요청·음성·실내 분위기처럼 밖에서 할 일은 [DriveEffect]로 쌓아 두고 앱이 [drainEffects]로 가져간다.
  */
@@ -113,7 +113,7 @@ class DriveEngine(
         if (state.step == DriveStep.ACTIVE) arrive(now)
     }
 
-    /** '쉬었다 가요'가 진행 중인지 (쉼터로 가는 중이거나 쉬는 중). 진행 중에는 시간 맞추기를 멈춘다. */
+    /** '레스트 모드'가 진행 중인지 (쉼터로 가는 중이거나 쉬는 중). 진행 중에는 시간 맞추기를 멈춘다. */
     fun onRestActive(now: Long, active: Boolean) {
         if (state.paused == active) return
         state = state.copy(now = now, paused = active)
@@ -341,7 +341,7 @@ class DriveEngine(
         refreshDefaultTarget(state.now)
     }
 
-    /** 딱 맞춰 가요 설정 중, 목표 시각을 직접 옮기지 않았으면 바로 가는 시간에 맞춰 기본 목표를 다시 잡는다. */
+    /** 온타임 모드 설정 중, 목표 시각을 직접 옮기지 않았으면 바로 가는 시간에 맞춰 기본 목표를 다시 잡는다. */
     private fun refreshDefaultTarget(now: Long) {
         if (state.step != DriveStep.SETUP || state.mode != DriveMode.ON_TIME || targetTouched) return
         state = state.copy(targetAt = defaultTarget(now))
@@ -360,10 +360,10 @@ class DriveEngine(
 
     private fun style(): RoadStyle = if (state.mode == DriveMode.LONGER) RoadStyle.SCENIC else state.style
 
-    /** 좀 더 달려요는 달리는 시간이 목적이라 쉬다 가는 코스를 내지 않는다. */
+    /** 롱웨이 모드는 달리는 시간이 목적이라 쉬다 가는 코스를 내지 않는다. */
     private fun stopsFor(mode: DriveMode?): List<RestArea> = if (mode == DriveMode.LONGER) emptyList() else restPlaces
 
-    /** 딱 맞춰 가요는 경치·우회로 오래 돌지 않는다 (남는 시간이 길면 쉬다 가기). 좀 더 달려요는 고른 만큼 */
+    /** 온타임 모드는 경치·우회로 오래 돌지 않는다 (남는 시간이 길면 쉬다 가기). 롱웨이 모드는 고른 만큼 */
     private fun maxAdded(): Long = if (state.mode == DriveMode.LONGER) Long.MAX_VALUE else config.maxOnTimeCourseMs
 
     private fun makeOptions(now: Long) {

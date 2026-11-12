@@ -231,7 +231,7 @@ class RestMateEngine(
     }
 
     /**
-     * 딱 맞춰 가요의 '쉬다 가는 코스'에서 쉼터에 주차했을 때: 도착 시각에 맞춰 깨우도록 알람 시각을 정해 쉰다.
+     * 온타임 모드의 '쉬다 가는 코스'에서 쉼터에 주차했을 때: 도착 시각에 맞춰 깨우도록 알람 시각을 정해 쉰다.
      */
     fun startRestUntil(now: Long, alarmAt: Long, area: RestArea?) {
         advance(now)

@@ -22,7 +22,7 @@ class DriveEngineTest {
             onNaviDestination(t0, dest, direct)
         }
 
-    /** 딱 맞춰 가요를 열고 코스 후보까지 낸다. */
+    /** 온타임 모드를 열고 코스 후보까지 낸다. */
     private fun DriveEngine.planOnTime(now: Long = t0, shiftMinutes: Int = 0): DriveEngine {
         openMode(now, DriveMode.ON_TIME)
         if (shiftMinutes != 0) shiftTarget(now, shiftMinutes)

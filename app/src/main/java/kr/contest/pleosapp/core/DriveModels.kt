@@ -1,15 +1,15 @@
 package kr.contest.pleosapp.core
 
 /**
- * 드라이브메이트의 시간 모드. 세 번째 모드인 '쉬었다 가요'는 [RestMateEngine]이 맡고,
+ * 드라이브메이트의 시간 모드. 세 번째 모드인 '레스트 모드'는 [RestMateEngine]이 맡고,
  * 화면 아래 버튼으로 어느 화면에서나 누를 수 있다.
  */
 enum class DriveMode(val title: String, val subtitle: String) {
     /** 약속·픽업·체크인 시각에 정각 도착 */
-    ON_TIME("딱 맞춰 가요", "약속·픽업 시각에 정각 도착"),
+    ON_TIME("온타임 모드", "약속·픽업 시각에 정각 도착"),
 
     /** 바로 가기 아쉬울 때 경치 좋은 길로 조금 더 달리다 도착 */
-    LONGER("좀 더 달려요", "경치 좋은 길로 조금 더 달리다 도착"),
+    LONGER("롱웨이 모드", "경치 좋은 길로 조금 더 달리다 도착"),
 }
 
 enum class PlaceKind(val label: String) {
@@ -128,7 +128,7 @@ data class DriveState(
 
     // ---- 고른 것 ----
     val destination: Place? = null,
-    /** 딱 맞춰 가요: 도착 목표 시각 / 좀 더 달려요: 코스를 고를 때 정해지는 도착 시각 */
+    /** 온타임 모드: 도착 목표 시각 / 롱웨이 모드: 코스를 고를 때 정해지는 도착 시각 */
     val targetAt: Long? = null,
     val extraMinutes: Int = 30,
     val mood: Mood = Mood.SOLO,
@@ -154,7 +154,7 @@ data class DriveState(
     /** 일찍 도착할 것 같아 '조금 더 돌기'를 권하는 중 */
     val extendOffered: Boolean = false,
     val message: String? = null,
-    /** 쉬었다 가요가 진행 중이라 시간 맞추기를 잠시 멈춤 */
+    /** 레스트 모드가 진행 중이라 시간 맞추기를 잠시 멈춤 */
     val paused: Boolean = false,
     val arrivedAt: Long? = null,
 ) {
@@ -191,7 +191,7 @@ data class DriveConfig(
     val restStopMinSlackMs: Long = 25 * MINUTE_MS,
     /** 쉬다 가는 코스로 들를 곳까지 돌아가는 시간 상한 */
     val restStopMaxDetourMs: Long = 12 * MINUTE_MS,
-    /** 딱 맞춰 가요에서 경치·우회 코스로 더 쓰는 시간 상한 (넘으면 쉬다 가기를 권함) */
+    /** 온타임 모드에서 경치·우회 코스로 더 쓰는 시간 상한 (넘으면 쉬다 가기를 권함) */
     val maxOnTimeCourseMs: Long = 35 * MINUTE_MS,
     /** 목적지에서 이만큼 가까우면 도착으로 본다 */
     val arriveMeters: Double = 150.0,

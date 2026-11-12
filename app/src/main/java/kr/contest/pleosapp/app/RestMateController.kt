@@ -58,9 +58,9 @@ data class ConnectionStatus(
 data class UiState(
     /** 지금 시각 (시연 모드에서는 가상 시계) */
     val now: Long = 0L,
-    /** 쉬었다 가요 */
+    /** 레스트 모드 */
     val core: RestMateState = RestMateState(),
-    /** 딱 맞춰 가요·좀 더 달려요 */
+    /** 온타임 모드·롱웨이 모드 */
     val drive: DriveState = DriveState(),
     /** 시연 모드: 실제 차량·내비 신호 대신 모의 내비와 가상 시계를 쓴다. 화면에 늘 표시한다. */
     val demoMode: Boolean = false,
@@ -82,7 +82,7 @@ data class UiState(
 
 /** 화면에서 부르는 동작. */
 interface RestMateActions {
-    // ---- 쉬었다 가요 ----
+    // ---- 레스트 모드 ----
     fun pressDrowsy()
     fun selectRestArea(candidate: RestAreaCandidate)
     fun cancelGuidance()
@@ -97,7 +97,7 @@ interface RestMateActions {
     fun departNow()
     fun setRestEnvironment(env: RestEnvironment)
 
-    // ---- 딱 맞춰 가요·좀 더 달려요 ----
+    // ---- 온타임 모드·롱웨이 모드 ----
     fun openMode(mode: DriveMode)
     fun driveBack()
     fun setDriveDestination(place: Place)
@@ -125,11 +125,11 @@ interface RestMateActions {
 }
 
 /**
- * 두 엔진([RestMateEngine]: 쉬었다 가요, [DriveEngine]: 시간 모드)과 SDK·음성·알람을 잇는다. 모든 호출은 메인 스레드에서 한다.
+ * 두 엔진([RestMateEngine]: 레스트 모드, [DriveEngine]: 시간 모드)과 SDK·음성·알람을 잇는다. 모든 호출은 메인 스레드에서 한다.
  *
  * 내비 경로는 여기서만 요청한다.
  * - 시간 모드가 고른 코스: 목적지 + 경유지
- * - 쉬었다 가요: 가던 목적지가 있으면 쉼터를 경유지로 넣고, 없으면 쉼터를 목적지로
+ * - 레스트 모드: 가던 목적지가 있으면 쉼터를 경유지로 넣고, 없으면 쉼터를 목적지로
  * - 쉬고 다시 출발하면: 가던 목적지로 바로
  */
 class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sink, NaviSignals.Sink {
@@ -161,7 +161,7 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
     private var realRemainingMs: Long? = null
     private var realPlaces: List<Place> = emptyList()
 
-    /** 쉬었다 가요 전에 가던 목적지 (쉼터를 경유지로 넣고, 쉰 뒤 다시 안내할 때 쓴다) */
+    /** 레스트 모드 전에 가던 목적지 (쉼터를 경유지로 넣고, 쉰 뒤 다시 안내할 때 쓴다) */
     private var tripDestination: Place? = null
     /** 가던 목적지가 없어 쉼터를 목적지로 안내했는지 */
     private var restAsDestination = false
@@ -256,7 +256,7 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
         }
     }
 
-    /** 쉬었다 가요가 진행 중이면 시간 맞추기를 멈추고, 쉬고 출발하면 가던 목적지로 다시 안내한다. */
+    /** 레스트 모드가 진행 중이면 시간 맞추기를 멈추고, 쉬고 출발하면 가던 목적지로 다시 안내한다. */
     private fun syncRest(t: Long) {
         val phase = engine.state.phase
         drive.onRestActive(t, phase != Phase.DRIVING)
@@ -384,7 +384,7 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
         publish()
     }
 
-    // ---- 화면 조작: 쉬었다 가요 ----
+    // ---- 화면 조작: 레스트 모드 ----
 
     override fun pressDrowsy() = act { engine.pressDrowsy(it) }
     override fun selectRestArea(candidate: RestAreaCandidate) = act { engine.selectRestArea(it, candidate) }
@@ -430,7 +430,7 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
         }
     }
 
-    // ---- 화면 조작: 딱 맞춰 가요·좀 더 달려요 ----
+    // ---- 화면 조작: 온타임 모드·롱웨이 모드 ----
 
     override fun openMode(mode: DriveMode) {
         if (demo == null) navi.requestPlaces()

@@ -60,7 +60,7 @@ object TimeFitPlanner {
      *   없으면 [maxAddedMs]만큼만 채우는 경치 코스를 낸다 (일찍 닿으면 주행 중에 '조금 더 돌기'를 권함).
      *
      * @param restPlaces 쉬다 가는 코스로 들를 수 있는 곳. 비우면 쉬다 가는 코스를 내지 않는다.
-     * @param maxAddedMs 경치·우회 코스로 더 쓸 수 있는 최대 시간 (딱 맞춰 가요에서 한 시간씩 돌지 않게)
+     * @param maxAddedMs 경치·우회 코스로 더 쓸 수 있는 최대 시간 (온타임 모드에서 한 시간씩 돌지 않게)
      */
     fun options(
         from: LatLng,
