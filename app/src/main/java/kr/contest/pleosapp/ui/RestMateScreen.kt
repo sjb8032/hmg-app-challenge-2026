@@ -133,7 +133,16 @@ private fun Header(ui: UiState) {
             modifier = Modifier.weight(1f),
         )
         if (!compact && ui.core.phase == Phase.DRIVING) StepIndicator(ui.drive.step, ui.drive.mode)
-        if (ui.demoMode) Chip("시연 모드", RM.amber)
+        if (ui.demoMode) {
+            // 출발 전에는 가상 시계가 멈춰 있음을 보여 준다 (시각이 왜 안 가는지 알 수 있게)
+            val scale = ui.demoTrip?.timeScale?.roundToInt()
+            val text = when {
+                ui.demoClockHeld -> "시연 · 출발 전 시계 멈춤"
+                scale != null -> "시연 · 시계 ×$scale"
+                else -> "시연 모드"
+            }
+            Chip(text, if (ui.demoClockHeld) RM.textDim else RM.amber)
+        }
         if (ui.now > 0L) {
             Text(DriveText.clockNow(ui.now), color = RM.text, fontSize = 28.sp, fontWeight = FontWeight.SemiBold, style = NumStyle)
         }

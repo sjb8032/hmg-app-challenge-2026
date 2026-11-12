@@ -110,10 +110,13 @@ private fun Tile(label: String, value: String, color: Color, modifier: Modifier,
             .border(1.dp, RM.border, shape)
             .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
+        val compact = LocalScreenSize.current.compact
         Caption(label)
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(value, color = color, fontSize = 30.sp, fontWeight = FontWeight.Bold, style = NumStyle, maxLines = 1)
-            if (unit != null) Text(unit, color = RM.textDim, fontSize = 13.sp, modifier = Modifier.padding(bottom = 5.dp))
+            Text(value, color = color, fontSize = if (compact) 25.sp else 30.sp, fontWeight = FontWeight.Bold, style = NumStyle, maxLines = 1)
+            if (unit != null) {
+                Text(unit, color = RM.textDim, fontSize = 13.sp, maxLines = 1, softWrap = false, modifier = Modifier.padding(bottom = 5.dp))
+            }
         }
     }
 }
