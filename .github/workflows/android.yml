@@ -56,3 +56,56 @@ jobs:
           name: apks
           path: app/build/outputs/apk/**/*.apk
           if-no-files-found: error
+
+  # 화면 캡처: 표본 상태(PreviewSamples)를 실제 Compose 코드로 그려 PNG로 남긴다.
+  # 빌드 설정은 이 작업 안에서만 바꾼다 (.github/scripts/enable_paparazzi.py). 실패해도 APK 빌드에는 영향이 없다.
+  snapshots:
+    name: Screen snapshots
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Enable Paparazzi (this job only)
+        run: python3 .github/scripts/enable_paparazzi.py
+
+      - name: Record screens
+        run: |
+          chmod +x gradlew
+          set -o pipefail
+          ./gradlew --no-daemon :app:recordPaparazziDebug 2>&1 | tee snapshots.log
+
+      - name: Report errors
+        if: failure()
+        run: |
+          grep -E '^e: |^> Task .* FAILED|What went wrong|Exception|Error:' -A2 snapshots.log | grep -v '^--$' | head -15 \
+            | sed 's/%/%25/g' | while IFS= read -r line; do echo "::error::${line}"; done
+
+      # 캡처를 작업 기록에도 남긴다 (아티팩트를 내려받을 수 없는 곳에서 확인할 때)
+      - name: Print screens
+        if: always()
+        run: |
+          for f in app/src/test/snapshots/images/*.png; do
+            [ -f "$f" ] || continue
+            echo "===SNAPSHOT-BEGIN $(basename "$f")==="
+            base64 -w 120 "$f"
+            echo "===SNAPSHOT-END==="
+          done
+
+      - name: Upload screens
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screens
+          path: app/src/test/snapshots/images/*.png
+          if-no-files-found: warn
+          retention-days: 14

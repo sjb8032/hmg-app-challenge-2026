@@ -51,6 +51,7 @@
 3. Emulation Controls 왼쪽에서 도메인(Vehicle, Motion, ADAS, Convenience, Safety, Energy, Climate)을 고르고 카드의 값을 바꿉니다.
    - 드라이브메이트 확인에 쓰는 카드: Motion > Gear Selection·Steering Angle·Brake Pedal, Convenience > Turn Signal State·Ambient Brightness, Safety > Telltales, Climate > Target Temperature·Fan Speed
 4. 안 열리면: 에뮬레이터가 켜져 있는지 → `adb devices`에 잡히는지 → `adb forward`를 다시 → 8088 포트를 다른 프로그램이 쓰는지 → 브라우저 새로 고침 순서로 확인합니다.
+5. 시연 모드를 켜면 앱이 에뮬레이터 안에서 같은 콘솔(127.0.0.1:8088)에 모의 차량의 기어·속도를 보냅니다. 브라우저의 3D 주행 화면과 계기판이 앱의 '출발 · 주행' / 'P단 주차'를 따라 움직이는지 봅니다. 앱 오른쪽 패널의 '계기판·콘솔'이 '연동 중'이면 됩니다.
 
 자세한 내용: [Virtual Console 연결](https://document.pleos.ai/docs/connect/guide/getting-started/application-development/use-vehicle-emulator), [Virtual Console 사용법](https://document.pleos.ai/docs/pleos-only/app-test-guide/virtual-console-guide)
 
@@ -65,7 +66,8 @@
 3. Pleos Connect AVD를 켜고 Run(▶)을 누르거나 `./gradlew installDebug`를 실행합니다.
 4. 화면 오른쪽 상태 영역에서 '차량 SDK'와 '내비 SDK'가 모두 '연결됨'이면 세팅이 끝난 것입니다.
 5. Virtual Console에서 기어를 P ↔ D로 바꿔 '기어' 값이 따라 바뀌는지 봅니다. 차 없이 흐름을 보려면 '시연 모드'를 켭니다(README 참고).
-6. 단위 테스트: `./gradlew testDebugUnitTest` (시간 맞춤·코스 후보·쉼터 찾기·쉼터 데이터 정리·휴식 방식과 알람 맞춤·자주 쓰는 설정·모의 내비 로직)
+6. 단위 테스트: `./gradlew testDebugUnitTest` (시간 맞춤·코스 후보·쉼터 찾기·쉼터 데이터 정리·휴식 방식과 알람 맞춤·자주 쓰는 설정·모의 내비·가상 시계·미니맵 투영·콘솔 연동 로직)
+7. 화면 미리보기: `ui/PreviewData.kt`를 열면 Android Studio Split/Design 탭에서 처음·코스 고르기·달리는 중·늦음 지켜보기·쉼터 안내·휴식 화면을 바로 볼 수 있습니다. PR마다 CI의 'Screen snapshots' 작업이 같은 화면을 PNG로 남깁니다(Actions 실행 화면 아래 Artifacts의 `screens`).
 
 ## 5. 브랜치 규칙
 
