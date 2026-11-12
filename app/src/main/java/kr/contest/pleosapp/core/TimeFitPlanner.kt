@@ -21,7 +21,8 @@ object TimeFitPlanner {
     private const val DETOUR_FILL = 0.85
     private const val MAX_DETOUR_OFFSET_METERS = 15_000.0
     private const val MIN_SPEED_MPS = 12.0 / 3.6
-    private const val MAX_SPEED_MPS = 100.0 / 3.6
+    /** 고속도로는 도심 기준 우회 계수보다 곧아서 환산 속도가 100km/h를 넘을 수 있다. */
+    private const val MAX_SPEED_MPS = 130.0 / 3.6
     private val SCENIC_TAGS = setOf(CourseTag.RIVER, CourseTag.NIGHT_VIEW, CourseTag.LAKE, CourseTag.SEA)
 
     /** 이보다 오래 가는 길이면 휴게소에서만 쉬다 간다 (시내 공원·주차장 제외) */
@@ -54,7 +55,12 @@ object TimeFitPlanner {
      * 코스 후보를 2~3개 낸다: 경치 좋은 지점 최대 2곳, 남는 시간이 길면 쉬다 가는 곳 1곳.
      * 고른 지점이 근처에 없으면 주변으로 돌아가는 코스를 낸다.
      *
+     * - 먼 길(45분 이상)은 목적지 쪽에 있는 지점만 본다 (지나온 쪽으로 되돌아가지 않게).
+     * - 남는 시간이 [maxAddedMs]보다 길면: 쉬다 가는 곳이 있으면 그것만 내고(오래 돌기보다 쉬기),
+     *   없으면 [maxAddedMs]만큼만 채우는 경치 코스를 낸다 (일찍 닿으면 주행 중에 '조금 더 돌기'를 권함).
+     *
      * @param restPlaces 쉬다 가는 코스로 들를 수 있는 곳. 비우면 쉬다 가는 코스를 내지 않는다.
+     * @param maxAddedMs 경치·우회 코스로 더 쓸 수 있는 최대 시간 (딱 맞춰 가요에서 한 시간씩 돌지 않게)
      */
     fun options(
         from: LatLng,
@@ -65,13 +71,22 @@ object TimeFitPlanner {
         restPlaces: List<RestArea>,
         style: RoadStyle,
         config: DriveConfig,
+        maxAddedMs: Long = Long.MAX_VALUE,
     ): List<CourseOption> {
         if (slackMs < config.minSlackMs) return listOf(direct(slackMs))
         val to = destination.position
         val speed = effectiveSpeedMps(from, to, directMs, config)
-        val scenic = scenicOptions(from, to, slackMs, speed, points, style, config)
         val rest = if (slackMs >= config.restStopMinSlackMs) restStopOption(from, to, directMs, slackMs, speed, restPlaces, config) else null
-        val detour = if (scenic.isEmpty()) detourOption(from, to, slackMs, speed, config) else null
+        if (slackMs > maxAddedMs && rest != null) return listOf(rest)
+        val driveSlack = minOf(slackMs, maxAddedMs)
+        val ahead = if (directMs >= LONG_TRIP_MS) {
+            val total = Geo.distanceMeters(from, to)
+            points.filter { Geo.distanceMeters(it.position, to) < total }
+        } else {
+            points
+        }
+        val scenic = scenicOptions(from, to, driveSlack, speed, ahead, style, config)
+        val detour = if (scenic.isEmpty()) detourOption(from, to, driveSlack, speed, config) else null
         return (scenic + listOfNotNull(rest, detour)).take(MAX_OPTIONS).ifEmpty { listOf(direct(slackMs)) }
     }
 

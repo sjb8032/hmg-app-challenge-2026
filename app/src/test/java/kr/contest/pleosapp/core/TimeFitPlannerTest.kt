@@ -111,6 +111,47 @@ class TimeFitPlannerTest {
     }
 
     @Test
+    fun bigSlackOnTimeRestsInsteadOfLongDetours() {
+        val ahead = RestArea("ahead", "가는길주차장", RestAreaType.PARKING, Geo.destinationPoint(southKm(7.0), 90.0, 300.0))
+        val far = point("far", sideKm(12.0))
+        val options = TimeFitPlanner.options(
+            origin, dest, direct, 58 * MINUTE_MS, listOf(far), listOf(ahead), RoadStyle.SCENIC, config, maxAddedMs = 35 * MINUTE_MS,
+        )
+        assertEquals(listOf("rest-ahead"), options.map { it.id })
+    }
+
+    @Test
+    fun bigSlackWithoutRestPlaceCapsScenicTime() {
+        val near = point("near", sideKm(8.0))
+        val far = point("far", sideKm(14.0))
+        val options = TimeFitPlanner.options(
+            origin, dest, direct, 58 * MINUTE_MS, listOf(near, far), emptyList(), RoadStyle.SCENIC, config, maxAddedMs = 35 * MINUTE_MS,
+        )
+        assertTrue(options.isNotEmpty())
+        assertTrue(options.all { it.addedMs <= 35 * MINUTE_MS })
+        assertEquals("scenic-near", options.first().id)
+    }
+
+    @Test
+    fun longTripIgnoresScenicPointsBehind() {
+        val far = Place("먼 도시", southKm(150.0))
+        val behind = point("behind", LatLng(37.15, 127.0))
+        val ahead = point("ahead", Geo.destinationPoint(southKm(120.0), 90.0, 8_000.0))
+        val options = TimeFitPlanner.options(
+            origin, far, 160 * MINUTE_MS, 20 * MINUTE_MS, listOf(behind, ahead), emptyList(), RoadStyle.SCENIC, config,
+        )
+        assertTrue(options.none { it.id == "scenic-behind" })
+    }
+
+    @Test
+    fun fitLabelTreatsSmallSpareAsOnTime() {
+        assertEquals("정각", DriveText.fit(FitStatus.ON_TIME, -30 * SECOND_MS))
+        assertEquals("3분 여유", DriveText.fit(FitStatus.ON_TIME, -3 * MINUTE_MS))
+        assertEquals("8분 일찍", DriveText.fit(FitStatus.EARLY, -8 * MINUTE_MS))
+        assertEquals("약 4분 늦어요", DriveText.fit(FitStatus.LATE, 4 * MINUTE_MS))
+    }
+
+    @Test
     fun noRestStopWhenSlackIsShort() {
         val ahead = RestArea("ahead", "앞쪽휴게소", RestAreaType.SERVICE_AREA, southKm(6.0))
         val options = TimeFitPlanner.options(origin, dest, direct, 15 * MINUTE_MS, emptyList(), listOf(ahead), RoadStyle.SCENIC, config)

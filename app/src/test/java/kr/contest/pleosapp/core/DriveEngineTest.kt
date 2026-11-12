@@ -130,6 +130,23 @@ class DriveEngineTest {
     }
 
     @Test
+    fun defaultTargetFollowsNewDestinationUntilShifted() {
+        val near = Place("학원", southKm(3.0), PlaceKind.BOOKMARK)
+        val e = engine()
+        e.openMode(t0, DriveMode.ON_TIME)
+        val first = e.state.targetAt!!
+        e.setDestination(t0 + 1_000, near)
+        e.onDirectTime(t0 + 2_000, near, 6 * MINUTE_MS)
+        val second = e.state.targetAt!!
+        assertTrue("가까운 곳은 기본 목표도 당겨짐: ${(first - second) / MINUTE_MS}분", second < first)
+
+        e.shiftTarget(t0 + 3_000, 30)
+        val shifted = e.state.targetAt!!
+        e.setDestination(t0 + 4_000, dest)
+        assertEquals(shifted, e.state.targetAt)
+    }
+
+    @Test
     fun directTimeAnswerIsUsed() {
         val home = Place("집", southKm(4.0), PlaceKind.HOME)
         val e = engine()

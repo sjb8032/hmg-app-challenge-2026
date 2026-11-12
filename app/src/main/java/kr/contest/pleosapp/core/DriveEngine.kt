@@ -31,6 +31,8 @@ class DriveEngine(
     private var planDirectMs: Long? = null
     /** 쉬다 가는 코스에서 쉴 곳 가까이까지 왔는지 */
     private var restStopReached = false
+    /** 목표 시각을 직접 옮겼는지. 안 옮겼으면 끝낼 곳이 바뀔 때 기본 목표(바로 가는 시간 + 20분)를 다시 잡는다 */
+    private var targetTouched = false
 
     fun drainEffects(): List<DriveEffect> {
         if (effects.isEmpty()) return emptyList()
@@ -68,6 +70,7 @@ class DriveEngine(
         // 고른 목적지가 내비의 지금 목적지면 내비 남은 시간을 바로 가는 시간으로 쓴다.
         if (dest != null && remain != null && dest.sameSpot(place) && (state.directMs == null || state.directEstimated)) {
             state = state.copy(directMs = remain, directEstimated = false)
+            refreshDefaultTarget(now)
         }
     }
 
@@ -77,6 +80,7 @@ class DriveEngine(
         if (!destination.sameSpot(state.destination)) return
         if (state.directMs != null && !state.directEstimated) return
         state = state.copy(now = now, directMs = ms, directEstimated = false)
+        refreshDefaultTarget(now)
         if (state.planPending) makeOptions(now)
     }
 
@@ -132,6 +136,7 @@ class DriveEngine(
     fun openMode(now: Long, mode: DriveMode) {
         lateHandled = false
         askedDirectAt = null
+        targetTouched = false
         val dest = defaultDestination(mode)
         state = state.copy(
             now = now,
@@ -161,6 +166,7 @@ class DriveEngine(
         if (state.step != DriveStep.SETUP) return
         state = state.copy(now = now, destination = place, directMs = null, directEstimated = false)
         prepareDirect(now, place)
+        refreshDefaultTarget(now)
     }
 
     /** 도착 목표 시각을 분 단위로 옮긴다. 지금부터 5분 뒤보다 이르게는 못 한다. */
@@ -168,6 +174,7 @@ class DriveEngine(
         if (state.step != DriveStep.SETUP || state.mode != DriveMode.ON_TIME) return
         val current = state.targetAt ?: defaultTarget(now)
         val earliest = roundUp(now + 5 * MINUTE_MS, FIVE_MINUTES)
+        targetTouched = true
         state = state.copy(targetAt = max(earliest, current + minutes * MINUTE_MS))
     }
 
@@ -258,7 +265,7 @@ class DriveEngine(
         val from = state.position ?: return
         val remain = remainingMs() ?: return
         val slack = target - now - remain - config.marginMs
-        val options = TimeFitPlanner.options(from, dest, remain, slack, points, stopsFor(state.mode), style(), config)
+        val options = TimeFitPlanner.options(from, dest, remain, slack, points, stopsFor(state.mode), style(), config, maxAdded())
             .filter { it.kind != CourseKind.DIRECT }
         if (options.isEmpty()) {
             state = state.copy(extendOffered = false, message = "더 돌 만한 코스가 없어요. 그대로 갈게요.")
@@ -331,6 +338,13 @@ class DriveEngine(
         val estimate = estimateDirect() ?: return
         askedDirectAt = null
         state = state.copy(directMs = estimate, directEstimated = true)
+        refreshDefaultTarget(state.now)
+    }
+
+    /** 딱 맞춰 가요 설정 중, 목표 시각을 직접 옮기지 않았으면 바로 가는 시간에 맞춰 기본 목표를 다시 잡는다. */
+    private fun refreshDefaultTarget(now: Long) {
+        if (state.step != DriveStep.SETUP || state.mode != DriveMode.ON_TIME || targetTouched) return
+        state = state.copy(targetAt = defaultTarget(now))
     }
 
     private fun estimateDirect(): Long? {
@@ -349,6 +363,9 @@ class DriveEngine(
     /** 좀 더 달려요는 달리는 시간이 목적이라 쉬다 가는 코스를 내지 않는다. */
     private fun stopsFor(mode: DriveMode?): List<RestArea> = if (mode == DriveMode.LONGER) emptyList() else restPlaces
 
+    /** 딱 맞춰 가요는 경치·우회로 오래 돌지 않는다 (남는 시간이 길면 쉬다 가기). 좀 더 달려요는 고른 만큼 */
+    private fun maxAdded(): Long = if (state.mode == DriveMode.LONGER) Long.MAX_VALUE else config.maxOnTimeCourseMs
+
     private fun makeOptions(now: Long) {
         val dest = state.destination ?: return
         val direct = state.directMs ?: return
@@ -366,7 +383,7 @@ class DriveEngine(
         val options = if (from == null) {
             listOf(TimeFitPlanner.direct(slack))
         } else {
-            TimeFitPlanner.options(from, dest, direct, slack, points, stopsFor(state.mode), style(), config)
+            TimeFitPlanner.options(from, dest, direct, slack, points, stopsFor(state.mode), style(), config, maxAdded())
         }
         val note = when {
             from == null -> "현재 위치를 몰라 바로 가는 코스만 보여요."
@@ -476,9 +493,11 @@ class DriveEngine(
     private fun arrive(now: Long) {
         val target = state.targetAt
         val diff = target?.let { now - it }
+        // 여유(3분)를 두고 맞추므로 목표보다 조금 일찍 닿는 것까지 '딱 맞춰'로 본다.
         val message = when {
             diff == null -> "도착했어요."
             abs(diff) <= MINUTE_MS -> "딱 맞춰 도착했어요."
+            diff < 0 && -diff <= config.marginMs + MINUTE_MS -> "딱 맞춰 도착했어요. ${DriveText.minutes(diff)}분 여유가 있어요."
             diff < 0 -> "${DriveText.minutes(diff)}분 일찍 도착했어요."
             else -> "${DriveText.minutes(diff)}분 늦게 도착했어요."
         }

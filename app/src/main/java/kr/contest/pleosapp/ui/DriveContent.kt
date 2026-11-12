@@ -351,7 +351,7 @@ private fun DriveActive(ui: UiState, actions: RestMateActions) {
         } else {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text("${DriveText.clock(eta)} 도착 예상", color = RM.text, fontSize = 40.sp, fontWeight = FontWeight.Bold)
-                Chip(DriveText.diff(diff), color)
+                Chip(DriveText.fit(d.status, diff), color)
             }
             val left = (eta - ui.now).coerceAtLeast(0L)
             val parts = buildList {

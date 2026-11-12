@@ -29,6 +29,14 @@ object DriveText {
         else -> "${minutes(diffMs)}분 늦게"
     }
 
+    /** 달리는 중 도착 예상 표시: "정각", "3분 여유", "8분 일찍", "약 4분 늦어요" */
+    fun fit(status: FitStatus, diffMs: Long): String = when {
+        status == FitStatus.LATE -> "약 ${minutes(diffMs)}분 늦어요"
+        status == FitStatus.EARLY -> "${minutes(diffMs)}분 일찍"
+        diffMs < -MINUTE_MS -> "${minutes(diffMs)}분 여유"
+        else -> "정각"
+    }
+
     /** 걸리는 시간: "25분", "1시간 10분" */
     fun duration(ms: Long): String {
         val total = minutes(ms)
