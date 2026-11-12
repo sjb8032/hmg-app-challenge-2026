@@ -48,7 +48,7 @@ import kotlin.math.roundToInt
  */
 @Composable
 internal fun SidePanel(ui: UiState, actions: RestMateActions, modifier: Modifier) {
-    val shape = RoundedCornerShape(24.dp)
+    val shape = CardShape
     Column(
         modifier
             .clip(shape)
@@ -75,7 +75,7 @@ private fun Brand() {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         Logo(Modifier.size(46.dp))
         Column {
-            Text("드라이브메이트", color = RM.text, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            Text("드라이브메이트", color = RM.text, fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
             Caption("도착 시각에 맞춰 달리고, 졸리면 쉬었다 가요")
         }
     }
@@ -102,7 +102,7 @@ private fun VehicleTiles(ui: UiState) {
 
 @Composable
 private fun Tile(label: String, value: String, color: Color, modifier: Modifier, unit: String? = null) {
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedCornerShape(8.dp)
     Column(
         modifier
             .clip(shape)
@@ -113,7 +113,7 @@ private fun Tile(label: String, value: String, color: Color, modifier: Modifier,
         val compact = LocalScreenSize.current.compact
         Caption(label)
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(value, color = color, fontSize = if (compact) 25.sp else 30.sp, fontWeight = FontWeight.Bold, style = NumStyle, maxLines = 1)
+            Text(value, color = color, fontSize = if (compact) 25.sp else 30.sp, fontWeight = FontWeight.SemiBold, style = NumStyle, maxLines = 1)
             if (unit != null) {
                 Text(unit, color = RM.textDim, fontSize = 13.sp, maxLines = 1, softWrap = false, modifier = Modifier.padding(bottom = 5.dp))
             }
@@ -130,7 +130,7 @@ private fun Connections(ui: UiState) {
         StatusLine(
             "음성 안내",
             if (ui.speechAvailable) "켜짐" else "화면 자막으로",
-            if (ui.speechAvailable) RM.teal else RM.textDim,
+            if (ui.speechAvailable) RM.sky else RM.textDim,
         )
         if (ui.demoMode) {
             val (text, color) = consoleText(ui.console)
@@ -202,7 +202,7 @@ private fun DemoCard(ui: UiState, actions: RestMateActions) {
     Panel(color = RM.card, border = if (ui.demoMode) RM.amber else null, padding = 18.dp, spacing = 12.dp) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("시연 모드", color = RM.text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text("시연 모드", color = RM.text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
                 Caption("모의 내비 · 빨리 가는 가상 시계")
             }
             Switch(
@@ -245,13 +245,13 @@ private fun DemoControls(ui: UiState, actions: RestMateActions) {
             ui.demoDriving -> "시속 ${speed}km로 달리는 중"
             else -> "서 있는 중"
         },
-        if (ui.demoDriving) RM.teal else RM.textDim,
+        if (ui.demoDriving) RM.sky else RM.textDim,
     )
     demoHint(ui)?.let { hint ->
         Row(
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(6.dp))
                 .background(RM.amber.copy(alpha = 0.10f))
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -291,7 +291,7 @@ private fun consoleText(c: ConsoleStatus): Pair<String, Color> = when (c.state) 
     ConsoleLinkState.UNREACHABLE -> "연결 안 됨 (adb forward 확인)" to RM.amber
     ConsoleLinkState.ON -> {
         val gear = c.gear?.let { gearLabel(it) } ?: "—"
-        "연동 중 · $gear · ${c.speedKmh ?: 0} km/h" to RM.teal
+        "연동 중 · $gear · ${c.speedKmh ?: 0} km/h" to RM.sky
     }
 }
 
@@ -304,14 +304,14 @@ internal fun gearLabel(gear: Gear): String = when (gear) {
 }
 
 private fun gearColor(gear: Gear): Color = when (gear) {
-    Gear.DRIVE -> RM.teal
+    Gear.DRIVE -> RM.sky
     Gear.PARK -> RM.amber
     Gear.REVERSE -> RM.red
     else -> RM.textDim
 }
 
 private fun connectionColor(status: String): Color = when {
-    status == RestMateController.CONNECTED -> RM.teal
+    status == RestMateController.CONNECTED -> RM.sky
     status.startsWith("실패") -> RM.red
     else -> RM.textDim
 }

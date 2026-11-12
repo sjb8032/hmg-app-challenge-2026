@@ -51,7 +51,7 @@ private val LATE_OBSERVE_MS = DriveConfig().lateObserveMs
 
 /**
  * 온타임·롱웨이 모드로 달리는 중: 출발부터 목표까지의 시간 위에 지금 · 도착 예상 · 목표 · 들렀다 가는 곳을 놓는다.
- * 늦을 것 같으면 도착 예상이 목표 너머(호박색 구간)로 넘어가고, 길을 바꾸면 여유 구간(청록)으로 돌아오는 것이 보인다.
+ * 늦을 것 같으면 도착 예상이 목표 너머(호박색 구간)로 넘어가고, 길을 바꾸면 여유 구간(하늘색)으로 돌아오는 것이 보인다.
  */
 @Composable
 internal fun TimeTrack(ui: UiState) {
@@ -125,7 +125,7 @@ private fun Explain(ui: UiState) {
             "바로 가도 약 ${DriveText.duration(gap)} 늦어요. 서두르지 말고 안전하게 가세요." to RM.amber
         d.extendOffered && extend != null -> {
             val how = if (extend.kind == CourseKind.REST_STOP) "들렀다 기다리기" else "조금 더 돌기"
-            "${DriveText.duration(gap)} 일찍 닿을 것 같아요 · 남는 시간은 '$how'로 채울 수 있어요." to RM.violet
+            "${DriveText.duration(gap)} 일찍 닿을 것 같아요 · 남는 시간은 '$how'로 채울 수 있어요." to RM.sand
         }
         d.mode == DriveMode.LONGER ->
             "${d.extraMinutes}분 더 달리는 코스예요. 예정보다 많이 늦어지면 짧은 코스로 바꿔요." to RM.textDim
@@ -147,7 +147,7 @@ private fun Explain(ui: UiState) {
 private fun WatchBanner(elapsedMs: Long) {
     val left = ((LATE_OBSERVE_MS - elapsedMs) / SECOND_MS).coerceAtLeast(0L)
     val fraction = (elapsedMs.toFloat() / LATE_OBSERVE_MS.toFloat()).coerceIn(0f, 1f)
-    val shape = RoundedCornerShape(14.dp)
+    val shape = RoundedCornerShape(8.dp)
     Column(
         Modifier
             .fillMaxWidth()
@@ -162,10 +162,10 @@ private fun WatchBanner(elapsedMs: Long) {
                 "늦을 것 같아 지켜보는 중",
                 color = RM.amber,
                 fontSize = 19.sp,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f),
             )
-            Text("${left}초 남음", color = RM.amber, fontSize = 19.sp, fontWeight = FontWeight.Bold, style = NumStyle)
+            Text("${left}초 남음", color = RM.amber, fontSize = 19.sp, fontWeight = FontWeight.SemiBold, style = NumStyle)
         }
         Bar(fraction, RM.amber)
         Caption("잠깐 막힌 것일 수 있어 1분 30초 지켜봐요. 그래도 늦으면 지금 위치에서 더 짧은 길로 바꿔요.", RM.text)
@@ -203,7 +203,7 @@ private fun TrackBar(
             // 목표 바로 앞 여유 구간
             if (margin) {
                 val m0 = x(target - MARGIN_MINUTES * MINUTE_MS)
-                drawRect(RM.teal.copy(alpha = 0.35f), Offset(m0, cy - barH / 2), Size(max(0f, x(target) - m0), barH))
+                drawRect(RM.sky.copy(alpha = 0.35f), Offset(m0, cy - barH / 2), Size(max(0f, x(target) - m0), barH))
             }
             // 지나온 시간
             drawRoundRect(accent.copy(alpha = 0.75f), Offset(pad, cy - barH / 2), Size(max(0f, x(now) - pad), barH), r)
@@ -258,14 +258,14 @@ private fun shortClock(ms: Long): String = DriveText.shortClockOfDay(DriveText.m
 /** 도착 예상 색. 롱웨이 모드는 마감이 없어 늦어도 경고 색을 쓰지 않는다. */
 internal fun fitColor(status: FitStatus, longer: Boolean): Color = if (longer) {
     when (status) {
-        FitStatus.EARLY -> RM.teal
+        FitStatus.EARLY -> RM.sky
         FitStatus.UNKNOWN -> RM.textDim
-        else -> RM.violet
+        else -> RM.sand
     }
 } else {
     when (status) {
-        FitStatus.ON_TIME -> RM.teal
-        FitStatus.EARLY -> RM.violet
+        FitStatus.ON_TIME -> RM.sky
+        FitStatus.EARLY -> RM.sand
         FitStatus.LATE -> RM.amber
         FitStatus.UNKNOWN -> RM.textDim
     }
@@ -290,14 +290,14 @@ internal fun RestTrack(ui: UiState) {
         val napEnd = rest.wakeStartedAt ?: rest.alarmAt
         val wakeMs = if (rest.wakeStartedAt != null) rest.wakeMs else RestTiming.wakeMsFor(rest.alarmAt - rest.startedAt, ui.config.wakeUpMs)
         val wakeEnd = napEnd + wakeMs
-        segments += Segment(rest.startedAt, napEnd, "눈 붙이기", RM.teal)
+        segments += Segment(rest.startedAt, napEnd, "눈 붙이기", RM.sky)
         if (wakeMs > 0) segments += Segment(napEnd, wakeEnd, "깨우기", RM.amber)
         val call = rest.callAt
         if (call != null && call > wakeEnd + MINUTE_MS) segments += Segment(wakeEnd, call, "기다리기", RM.textFaint)
         depart = max(max(wakeEnd, call ?: wakeEnd), now)
     } else {
         val restEnd = rest.callAt ?: rest.alarmAt
-        segments += Segment(rest.startedAt, restEnd, if (rest.kind == RestKind.STAY) "머물기" else "기다리기", RM.teal)
+        segments += Segment(rest.startedAt, restEnd, if (rest.kind == RestKind.STAY) "머물기" else "기다리기", RM.sky)
         depart = max(restEnd, now)
     }
     val arrive = route?.let { depart + it }
@@ -312,11 +312,11 @@ internal fun RestTrack(ui: UiState) {
                     gap < -30 * SECOND_MS -> "${DriveText.duration(gap)} 여유"
                     else -> "정각"
                 }
-                Chip(text, if (gap > 30 * SECOND_MS) RM.amber else RM.teal)
+                Chip(text, if (gap > 30 * SECOND_MS) RM.amber else RM.sky)
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-            if (nap) Stat("알람", DriveText.clock(rest.alarmAt), RM.teal, Modifier.weight(1f), valueSize = 26.sp)
+            if (nap) Stat("알람", DriveText.clock(rest.alarmAt), RM.sky, Modifier.weight(1f), valueSize = 26.sp)
             Stat("출발", DriveText.clock(depart), RM.text, Modifier.weight(1f), valueSize = 26.sp)
             if (arrive != null) Stat("도착 예상", DriveText.clock(arrive), RM.blue, Modifier.weight(1f), valueSize = 26.sp)
             if (target != null) Stat(if (rest.strictTarget) "목표" else "예정", DriveText.clock(target), RM.text, Modifier.weight(1f), valueSize = 26.sp)

@@ -40,8 +40,8 @@ import java.util.Locale
 /*
  * 드라이브메이트 화면의 공통 부품. 크기 기준:
  * - 누를 곳: 작은 버튼 54dp, 보통 64~76dp, 아래 큰 버튼 104dp (장갑을 끼고도 누를 수 있게)
- * - 글자: 큰 숫자 44~72sp, 제목 26~30sp, 본문 20sp, 설명 15~16sp
- * - 모서리: 카드 20dp, 버튼 16dp / 테두리 1dp (강조할 때 2dp 색 테두리)
+ * - 글자: 큰 숫자 44~72sp, 제목 26~30sp, 본문 20sp, 설명 15~16sp / 버튼 글자 굵기 500, 자간 좁게
+ * - 모서리: 카드 10dp, 버튼·칩 6dp (현대 제품 화면의 각진 버튼) / 테두리 1dp (강조할 때 2dp 색 테두리), 그림자 없음
  */
 
 /**
@@ -77,22 +77,22 @@ internal fun TwoPane(
 }
 
 internal enum class Tone(val container: Color, val content: Color) {
-    TEAL(RM.teal, RM.onTeal),
-    VIOLET(RM.violet, RM.onViolet),
+    SKY(RM.sky, RM.onSky),
+    SAND(RM.sand, RM.onSand),
     AMBER(RM.amber, RM.onAmber),
     NEUTRAL(RM.button, RM.text),
 }
 
-/** 모드 색: 온타임 청록, 롱웨이 보라 */
+/** 모드 색: 온타임 하늘색(스카이 블루), 롱웨이 샌드 */
 internal fun modeColor(mode: DriveMode?): Color = when (mode) {
-    DriveMode.ON_TIME -> RM.teal
-    DriveMode.LONGER -> RM.violet
+    DriveMode.ON_TIME -> RM.sky
+    DriveMode.LONGER -> RM.sand
     null -> RM.textDim
 }
 
 internal fun modeTone(mode: DriveMode?): Tone = when (mode) {
-    DriveMode.LONGER -> Tone.VIOLET
-    else -> Tone.TEAL
+    DriveMode.LONGER -> Tone.SAND
+    else -> Tone.SKY
 }
 
 @Composable
@@ -110,7 +110,7 @@ internal fun ActionButton(
         onClick = onClick,
         enabled = enabled,
         modifier = modifier.heightIn(min = minHeight),
-        shape = RoundedCornerShape(16.dp),
+        shape = ButtonShape,
         colors = ButtonDefaults.buttonColors(
             containerColor = tone.container,
             contentColor = tone.content,
@@ -121,7 +121,8 @@ internal fun ActionButton(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text, fontSize = textSize, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+            // 현대 제품 화면의 버튼 글자 굵기(500)
+            Text(text, fontSize = textSize, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center)
             if (sub != null) {
                 Text(
                     sub,
@@ -156,7 +157,7 @@ internal fun Panel(
     spacing: Dp = 10.dp,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val shape = RoundedCornerShape(20.dp)
+    val shape = CardShape
     val background = if (border != null) border.copy(alpha = 0.07f).compositeOver(color) else color
     val stroke = if (border != null) BorderStroke(2.dp, border) else BorderStroke(1.dp, RM.border)
     Column(
@@ -211,9 +212,9 @@ internal fun Chip(text: String, color: Color, fontSize: TextUnit = 16.sp) {
         style = NumStyle,
         maxLines = 1,
         modifier = Modifier
-            .background(color.copy(alpha = 0.14f), CircleShape)
-            .border(1.dp, color.copy(alpha = 0.45f), CircleShape)
-            .padding(horizontal = 14.dp, vertical = 6.dp),
+            .background(color.copy(alpha = 0.14f), ChipShape)
+            .border(1.dp, color.copy(alpha = 0.45f), ChipShape)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
     )
 }
 
@@ -242,7 +243,7 @@ internal fun NumberBadge(text: String, color: Color, size: Dp = 28.dp, ring: Col
 internal fun Stat(label: String, value: String, color: Color, modifier: Modifier = Modifier, valueSize: TextUnit = 30.sp) {
     Column(modifier) {
         Caption(label)
-        Text(value, color = color, fontSize = valueSize, fontWeight = FontWeight.Bold, style = NumStyle, maxLines = 1)
+        Text(value, color = color, fontSize = valueSize, fontWeight = FontWeight.SemiBold, style = NumStyle, maxLines = 1)
     }
 }
 

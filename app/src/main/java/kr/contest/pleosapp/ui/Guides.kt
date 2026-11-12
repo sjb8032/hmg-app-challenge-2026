@@ -63,7 +63,7 @@ internal fun ColumnScope.CaptionSlot(ui: UiState) {
 
 @Composable
 private fun CaptionBar(text: String) {
-    val shape = RoundedCornerShape(18.dp)
+    val shape = CardShape
     Row(
         Modifier
             .fillMaxWidth()
@@ -126,10 +126,10 @@ internal fun StepIndicator(step: DriveStep, mode: DriveMode?) {
                     if (i < index) "✓" else "${i + 1}",
                     color = if (current) RM.background else color,
                     fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                 )
             }
-            Text(name, color = color, fontSize = 17.sp, fontWeight = if (current) FontWeight.Bold else FontWeight.Medium)
+            Text(name, color = color, fontSize = 17.sp, fontWeight = if (current) FontWeight.SemiBold else FontWeight.Medium)
             if (i < STEP_NAMES.lastIndex) {
                 Box(
                     Modifier

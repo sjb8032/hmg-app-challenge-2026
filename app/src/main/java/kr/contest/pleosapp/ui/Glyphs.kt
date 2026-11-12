@@ -18,23 +18,23 @@ import kr.contest.pleosapp.app.LogKind
  * 화면에 쓰는 작은 그림 (아이콘 라이브러리를 더하지 않으려고 직접 그린다). 모두 정사각형 영역에 맞춰 그린다.
  */
 
-/** 앱 표시: 청록→보라 바탕 위 굽은 길과 도착 점 */
+/** 앱 표시: 현대 네이비 바탕 위 하늘색 굽은 길과 도착 점 */
 @Composable
 internal fun Logo(modifier: Modifier = Modifier) {
     Canvas(modifier) {
         val w = size.width
         val h = size.height
         drawRoundRect(
-            Brush.linearGradient(listOf(RM.teal, RM.violet), start = Offset.Zero, end = Offset(w, h)),
-            cornerRadius = CornerRadius(w * 0.28f),
+            Brush.linearGradient(listOf(RM.navyLight, RM.hyundaiNavy), start = Offset.Zero, end = Offset(w, h)),
+            cornerRadius = CornerRadius(w * 0.18f),
         )
         val road = Path().apply {
             moveTo(w * 0.24f, h * 0.80f)
             cubicTo(w * 0.24f, h * 0.48f, w * 0.76f, h * 0.62f, w * 0.72f, h * 0.34f)
         }
-        drawPath(road, Color.White, style = Stroke(w * 0.10f, cap = StrokeCap.Round))
+        drawPath(road, RM.sky, style = Stroke(w * 0.10f, cap = StrokeCap.Round))
         drawCircle(Color.White, w * 0.11f, Offset(w * 0.72f, h * 0.25f))
-        drawCircle(RM.violetDeep, w * 0.05f, Offset(w * 0.72f, h * 0.25f))
+        drawCircle(RM.hyundaiNavy, w * 0.05f, Offset(w * 0.72f, h * 0.25f))
     }
 }
 
@@ -177,6 +177,6 @@ internal fun LogGlyph(kind: LogKind, modifier: Modifier) {
 internal fun logColor(kind: LogKind): Color = when (kind) {
     LogKind.VOICE -> RM.amber
     LogKind.NAVI -> RM.blue
-    LogKind.VEHICLE -> RM.teal
+    LogKind.VEHICLE -> RM.sky
     LogKind.DEMO -> RM.textFaint
 }
