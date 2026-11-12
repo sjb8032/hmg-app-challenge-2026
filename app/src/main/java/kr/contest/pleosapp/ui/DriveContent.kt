@@ -656,8 +656,14 @@ private fun DriveActive(ui: UiState, actions: RestMateActions) {
     )
 }
 
-/** 코스 한 곳: 출발 · 경유지 · 쉼터 · 목적지 */
-private data class CourseStop(val name: String, val detail: String, val color: Color, val done: Boolean)
+/** 코스 한 곳: 출발 · 경유지 · 쉼터 · 목적지. [detailColor]는 아랫줄 색 (늦을 것 같으면 호박색) */
+private data class CourseStop(
+    val name: String,
+    val detail: String,
+    val color: Color,
+    val done: Boolean,
+    val detailColor: Color = color,
+)
 
 /**
  * 고른 코스를 세로로: 출발 → 경유지(지났는지) → 목적지(도착 예상). 미니맵의 점과 같은 색을 쓴다.
@@ -695,7 +701,8 @@ private fun CourseStops(ui: UiState) {
         arrived -> "${DriveText.clock(eta)} 도착$targetText"
         else -> "${DriveText.clock(eta)} 도착 예상$targetText"
     }
-    stops += CourseStop(dest.name, destDetail, RM.teal, done = arrived)
+    val late = !arrived && d.mode == DriveMode.ON_TIME && d.status == FitStatus.LATE
+    stops += CourseStop(dest.name, destDetail, RM.teal, done = arrived, detailColor = if (late) RM.amber else RM.teal)
     Panel(spacing = 0.dp) {
         Label("코스", modifier = Modifier.padding(bottom = 12.dp))
         stops.forEachIndexed { i, stop -> StopRow(stop, last = i == stops.lastIndex) }
@@ -745,7 +752,7 @@ private fun StopRow(stop: CourseStop, last: Boolean) {
                 overflow = TextOverflow.Ellipsis,
             )
             if (stop.detail.isNotEmpty()) {
-                Text(stop.detail, color = if (stop.done && !last) RM.textFaint else stop.color, fontSize = 16.sp, style = NumStyle)
+                Text(stop.detail, color = if (stop.done && !last) RM.textFaint else stop.detailColor, fontSize = 16.sp, style = NumStyle)
             }
         }
     }
