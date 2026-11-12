@@ -84,12 +84,14 @@ class DriveEngineTest {
         var now = t0 + 60 * SECOND_MS
         e.naviAt(now, target - now + 5 * MINUTE_MS)
         assertEquals(FitStatus.LATE, e.state.status)
-        // 잠깐 막힌 것일 수 있어 바로 바꾸지 않는다.
+        // 잠깐 막힌 것일 수 있어 바로 바꾸지 않는다. 화면에는 언제부터 지켜보는지 보여 준다.
         assertTrue(e.state.viaActive)
+        assertEquals(now, e.state.lateSince)
         assertTrue(e.drainEffects().none { it is DriveEffect.Route })
 
         now += 95 * SECOND_MS
         e.naviAt(now, target - now + 5 * MINUTE_MS)
+        assertNull(e.state.lateSince)
         val shortened = e.drainEffects()
         assertEquals(listOf("가까운공원"), shortened.filterIsInstance<DriveEffect.Route>().single().via.map { it.name })
         assertEquals("scenic-p35", e.state.chosen?.id)

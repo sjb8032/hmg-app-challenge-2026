@@ -145,7 +145,10 @@ object DemoTrips {
     private val ACADEMY = Place("아이 학원", LatLng(37.4946, 127.0576), PlaceKind.BOOKMARK)
     private val PLACES = listOf(HOME, OFFICE, ACADEMY)
 
-    /** 시내: 논현역에서 광화문 약속 장소로 (약 20분 거리) */
+    /**
+     * 시내: 논현역에서 광화문 약속 장소로 (약 20분 거리). 퇴근길 저녁 약속 이야기라 가상 시계를 오후 6시 30분에 시작한다
+     * (언제 시연해도 같은 시각·같은 코스 후보가 나오게).
+     */
     val CITY = DemoTrip(
         id = "city",
         title = "시내 · 논현역 → 광화문",
@@ -156,6 +159,7 @@ object DemoTrips {
         detourFactor = 1.35,
         expressway = false,
         timeScale = 12.0,
+        startTimeOfDayMs = 18 * HOUR_MS + 30 * MINUTE_MS,
     )
 
     /** 고속도로: 영동고속도로로 강릉 숙소까지 (체크인 15시 이야기, 가상 시계 오전 11시 40분 시작) */

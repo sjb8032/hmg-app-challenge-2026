@@ -215,6 +215,8 @@ data class DriveState(
     /** 레스트 모드가 진행 중이라 시간 맞추기를 잠시 멈춤 */
     val paused: Boolean = false,
     val arrivedAt: Long? = null,
+    /** 늦을 것 같다고 본 시각. 이 상태가 [DriveConfig.lateObserveMs] 이어지면 길을 바꾼다 (화면에 '지켜보는 중' 표시) */
+    val lateSince: Long? = null,
 ) {
     /** 아직 지나지 않은 경유지가 있는지 */
     val viaActive: Boolean get() = !viaCleared && chosen?.via?.isNotEmpty() == true

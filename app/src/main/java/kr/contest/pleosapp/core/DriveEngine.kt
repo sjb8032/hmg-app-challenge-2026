@@ -903,9 +903,13 @@ class DriveEngine(
         val status = statusFor(diff)
         state = state.copy(arrivalEstimate = eta, diffMs = diff, status = status)
         updateStopTimes(now, driving)
-        if (state.paused || !settled) return
+        if (state.paused || !settled) {
+            if (state.lateSince != null) state = state.copy(lateSince = null)
+            return
+        }
         if (checkWaitStillWorth(now, driving)) return
         if (status == FitStatus.LATE) onLate(now, diff) else lateSince = null
+        if (state.lateSince != lateSince) state = state.copy(lateSince = lateSince)
         when {
             status == FitStatus.EARLY -> maybeOfferExtend(now, diff, remain)
             state.extendOffered -> withdrawOffer(now)
