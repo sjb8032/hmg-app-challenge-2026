@@ -196,17 +196,17 @@ class DriveEngineTest {
     }
 
     @Test
-    fun extendCanReplaceAScenicWaypointThatEndsTooEarly() {
+    fun extendIsNotOfferedBeforeTheChosenWaypoint() {
         val far = CoursePoint("far", "먼공원", Geo.destinationPoint(southKm(7.0), 90.0, 8_000.0), setOf(CourseTag.PARK))
         val e = engine(points = listOf(p6, far)).planOnTime(shiftMinutes = 15)
         e.choose(t0 + 1_000, e.state.options.first { it.id == "scenic-p6" })
         val target = e.state.targetAt!!
-        // 강변공원으로 가는 중인데 15분 일찍 닿을 것 같다: 더 먼 곳으로 바꾸자고 권한다.
+        // 강변공원으로 가는 중에는 15분 일찍 닿을 것 같아도 권하지 않는다: 바꾸면 고른 경유지를 건너뛴다.
+        // (경유지를 지난 뒤에 남는 시간이 있으면 그때 권한다)
         val now = t0 + 5 * MINUTE_MS
         e.naviAt(now, target - now - 15 * MINUTE_MS)
         assertTrue(e.state.viaActive)
-        assertTrue(e.state.extendOffered)
-        assertEquals("scenic-far", e.state.extendOption?.id)
+        assertFalse(e.state.extendOffered)
     }
 
     @Test
@@ -763,8 +763,17 @@ class DriveEngineTest {
         assertEquals(OnTimeStyle.WAIT_NEAR, e.state.onTimeStyle)
 
         e.finish(t0 + 2_000)
-        // 방금 지난 시각이면 오늘은 지났다고 하고 시각만 다시 고르게 한다 (다음 날로 보는 것은 12시간 안일 때만).
-        e.applySaved(t0 + 3_000, saved.copy(minuteOfDay = DriveText.minuteOfDay(t0 - 30 * MINUTE_MS)))
+        // 조금 전(1시간 안)에 지난 시각이면 늦게 나온 날이다: 그 시각을 그대로 두고 바로 가는 길을 보여 준다.
+        val justPassed = DriveText.minuteOfDay(t0 - 10 * MINUTE_MS)
+        e.applySaved(t0 + 3_000, saved.copy(minuteOfDay = justPassed))
+        assertEquals(DriveStep.CHOOSE, e.state.step)
+        assertEquals(DriveText.todayAt(t0, justPassed), e.state.targetAt)
+        assertEquals(listOf(CourseKind.DIRECT), e.state.options.map { it.kind })
+        assertTrue(e.state.message.orEmpty(), e.state.message.orEmpty().contains("이미 지났어요"))
+
+        e.finish(t0 + 4_000)
+        // 한참 전에 지났으면 오늘은 지났다고 하고 시각만 다시 고르게 한다 (다음 날로 보는 것은 12시간 안일 때만).
+        e.applySaved(t0 + 5_000, saved.copy(minuteOfDay = DriveText.minuteOfDay(t0 - 2 * HOUR_MS)))
         assertEquals(DriveStep.SETUP, e.state.step)
         assertTrue(e.state.message.orEmpty().contains("지난 시각"))
     }
@@ -793,5 +802,56 @@ class DriveEngineTest {
         assertEquals(DriveStep.HOME, e.state.step)
         assertEquals(listOf(home), e.state.places)
         assertNull(e.state.chosen)
+    }
+
+    @Test
+    fun addingTimeWithoutALongerCourseSaysHowEarly() {
+        // 경치 코스로 가는 중 +10분인데 더 돌 경치 코스가 없다: 목표만 미루고, 그만큼 일찍 닿는 것을 숨기지 않는다.
+        val e = engine().planOnTime()
+        e.choose(t0 + 1_000, e.state.options.first { it.id == "scenic-p6" })
+        e.drainEffects()
+        e.addTime(t0 + MINUTE_MS, 10)
+        assertEquals("scenic-p6", e.state.chosen?.id)
+        assertTrue(e.state.message.orEmpty(), e.state.message.orEmpty().contains("일찍 도착해요"))
+        val said = e.drainEffects().filterIsInstance<DriveEffect.Speak>().single().text
+        assertTrue(said, said.startsWith("도착 목표를") && said.contains("일찍 도착해요"))
+    }
+
+    @Test
+    fun lateSpeechOnlyWhenMoreThanTwoMinutesLate() {
+        val e = engine().planOnTime()
+        e.goDirect(t0 + 1_000)
+        e.drainEffects()
+        val target = e.state.targetAt!!
+        // 1분 늦을 것 같은 상태가 이어져도 화면 칩만 (내비 예상은 1분쯤 흔들린다)
+        var now = t0 + MINUTE_MS
+        e.naviAt(now, target - now + MINUTE_MS)
+        now += 2 * MINUTE_MS
+        e.naviAt(now, target - now + MINUTE_MS)
+        assertEquals(FitStatus.LATE, e.state.status)
+        assertTrue(e.drainEffects().none { it is DriveEffect.Speak })
+        // 3분 늦을 것 같으면 한 번 말한다.
+        now += MINUTE_MS
+        e.naviAt(now, target - now + 3 * MINUTE_MS)
+        val said = e.drainEffects().filterIsInstance<DriveEffect.Speak>().single().text
+        assertTrue(said, said.contains("늦을 것 같아요"))
+    }
+
+    @Test
+    fun longerRestCountsTheRemainingWaypoint() {
+        // 롱웨이 모드는 쉬고 나서 남은 경유지를 거쳐 가므로, 쉬는 동안의 남은 시간에도 경유지를 넣는다
+        // (쉬는 화면의 '지금 출발하면 ○ 도착'이 출발 뒤 도착 예상과 맞게).
+        val e = engine()
+        e.openMode(t0, DriveMode.LONGER)
+        e.setExtraMinutes(30)
+        e.plan(t0)
+        e.choose(t0 + 1_000, e.state.options.first { it.id == "scenic-p6" })
+        val now = t0 + 3 * MINUTE_MS
+        val rest = RestSession(startedAt = now, plannedMinutes = 10, alarmAt = now + 10 * MINUTE_MS, kind = RestKind.STAY)
+        e.onRestPhase(now, Phase.RESTING, rest)
+        e.onNaviDestination(now, dest, 15 * MINUTE_MS)
+        e.onTick(now + 1_000)
+        val remaining = e.deadline()!!.remainingMs!!
+        assertTrue(remaining.toString(), remaining > 15 * MINUTE_MS + 5 * MINUTE_MS)
     }
 }

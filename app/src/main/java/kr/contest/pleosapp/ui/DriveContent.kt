@@ -335,8 +335,12 @@ private fun DriveChoose(ui: UiState, actions: RestMateActions) {
     Panel(border = modeColor(mode)) {
         Label("코스 후보")
         val target = d.targetAt
+        // 바로 가도 늦으면 '맞춰요' 대신 얼마나 늦는지
+        val late = d.directMs?.let { direct -> target?.let { ui.now + direct - it } }
         val head = when {
             mode == DriveMode.LONGER -> "${d.extraMinutes}분 더 달릴 코스"
+            target != null && late != null && late > 30 * SECOND_MS ->
+                "목표 ${DriveText.clock(target)} · 바로 가도 약 ${DriveText.duration(late)} 늦어요"
             target != null -> "목표 ${DriveText.clock(target)} · ${MARGIN_MINUTES}분 일찍 닿게 맞춰요"
             else -> null
         }
@@ -422,10 +426,10 @@ private fun CourseCard(option: CourseOption, arrival: Long?, target: Long?, tone
 /** 온타임 모드 코스 카드: 남는 시간을 다 못 채워 일찍 닿거나 늦는 코스면 몇 분인지 붙인다 */
 private fun fitNote(arrival: Long, target: Long?): String {
     if (target == null) return ""
-    val early = target - arrival
+    val early = -DriveText.gapMs(arrival, target)
     return when {
         early < -30 * SECOND_MS -> " · 약 ${DriveText.duration(early)} 늦어요"
-        early >= (MARGIN_MINUTES + 2) * MINUTE_MS -> " · ${DriveText.duration(early)} 일찍"
+        early > (MARGIN_MINUTES + 2) * MINUTE_MS -> " · ${DriveText.duration(early)} 일찍"
         else -> ""
     }
 }
@@ -454,7 +458,12 @@ private fun DriveActive(ui: UiState, actions: RestMateActions) {
         } else {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text("${DriveText.clock(eta)} 도착 예상", color = RM.text, fontSize = 40.sp, fontWeight = FontWeight.Bold)
-                Chip(if (longer) DriveText.fitLonger(d.status, diff) else DriveText.fit(d.status, diff), color)
+                // 분은 화면의 두 시각(도착 예상·목표) 차이로, 계획한 여유(3분 + 2분) 안이면 '여유'로
+                val shown = d.targetAt?.let { DriveText.gapMs(eta, it) } ?: diff
+                Chip(
+                    if (longer) DriveText.fitLonger(d.status, shown) else DriveText.fit(d.status, shown, (MARGIN_MINUTES + 2) * MINUTE_MS),
+                    color,
+                )
             }
             val target = d.targetAt
             val parts = buildList {
@@ -494,7 +503,7 @@ private fun DriveActive(ui: UiState, actions: RestMateActions) {
         } else {
             ActionButton("+5분", { actions.addDriveTime(5) }, Modifier.width(130.dp), minHeight = 60.dp, textSize = 20.sp)
             ActionButton("+10분", { actions.addDriveTime(10) }, Modifier.width(130.dp), minHeight = 60.dp, textSize = 20.sp)
-            Caption("약속이 늦춰지면 목표를 미루고 남는 시간을 다시 채워요.", modifier = Modifier.weight(1f))
+            Caption("약속이 늦춰지면 목표를 미뤄요. 더 돌 코스가 있으면 채워요.", modifier = Modifier.weight(1f))
         }
     }
 }

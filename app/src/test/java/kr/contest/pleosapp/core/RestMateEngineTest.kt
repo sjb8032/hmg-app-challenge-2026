@@ -638,6 +638,30 @@ class RestMateEngineTest {
     }
 
     @Test
+    fun jamAfterWakingMovesTheDepartureTimeAndShowsTheOldOne() {
+        val e = engine()
+        e.driveAt(t0)
+        val d = TripDeadline(t0 + 120 * MINUTE_MS, 3 * MINUTE_MS, strict = true, remainingMs = 40 * MINUTE_MS)
+        e.setDeadline(d)
+        e.parkAt(t0)
+        e.startRest(t0 + 2_000, RestKind.NAP, a5)
+        e.onTick(t0 + 2_000 + 20 * MINUTE_MS)
+        e.stopAlarm(t0 + 21 * MINUTE_MS)
+        val told = e.state.rest!!.callAt!!
+        assertEquals(floorMinute(t0 + 77 * MINUTE_MS), told)
+        // 깬 뒤에 앞길이 6분 더 막혔다: 출발 시각을 당기고, 처음 알린 시각을 화면에 남긴다.
+        e.setDeadline(d.copy(remainingMs = 46 * MINUTE_MS))
+        e.onTick(t0 + 23 * MINUTE_MS)
+        assertEquals(floorMinute(t0 + 71 * MINUTE_MS), e.state.rest!!.callAt)
+        assertEquals(told, e.state.rest!!.callMovedFrom)
+        // 2분 전 알림이 새 시각을 말하면 지운다.
+        e.drainEffects()
+        e.onTick(t0 + 69 * MINUTE_MS)
+        assertTrue(spoken(e).single().contains("출발 준비해 주세요"))
+        assertNull(e.state.rest!!.callMovedFrom)
+    }
+
+    @Test
     fun laterTargetWhileWaitingMovesTheDepartureCall() {
         val e = engine()
         val first = TripDeadline(t0 + 40 * MINUTE_MS, 3 * MINUTE_MS, strict = true, remainingMs = 8 * MINUTE_MS)
@@ -759,5 +783,155 @@ class RestMateEngineTest {
     fun spokenNameDropsDirectionInParentheses() {
         assertEquals("안성휴게소", RestMateText.spokenName("안성휴게소(부산방향)"))
         assertEquals("안성휴게소", RestMateText.spokenName("안성휴게소 (부산방향)"))
+    }
+
+    /** 목적지 바로 옆(100m) 쉼터에 세워 기다리기 시작한다. */
+    private fun RestMateEngine.waitNextToDestination(dest: LatLng): Long {
+        onDestination(dest)
+        driveAt(t0, southKm(5.0))
+        onSpeed(t0 + 1_000, 0.0)
+        onGear(t0 + 1_000, Gear.PARK)
+        startRest(t0 + 2_000, RestKind.WAIT, a5)
+        return t0 + 2_000
+    }
+
+    @Test
+    fun creepingTowardTheDestinationNextDoorEndsTheWait() {
+        val e = engine()
+        val dest = southKm(5.1)
+        e.setDeadline(TripDeadline(t0 + 30 * MINUTE_MS, 3 * MINUTE_MS, strict = true, remainingMs = MINUTE_MS))
+        e.waitNextToDestination(dest)
+        e.drainEffects()
+        // 막힌 길로 시속 8km로 목적지 쪽 40m: 15km·150m에 못 미쳐도 출발로 본다 (목적지에 닿기 전에).
+        e.onGear(t0 + 60_000, Gear.DRIVE)
+        e.onSpeed(t0 + 60_000, 8.0)
+        e.onLocation(t0 + 70_000, southKm(5.04), 180.0)
+        e.onTick(t0 + 71_000)
+        assertEquals(Phase.DRIVING, e.state.phase)
+        // 목적지가 코앞이라 '다시 출발하시네요'는 하지 않는다.
+        assertTrue(spoken(e).isEmpty())
+    }
+
+    @Test
+    fun reachingTheDestinationWhileWaitingEndsTheRestQuietly() {
+        val e = engine()
+        val dest = southKm(5.1)
+        e.setDeadline(TripDeadline(t0 + 30 * MINUTE_MS, 3 * MINUTE_MS, strict = true, remainingMs = MINUTE_MS))
+        e.waitNextToDestination(dest)
+        e.drainEffects()
+        // 세운 자리에서 움직이지 않았는데 도착 안내가 오면 그대로 기다린다.
+        e.onTripArrived(t0 + 3 * MINUTE_MS)
+        assertEquals(Phase.RESTING, e.state.phase)
+        // 목적지로 옮겨 와 세웠다: 쉬기를 조용히 끝낸다 (늦음 알람이나 '다시 출발' 안내 없이).
+        e.onLocation(t0 + 4 * MINUTE_MS, dest, 180.0)
+        e.onTripArrived(t0 + 4 * MINUTE_MS)
+        assertEquals(Phase.DRIVING, e.state.phase)
+        assertTrue(e.drainEffects().none { it is Effect.Speak || it == Effect.Alarm(true) })
+    }
+
+    @Test
+    fun drowsyRestCallsGentlyAndNeverRingsForLateness() {
+        val e = engine()
+        // 도착 목표가 빠듯한데 졸려서 레스트 모드로 쉬고, 기다리기로 바꾼다 (10분은 쉬므로 늦는다).
+        e.setDeadline(TripDeadline(t0 + 15 * MINUTE_MS, 3 * MINUTE_MS, strict = true, remainingMs = 10 * MINUTE_MS))
+        val start = e.restAtNearest(t0)
+        e.setRestKind(start + 1_000, RestKind.WAIT)
+        e.drainEffects()
+        val call = e.state.rest!!.callAt!!
+        e.onTick(call - 2 * MINUTE_MS)
+        // 2분 전 음성은 늦는 것을 숨기지 않는다 ('도착에 맞아요' 대신 언제 닿는지).
+        val notice = spoken(e).single()
+        assertTrue(notice, notice.contains("쯤 도착해요"))
+        e.onTick(call)
+        val effects = e.drainEffects()
+        assertTrue(effects.contains(Effect.Chime))
+        assertEquals("충분히 쉬셨으면 천천히 출발해 주세요.", effects.filterIsInstance<Effect.Speak>().single().text)
+        e.onTick(call + 10 * MINUTE_MS)
+        e.onTick(call + 20 * MINUTE_MS)
+        val later = e.drainEffects()
+        assertTrue(later.none { it is Effect.Alarm || it is Effect.Speak || it == Effect.Chime })
+    }
+
+    @Test
+    fun lateAlarmStopsByItselfThenRemindsEveryFiveMinutesForAWhile() {
+        val e = engine()
+        e.setDeadline(TripDeadline(t0 + 40 * MINUTE_MS, 3 * MINUTE_MS, strict = true, remainingMs = 8 * MINUTE_MS))
+        e.parkAt(t0)
+        e.startRest(t0 + 2_000, RestKind.WAIT, a5)
+        e.onTick(t0 + 27 * MINUTE_MS)
+        e.onTick(t0 + 29 * MINUTE_MS)
+        e.onTick(t0 + 33 * MINUTE_MS)
+        assertTrue(e.drainEffects().contains(Effect.Alarm(true)))
+        // 빈 차에서 계속 울리지 않게 2분 뒤 저절로 멈춘다.
+        e.onTick(t0 + 35 * MINUTE_MS)
+        assertTrue(e.drainEffects().contains(Effect.Alarm(false)))
+        assertFalse(e.state.rest!!.alarmRinging)
+        // 그래도 그대로면 5분마다 짧게 다시 알린다.
+        e.onTick(t0 + 38 * MINUTE_MS)
+        val again = e.drainEffects()
+        assertTrue(again.contains(Effect.Chime))
+        assertEquals("지금 출발해도 약 6분 늦어요.", again.filterIsInstance<Effect.Speak>().single().text)
+        e.onTick(t0 + 43 * MINUTE_MS)
+        e.onTick(t0 + 48 * MINUTE_MS)
+        e.drainEffects()
+        // 출발 알림 뒤 20분이 지나면 일부러 머무는 것으로 보고 더 알리지 않는다.
+        e.onTick(t0 + 53 * MINUTE_MS)
+        assertTrue(e.drainEffects().none { it == Effect.Chime })
+    }
+
+    @Test
+    fun sleepingThroughTheAlarmStartsWakeTimeWhenItIsStopped() {
+        val e = engine()
+        e.driveAt(t0)
+        e.setDeadline(TripDeadline(t0 + 120 * MINUTE_MS, 3 * MINUTE_MS, strict = true, remainingMs = 40 * MINUTE_MS))
+        e.parkAt(t0)
+        e.startRest(t0 + 2_000, RestKind.NAP, a5)
+        e.onTick(t0 + 2_000 + 20 * MINUTE_MS)
+        e.drainEffects()
+        // 15분 동안 알람을 못 듣고 자다가 끈다: 몸을 깨우는 시간은 지금부터 센다.
+        val stop = t0 + 37 * MINUTE_MS
+        e.stopAlarm(stop)
+        assertEquals(stop, e.state.rest!!.wakeStartedAt)
+        assertTrue(spoken(e).single().startsWith("막 깨셨으니"))
+        // 곧바로 떠나면 천천히 가라고 한다.
+        e.departNow(stop + 30_000)
+        assertTrue(spoken(e).single().contains("천천히"))
+    }
+
+    @Test
+    fun noLongDriveCardRightAfterArriving() {
+        val e = engine()
+        e.driveAt(t0)
+        var t = t0
+        while (t < t0 + 115 * MINUTE_MS) {
+            t += 5 * MINUTE_MS
+            e.onTick(t)
+        }
+        assertNull(e.state.prompt)
+        // 도착 안내 직후 아직 D단인 틱에 2시간이 찼다: 숙소 주차장에서 '다음 쉼터에 들를까요?'를 묻지 않는다.
+        e.onTripArrived(t)
+        e.onTick(t + 5 * MINUTE_MS)
+        e.onTick(t + 10 * MINUTE_MS)
+        assertNull(e.state.prompt)
+    }
+
+    @Test
+    fun jamWhileWaitingMovesTheDepartureTimeRightAwayAndSaysWhy() {
+        val e = engine()
+        val d = TripDeadline(t0 + 40 * MINUTE_MS, 3 * MINUTE_MS, strict = true, remainingMs = 8 * MINUTE_MS)
+        e.setDeadline(d)
+        e.parkAt(t0)
+        e.startRest(t0 + 2_000, RestKind.WAIT, a5)
+        e.onTick(t0 + 10 * MINUTE_MS)
+        val before = e.state.rest!!.callAt!!
+        e.drainEffects()
+        // 기다리는 중 앞길이 6분 더 막혔다: 1분을 기다리지 않고 바로 출발 시각을 당긴다.
+        e.setDeadline(d.copy(remainingMs = 14 * MINUTE_MS))
+        assertEquals(before - 6 * MINUTE_MS, e.state.rest!!.callAt)
+        assertEquals(before, e.state.rest!!.callMovedFrom)
+        // 2분 전 음성이 왜 바뀌었는지 말한다.
+        e.onTick(before - 8 * MINUTE_MS)
+        val notice = spoken(e).single()
+        assertTrue(notice, notice.startsWith("남은 길이 바뀌어 출발 시각을") && notice.contains("당겼어요"))
     }
 }

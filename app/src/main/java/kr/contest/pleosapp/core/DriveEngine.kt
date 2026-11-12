@@ -99,7 +99,7 @@ class DriveEngine(
                     refreshAsked = false
                     askedDirectAt = null
                     estimateDirect()?.let { state = state.copy(directMs = it, directEstimated = true) }
-                    makeOptions(now)
+                    makeOptions(now, refresh = true)
                 } else {
                     maybeRefreshChoices(now)
                 }
@@ -144,7 +144,7 @@ class DriveEngine(
                 refreshAsked = false
                 askedDirectAt = null
                 state = state.copy(now = now, directMs = ms, directEstimated = false)
-                makeOptions(now)
+                makeOptions(now, refresh = true)
             }
             else -> Unit
         }
@@ -173,6 +173,7 @@ class DriveEngine(
         }
         // 경유지를 지나는 것은 고른 코스대로 가는 것이라, 일찍 닿을 것 같으면 바로 '조금 더 돌기'를 권할 수 있다.
         state = state.copy(viaCleared = true)
+        extendCheckedAt = Long.MIN_VALUE / 2
         setMessage(now, "경유지를 지났어요. 이제 목적지로 가요.")
     }
 
@@ -225,7 +226,10 @@ class DriveEngine(
         when (phase) {
             Phase.TO_REST_AREA -> {
                 withdrawOffer(now)
-                setMessage(now, "쉬었다 가는 동안 시간 맞추기를 잠시 멈춰요.")
+                setMessage(
+                    now,
+                    if (state.mode == DriveMode.LONGER) "쉬고 나면 고른 코스를 이어서 가요." else "쉬었다 가는 동안 시간 맞추기를 잠시 멈춰요.",
+                )
             }
             Phase.RESTING -> {
                 restViaUntil = now + ROUTE_SETTLE_MS
@@ -253,7 +257,19 @@ class DriveEngine(
         val target = state.targetAt ?: return null
         val strict = state.mode == DriveMode.ON_TIME
         val quiet = state.mode == DriveMode.LONGER && state.mood == Mood.DATE
-        return TripDeadline(target, marginFor(), strict, directFromHereMs(), quiet)
+        return TripDeadline(target, marginFor(), strict, remainingForRest(), quiet)
+    }
+
+    /**
+     * 레스트 모드가 출발 시각·도착 예상에 쓰는 남은 시간: 지금 위치에서 바로 가는 시간.
+     * 롱웨이 모드는 쉬고 나서 남은 경유지를 늘 거쳐 가므로, 쉬는 동안에는 그 길로 본다
+     * (쉬는 화면의 '지금 출발하면 ○ 도착'이 출발한 뒤의 도착 예상과 맞게).
+     */
+    private fun remainingForRest(): Long? {
+        val direct = directFromHereMs()
+        if (state.mode != DriveMode.LONGER || !state.paused || restAtStop) return direct
+        val jam = state.position?.let { naviJam(it, planSpeed(it)) } ?: 1.0
+        return courseFromHereMs(direct, jam)
     }
 
     /** 내비 경로에 남아 있어야 할 경유지 (쉼터 안내를 취소하거나 쉬고 출발하면 이 경로로 안내한다) */
@@ -499,20 +515,27 @@ class DriveEngine(
             return
         }
         // 늘어난 시간을 채울 코스: 지금 코스가 아닌 같은 종류의 코스 중 가장 길게(목표 안에서) 달리는 코스.
-        // 더한 시간의 1/3도 못 채우면 코스를 바꾸지 않는다 (바꿔도 거의 같음).
+        // 더한 시간의 1/3도 못 채우면 코스를 바꾸지 않는다 (바꿔도 거의 같음). '도심 피하기'면 도심을 지나는 코스는 빼고 본다.
         val family = courseFamily()
+        val avoidCity = wish().avoidCity
+        val from = state.position
+        val destAt = state.destination?.position
         val refill = coursesFromHere(now, exclude = current)?.let { (options, direct) ->
             options.filter { it.kind == family && now + direct + it.addedMs > currentEta + minutes * MINUTE_MS / 3 }
+                .filter { !avoidCity || from == null || destAt == null || TimeFitPlanner.avoidsCity(from, it, destAt) }
                 .maxByOrNull { it.addedMs }
                 ?.let { it to direct }
         }
         if (refill == null) {
             if (longer) {
                 state = state.copy(targetAt = before)
-                setMessage(now, "지금 코스가 이 근처에서 가장 길어요.")
+                setMessage(now, "${minutes}분 안에 더 달릴 코스가 없어요. 지금 코스로 가요.")
             } else {
-                setMessage(now, "도착 목표를 늦췄어요 (${DriveText.clock(target)}).")
-                speak(Say.VIA, "도착 목표를 ${DriveText.toward(DriveText.spokenClock(target))} 늦췄어요.")
+                // 같은 종류로 더 돌 코스가 없으면 목표만 미룬다. 그만큼 일찍 닿는 것을 숨기지 않는다.
+                val early = -DriveText.gapMs(currentEta, target)
+                val tail = if (early > marginFor() + 2 * MINUTE_MS) " 지금 코스로는 약 ${DriveText.duration(early)} 일찍 도착해요." else ""
+                setMessage(now, "도착 목표를 늦췄어요 (${DriveText.clock(target)}).$tail")
+                speak(Say.VIA, "도착 목표를 ${DriveText.toward(DriveText.spokenClock(target))} 늦췄어요.$tail")
             }
             track(now)
             return
@@ -531,7 +554,8 @@ class DriveEngine(
                 if (gained >= minutes * MINUTE_MS * 7 / 10) {
                     "${minutes}분 더 달려요. ${route}로 바꿨어요."
                 } else {
-                    "이 근처는 약 ${DriveText.minutes(gained)}분 더 달리는 코스가 가장 길어요. ${route}로 바꿨어요."
+                    // 더한 시간 안에 맞는 코스 중 가장 긴 것 (더 길게 달릴 코스는 시간을 더 더하면 나올 수 있다)
+                    "약 ${DriveText.duration(gained)} 더 달려요 (${minutes}분 안에 맞는 코스). ${route}로 바꿨어요."
                 },
             )
             speak(Say.VIA, "${route}로 바꿀게요.")
@@ -592,7 +616,8 @@ class DriveEngine(
             } else {
                 var at = DriveText.todayAt(now, minute)
                 if (at <= now && at + DAY_MS - now <= HALF_DAY_MS) at += DAY_MS
-                if (at <= now) {
+                // 조금 전에 지났으면 (늦게 나온 날) 그 시각을 그대로 두고 바로 가는 길을 보여 준다.
+                if (at <= now && now - at > SAVED_JUST_PASSED_MS) {
                     state = state.copy(targetAt = defaultTarget(now))
                     setMessage(now, "오늘은 이미 지난 시각이에요 (${DriveText.clockOfDay(minute)}). 도착 시각을 골라 주세요.")
                     return
@@ -748,7 +773,8 @@ class DriveEngine(
         return TimeFitPlanner.direct(slack, now + direct, config.marginMs)
     }
 
-    private fun makeOptions(now: Long) {
+    /** @param refresh 후보 화면에 머무는 동안 저절로 다시 내는지 (남아 있는 코스의 자리를 지킨다) */
+    private fun makeOptions(now: Long, refresh: Boolean = false) {
         val dest = state.destination ?: return
         val direct = state.directMs ?: return
         val longer = state.mode == DriveMode.LONGER
@@ -759,12 +785,27 @@ class DriveEngine(
         planDirectMs = direct
         planMadeAt = now
         val notes = ArrayList<String>()
-        val options = if (from == null) {
+        val fresh = if (from == null) {
             notes += "현재 위치를 몰라 바로 가는 코스만 보여요."
             listOf(directOption(now, slack))
         } else {
             planOptions(from, dest, direct, slack, notes).map { if (it.kind == CourseKind.DIRECT) directOption(now, slack) else it }
         }
+        // 후보 화면에 머무는 동안 다시 낸 후보: 남아 있는 코스는 자리를 그대로 두고, 바뀌었으면 알린다
+        // (누르려던 자리의 코스가 말없이 바뀌지 않게).
+        val previous = if (refresh && state.step == DriveStep.CHOOSE) state.options else emptyList()
+        val options = if (previous.isEmpty()) {
+            fresh
+        } else {
+            // 빠진 코스 자리에만 새 코스를 넣는다 (남은 코스는 번호가 그대로).
+            val newcomers = fresh.filter { o -> previous.none { it.id == o.id } }.toMutableList()
+            val merged = previous.mapNotNull { old ->
+                fresh.firstOrNull { it.id == old.id } ?: newcomers.removeFirstOrNull()
+            } + newcomers
+            if (merged.map { it.id } != previous.map { it.id }) notes += "시간이 지나 후보를 다시 찾았어요."
+            merged
+        }
+        if (!longer && target <= now) notes += "목표 시각(${DriveText.clock(target)})이 이미 지났어요. 바로 가는 길을 보여 드려요."
         if (state.directEstimated) notes += "내비 예상 시간을 받지 못해 거리로 추정했어요."
         if (!longer && state.onTimeStyle == OnTimeStyle.LOOP && slack > config.maxOnTimeCourseMs &&
             options.any { it.kind == CourseKind.REST_STOP }
@@ -819,7 +860,7 @@ class DriveEngine(
                 return
             }
         }
-        makeOptions(now)
+        makeOptions(now, refresh = true)
     }
 
     private fun track(now: Long) {
@@ -912,7 +953,8 @@ class DriveEngine(
             }
             return
         }
-        if (state.mode == DriveMode.ON_TIME && !lateSpoken) {
+        // 음성은 2분 넘게 늦을 때만 (내비 예상은 1분쯤 흔들려서 '늦어요' 뒤에 '딱 맞춰'가 되기 쉽다). 화면 칩은 그대로.
+        if (state.mode == DriveMode.ON_TIME && !lateSpoken && diff > LATE_SPEECH_MS) {
             lateSpoken = true
             // 화면 칩이 늦는 분을 계속 보여 주므로 문구에는 숫자를 넣지 않는다 (시간이 지나 서로 달라지지 않게).
             setMessage(now, "도착이 늦어질 것 같아요. 서두르지 말고 안전하게 가세요.")
@@ -973,12 +1015,15 @@ class DriveEngine(
 
     /**
      * 일찍 도착할 것 같으면, 더 돌 코스(기다리는 코스 포함)가 실제로 있을 때만 화면으로 권한다.
-     * 경치 경유지로 가는 중이어도 더 늦게 끝나는(더 먼) 코스가 있으면 권한다.
+     * 고른 경유지로 가는 중에는 권하지 않고, 지난 뒤에 권한다 ([extendCandidates]).
      * 권하는 동안에는 1분마다 다시 보되, 보여 준 코스가 아직 맞으면 그대로 둔다 (버튼이 말없이 바뀌지 않게).
+     * 새로 권하는 것은 목적지까지 [DriveConfig.extendMinRemainMs] 넘게 남았을 때만, 이미 권한 것은 3분 남을 때까지 둔다.
      */
     private fun maybeOfferExtend(now: Long, diff: Long, remain: Long) {
         val quiet = now < extendQuietUntil || now - viaChangedAt < config.extendQuietMs
-        if (remain < config.extendMinRemainMs || quiet) {
+        val offered0 = state.extendOption
+        val tooLate = if (offered0 == null) remain < config.extendMinRemainMs else remain < EXTEND_KEEP_MIN_REMAIN_MS
+        if (tooLate || quiet) {
             withdrawOffer(now)
             return
         }
@@ -991,13 +1036,22 @@ class DriveEngine(
         }
         val offered = state.extendOption
         val keep = offered?.let { o -> found.first.firstOrNull { sameVia(it, o) } }
+        if (offered != null && keep == null) {
+            // 권한 코스가 맞지 않게 됐으면 다른 곳으로 말없이 바꾸지 않고 거둔다. 잠시 뒤 다시 본다.
+            withdrawOffer(now)
+            extendQuietUntil = now + EXTEND_SWITCH_QUIET_MS
+            return
+        }
         val option = keep ?: found.first.first()
         state = state.copy(extendOffered = true, extendOption = option)
         if (keep == null) {
-            // 화면으로만 알린다 (음성 없음).
+            // 화면으로만 알린다 (음성 없음). 다 못 채우면 '시간이 맞아요' 대신 얼마나 일찍 닿는지 쓴다.
             val via = option.via.firstOrNull()?.name?.let { RestMateText.spokenName(it) }.orEmpty()
             val how = if (option.kind == CourseKind.REST_STOP) "${via}에서 기다렸다 가면" else "${DriveText.withObject(via)} 거쳐 가면"
-            setMessage(now, "${DriveText.duration(diff)} 일찍 도착해요. $how 시간이 맞아요.")
+            val target = state.targetAt
+            val early = if (target != null) -DriveText.gapMs(now + found.second + option.addedMs, target) else 0L
+            val result = if (early > marginFor() + 2 * MINUTE_MS) "약 ${DriveText.duration(early)} 일찍 닿아요." else "시간이 맞아요."
+            setMessage(now, "${DriveText.duration(diff)} 일찍 도착해요. $how $result")
             offerMessage = state.message
         }
     }
@@ -1013,12 +1067,13 @@ class DriveEngine(
 
     /**
      * '조금 더 돌기'로 바꿀 코스들 (좋은 순)과 바로 가는 시간. 지금보다 3분 넘게 늦게 끝나는 코스만.
-     * 기다리는 코스로 가는 중이면 기다리는 시간이 남는 시간을 채우므로 권하지 않는다.
+     * 고른 경유지(경치·기다리는 곳)로 가는 중이면 권하지 않는다: 바꾸면 고른 경유지를 건너뛰게 된다.
+     * 경유지를 지난 뒤에 남는 시간이 있으면 그때 권한다.
      * 졸려서 쉰 뒤에는 쉬다 가는(기다리는) 코스만 권한다.
      */
     private fun extendCandidates(now: Long): Pair<List<CourseOption>, Long>? {
         val current = state.chosen.takeIf { state.viaActive }
-        if (current?.kind == CourseKind.REST_STOP) return null
+        if (current != null && current.via.isNotEmpty()) return null
         val eta = state.arrivalEstimate ?: return null
         val found = coursesFromHere(now, exclude = current)
         val direct = found?.second ?: directFromHereMs() ?: return null
@@ -1187,7 +1242,8 @@ class DriveEngine(
             if (planned != null) state = state.copy(targetAt = now + planned)
             retargetOnSettle = true
             setMessage(now, if (keep) "다시 출발했어요. $route" else "다시 출발했어요.")
-            if (keep || skipped) speak(Say.VIA, route)
+            // 롱웨이 모드는 경로가 바뀔 때만 말한다 (고른 경유지로 이어 가는 것은 바뀐 게 아니다).
+            if (skipped) speak(Say.VIA, route)
             return
         }
         val target = state.targetAt
@@ -1316,14 +1372,16 @@ class DriveEngine(
     private fun arrive(now: Long) {
         val target = state.targetAt
         val diff = target?.let { now - it }
+        // 말하는 분은 화면의 '도착 ○ · 목표 ○' 두 시각의 차이로 (1분 어긋나지 않게)
+        val shown = target?.let { DriveText.gapMs(now, it) } ?: 0L
         // 여유(3분)를 두고 맞추므로 목표보다 조금(여유 + 2분 안) 일찍 닿는 것까지 '딱 맞춰'로 본다.
         val message = when {
             state.mode == DriveMode.LONGER -> "도착했어요."
             diff == null -> "도착했어요."
-            diff > config.lateToleranceMs -> "약 ${DriveText.duration(diff)} 늦게 도착했어요."
-            diff >= -30 * SECOND_MS -> "딱 맞춰 도착했어요."
-            -diff <= config.marginMs + 2 * MINUTE_MS -> "딱 맞춰 도착했어요. ${DriveText.duration(diff)} 여유가 있어요."
-            else -> "${DriveText.duration(diff)} 일찍 도착했어요."
+            diff > config.lateToleranceMs -> "약 ${DriveText.duration(shown)} 늦게 도착했어요."
+            shown == 0L || diff >= -30 * SECOND_MS -> "딱 맞춰 도착했어요."
+            -shown <= config.marginMs + 2 * MINUTE_MS -> "딱 맞춰 도착했어요. ${DriveText.duration(shown)} 여유가 있어요."
+            else -> "${DriveText.duration(shown)} 일찍 도착했어요."
         }
         state = state.copy(
             now = now,
@@ -1397,7 +1455,8 @@ class DriveEngine(
         }
         val target = state.targetAt ?: return "안내를 시작할게요."
         val arrival = now + direct + option.addedMs
-        val early = target - arrival
+        // 말하는 시각(분 반올림)과 분이 맞게
+        val early = -DriveText.gapMs(arrival, target)
         val lead = when (option.kind) {
             CourseKind.DIRECT -> null
             CourseKind.SCENIC -> "${DriveText.withObject(via)} 거쳐 가요."
@@ -1412,7 +1471,7 @@ class DriveEngine(
                     "이 길로 가면 약 ${DriveText.duration(early)} 늦어요."
                 }
             option.kind == CourseKind.REST_STOP -> "${DriveText.spokenClock(target)}에 맞춰 출발 시각을 알려 드릴게요."
-            early >= config.marginMs + 2 * MINUTE_MS ->
+            early > config.marginMs + 2 * MINUTE_MS ->
                 if (option.kind == CourseKind.DIRECT) {
                     "바로 가면 ${DriveText.spokenClock(arrival)}, ${DriveText.duration(early)} 일찍 도착해요."
                 } else {
@@ -1436,6 +1495,14 @@ class DriveEngine(
         private const val EXTEND_RECHECK_MS = MINUTE_MS
         /** '조금 더 돌기'는 지금보다 이만큼은 늦게 끝나야 권한다 */
         private const val EXTEND_MIN_GAIN_MS = 3 * MINUTE_MS
+        /** 권한 코스가 맞지 않게 되어 거둔 뒤 이만큼은 새로 권하지 않는다 (버튼이 자꾸 바뀌지 않게) */
+        private const val EXTEND_SWITCH_QUIET_MS = 3 * MINUTE_MS
+        /** 이미 권한 코스는 목적지까지 이만큼 남을 때까지 둔다 (새로 권하는 기준보다 짧게, 버튼이 금방 사라지지 않게) */
+        private const val EXTEND_KEEP_MIN_REMAIN_MS = 3 * MINUTE_MS
+        /** 늦을 것 같다는 음성은 이만큼 넘게 늦을 때만 (내비 예상이 1분쯤은 흔들린다). 화면 칩은 30초부터 */
+        private const val LATE_SPEECH_MS = 2 * MINUTE_MS
+        /** 저장해 둔 시각이 이만큼 안에 막 지났으면 그 시각을 그대로 목표로 (늦었어도 바로 가게) */
+        private const val SAVED_JUST_PASSED_MS = HOUR_MS
         /** 기다릴 시간이 모자란 상태가 이만큼 이어지면 기다리는 곳을 뺀다 */
         private const val WAIT_SHORT_OBSERVE_MS = MINUTE_MS
         /** 경유지가 남아 있을 때 목적지 가까이에 이만큼 머물러야 도착으로 본다 (지나가는 것과 구분) */

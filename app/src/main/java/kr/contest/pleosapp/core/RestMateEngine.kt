@@ -17,6 +17,16 @@ private const val DEPART_MOVE_METERS = 150.0
 /** 속도를 모를 때는 D단이 이만큼 이어지면 출발로 본다 */
 private const val DEPART_HOLD_MS = 60 * SECOND_MS
 
+/**
+ * 기다리는 곳이 목적지에서 이만큼 안이면 (목적지 바로 옆 주차장), 천천히 조금만 움직여도 목적지 쪽으로 가면 출발로 본다.
+ * 막힌 길로 기어 나가 [DEPART_MOVE_METERS] 전에 목적지에 닿는 것까지 놓치지 않게.
+ */
+private const val NEAR_DEST_METERS = 300.0
+private const val NEAR_DEST_MOVE_METERS = 30.0
+
+/** 이 속도를 넘으면 움직이는 중으로 본다 (출발하는 중에는 늦음 알람을 울리지 않는다) */
+private const val MOVING_KMH = 3.0
+
 /** 늦음은 30초 넘게 늦을 때부터 센다 (달리는 화면의 '늦어요'와 같은 기준) */
 private const val LATE_MS = 30 * SECOND_MS
 
@@ -25,6 +35,18 @@ private const val NEAR_SPEECH_GAP_MS = MINUTE_MS
 
 /** 출발 알림 뒤 이만큼 지나도 그대로면 알람을 울린다 (늦기 시작할 때) */
 private const val ESCALATE_AFTER_CALL_MS = 2 * MINUTE_MS
+
+/** 늦음 알람을 끄고도(또는 저절로 멈춘 뒤에도) 그대로 있으면 이 간격으로 짧게 다시 알린다 */
+private const val LATE_REPEAT_MS = 5 * MINUTE_MS
+
+/** 늦음 알람은 이만큼 울리면 저절로 멈춘다 (빈 차에서 계속 울리지 않게) */
+private const val LATE_ALARM_RING_MS = 2 * MINUTE_MS
+
+/** 출발 알림 뒤 이만큼 지나면 늦음을 더 알리지 않는다 */
+private const val LATE_REPEAT_UNTIL_MS = 20 * MINUTE_MS
+
+/** 깨우는 알람이 이만큼 넘게 울린 뒤에 껐으면 그동안 자고 있었던 것으로 보고 깨우는 시간을 다시 센다 */
+private const val SLEPT_THROUGH_ALARM_MS = 3 * MINUTE_MS
 
 /**
  * 레스트메이트의 상태 전환을 맡는다. 안드로이드에 의존하지 않고, 시간은 밖에서 넣어 준다.
@@ -139,9 +161,23 @@ class RestMateEngine(
         state = state.copy(onExpressway = kmh?.let { it >= 90 })
     }
 
-    /** 목적지에 도착했다 (내비 도착 안내). 도착해서 세운 차에는 '여기서 쉬어 갈까요?'를 묻지 않고, 쉬어 가자는 카드도 지운다. */
+    /**
+     * 목적지에 도착했다 (내비 도착 안내). 도착해서 세운 차에는 '여기서 쉬어 갈까요?'를 묻지 않고, 쉬어 가자는 카드도 지운다.
+     * 목적지 바로 옆에서 기다리다 옮겨 와 닿았으면 쉬기도 조용히 끝낸다 (도착은 시간 모드가 알린다).
+     */
     fun onTripArrived(now: Long) {
         tripArrivedAt = now
+        // 도착한 뒤 한동안은 연속 주행 알림을 다시 내지 않는다 (숙소 주차장에서 '다음 쉼터에 들를까요?'가 되지 않게).
+        longDriveSnoozeUntil = max(longDriveSnoozeUntil, now + config.longDriveSnoozeMs)
+        val rest = state.rest
+        if (state.phase == Phase.RESTING && rest != null) {
+            val from = rest.stopPosition
+            val at = state.position
+            if (from != null && at != null && Geo.distanceMeters(from, at) >= NEAR_DEST_MOVE_METERS) {
+                endRest(now, arrived = true)
+            }
+            return
+        }
         when (state.prompt) {
             Prompt.ParkedHere, is Prompt.LongDrive, is Prompt.RestGapAhead -> state = state.copy(prompt = null)
             else -> Unit
@@ -164,7 +200,16 @@ class RestMateEngine(
     fun setDeadline(value: TripDeadline?) {
         deadline = value
         val rest = state.rest ?: return
-        if (value != null && rest.targetAt != null && value.targetAt != rest.targetAt) retarget(state.now)
+        if (value == null || rest.targetAt == null) return
+        when {
+            value.targetAt != rest.targetAt -> retarget(state.now)
+            // 쉬는 중에 남은 길이 1분 넘게 바뀌면 (막힘·풀림) 1분을 기다리지 않고 바로 출발 시각을 다시 맞춘다.
+            value.remainingMs != null && rest.remainingRouteMs != null &&
+                abs(value.remainingMs - rest.remainingRouteMs) >= MINUTE_MS -> {
+                lastRefitAt = state.now
+                refit(state.now)
+            }
+        }
     }
 
     fun onSteeringAngle(now: Long, degrees: Double) = stability.onSteeringAngle(now, degrees)
@@ -341,6 +386,7 @@ class RestMateEngine(
             departCalledAt = null,
             lateWarnedAt = null,
             previousAlarmAt = null,
+            callMovedFrom = null,
             userSetMinutes = false,
         )
         if (kind == RestKind.NAP) {
@@ -414,15 +460,44 @@ class RestMateEngine(
         remindedAt = null,
         departCalledAt = null,
         lateWarnedAt = null,
+        callMovedFrom = null,
     )
 
-    /** '알람 끄기'. 울리는 알람만 끈다 (울리기 전에는 아무것도 하지 않음). */
+    /**
+     * '알람 끄기'. 울리는 알람만 끈다 (울리기 전에는 아무것도 하지 않음).
+     * 깨우는 알람을 한참 못 듣고 잤으면 몸을 깨우는 시간은 알람을 끈 지금부터 센다 (깊이 잔 사람일수록 더 멍하다).
+     */
     fun stopAlarm(now: Long) {
         advance(now)
         val rest = state.rest ?: return
         if (!rest.alarmRinging) return
         effects += Effect.Alarm(false)
-        state = state.copy(rest = rest.copy(alarmRinging = false, alarmDone = true))
+        val stopped = rest.copy(alarmRinging = false, alarmDone = true)
+        val wokeAt = rest.wakeStartedAt
+        val sleptThrough = rest.kind == RestKind.NAP && rest.lateWarnedAt == null && wokeAt != null &&
+            now - wokeAt >= SLEPT_THROUGH_ALARM_MS
+        if (!sleptThrough) {
+            state = state.copy(rest = stopped)
+            return
+        }
+        val wake = RestTiming.wakeMsFor(now - rest.startedAt, config.wakeUpMs)
+        val restarted = withCall(stopped.copy(wakeStartedAt = now, wakeMs = wake))
+        state = state.copy(rest = restarted)
+        if (wake <= 0L) return
+        val late = restarted.callAt?.let { call -> readyLateMs(restarted, max(call, now)) }
+        // 졸려서 쉰 휴식은 늦는 것을 쉬기 시작할 때 알렸으므로 다시 말하지 않는다.
+        val tail = if (restarted.strictTarget && !drowsyRest(restarted) && late != null && late > LATE_MS) {
+            " 그러면 도착은 약 ${DriveText.duration(late)} 늦어져요."
+        } else {
+            ""
+        }
+        effects += Effect.Speak("막 깨셨으니 ${RestMateText.duration(wake)} 정도 몸을 깨운 뒤 출발해 주세요.$tail")
+    }
+
+    /** [at]에 출발하면 목표 시각보다 얼마나 늦는지 (여유까지 쓴 뒤 기준). 도착 시각이 없으면 null */
+    private fun readyLateMs(rest: RestSession, at: Long): Long? {
+        val depart = rest.departAt ?: return null
+        return at - depart - (deadline?.marginMs ?: 0L)
     }
 
     /** 알람 전에 깼을 때 '일어났어요'. 남은 알람은 끄고 깨우기를 시작한다. */
@@ -557,8 +632,10 @@ class RestMateEngine(
             val hours = state.continuousDrivingMs / HOUR_MS
             longDriveSnoozeUntil = now + config.longDriveSnoozeMs
             if (nearDestination()) {
-                // 곧 도착하면 쉼터에 들르자고 하지 않는다 (목적지 너머 쉼터로 보내지 않게).
-                effects += Effect.Speak("${hours}시간 넘게 운전하셨어요. 곧 도착하니 도착하면 꼭 쉬어 가세요.")
+                // 곧 도착하면 쉼터에 들르자고 하지 않는다 (목적지 너머 쉼터로 보내지 않게). 데이트 중이면 말하지 않는다.
+                if (deadline?.quiet != true) {
+                    effects += Effect.Speak("${hours}시간 넘게 운전하셨어요. 곧 도착하니 도착하면 꼭 쉬어 가세요.")
+                }
             } else {
                 state = state.copy(
                     prompt = Prompt.LongDrive((state.continuousDrivingMs / MINUTE_MS).toInt(), state.nextAhead),
@@ -568,8 +645,16 @@ class RestMateEngine(
         }
     }
 
-    /** 떠 있는 알림 카드의 쉼터를 새 검색 결과로 고친다. 지나친 쉼터면 카드를 지운다. */
+    /**
+     * 떠 있는 알림 카드의 쉼터를 새 검색 결과로 고친다. 지나친 쉼터면 카드를 지운다.
+     * 그사이 목적지가 가까워졌으면 (30분 안) 쉼터에 들르자는 카드를 지운다 (목적지 너머 쉼터로 보내지 않게).
+     */
     private fun refreshPromptCandidate(result: RestAreaSearchResult) {
+        val p0 = state.prompt
+        if ((p0 is Prompt.LongDrive || p0 is Prompt.RestGapAhead) && nearDestination()) {
+            state = state.copy(prompt = null)
+            return
+        }
         when (val p = state.prompt) {
             is Prompt.RestGapAhead -> {
                 val fresh = result.candidates.firstOrNull { it.area.id == p.next.area.id }
@@ -619,7 +704,7 @@ class RestMateEngine(
                     nearArrivalAnnounced = true
                     if (state.prompt == Prompt.CheckIn) state = state.copy(prompt = null)
                     // 안내를 막 시작했으면 시작할 때 한 말로 충분하다.
-                    if (now - guidanceStartedAt > NEAR_SPEECH_GAP_MS) effects += Effect.Speak("곧 도착해요. 잠시 조용히 할게요.")
+                    if (now - guidanceStartedAt > NEAR_SPEECH_GAP_MS) effects += Effect.Speak("곧 도착해요. 내비 안내에 집중해 주세요.")
                 }
                 return
             }
@@ -702,11 +787,36 @@ class RestMateEngine(
         if (!rest.sawPark && !rest.sawStill) return false
         val speed = state.speedKmh
         if (speed != null && speed >= DEPART_SPEED_KMH) return true
+        if (movedTowardDestination(rest)) return true
         val from = rest.stopPosition
         val at = state.position
         if (from != null && at != null && Geo.distanceMeters(from, at) >= DEPART_MOVE_METERS) return true
         val since = driveSince
         return speed == null && since != null && now - since >= DEPART_HOLD_MS
+    }
+
+    /**
+     * 목적지 바로 옆(300m 안)에서 기다리다가 목적지 쪽으로 30m 넘게 움직였는지.
+     * 주차장 안에서 자리만 옮기는 것과 달리 목적지에 가까워진다.
+     */
+    private fun movedTowardDestination(rest: RestSession): Boolean {
+        val from = rest.stopPosition ?: return false
+        val at = state.position ?: return false
+        val dest = state.destination ?: return false
+        val before = Geo.distanceMeters(from, dest)
+        if (before > NEAR_DEST_METERS) return false
+        if (Geo.distanceMeters(from, at) < NEAR_DEST_MOVE_METERS) return false
+        return Geo.distanceMeters(at, dest) <= before - NEAR_DEST_MOVE_METERS / 2
+    }
+
+    /** 쉬는 차가 움직이는 중인지 (D단에서 천천히라도). 출발하는 중에는 늦음 알람·알림을 하지 않는다 */
+    private fun movingOff(rest: RestSession): Boolean {
+        if (state.gear == Gear.PARK) return false
+        val speed = state.speedKmh
+        if (speed != null && speed >= MOVING_KMH) return true
+        val from = rest.stopPosition ?: return false
+        val at = state.position ?: return false
+        return Geo.distanceMeters(from, at) >= NEAR_DEST_MOVE_METERS
     }
 
     /** 깨우기: 차 환경을 바꾸고, 깬 뒤 바로 출발하지 않도록 안내한다 (수면 관성). 기다릴 시간이 남으면 출발 시각도 알린다. */
@@ -726,17 +836,15 @@ class RestMateEngine(
 
     /** 기다리기·머물기: 출발할 때가 다가왔다고 알린다 (기다리기는 출발 2분 전, 머물기는 출발할 때쯤). */
     private fun remind(now: Long, rest: RestSession) {
-        state = state.copy(rest = rest.copy(alarmDone = true, remindedAt = now))
+        state = state.copy(rest = rest.copy(alarmDone = true, remindedAt = now, callMovedFrom = null))
         val text = when (rest.kind) {
             // 롱웨이 모드 데이트는 분위기를 깨지 않게 화면으로만 알린다.
             RestKind.STAY -> if (deadline?.quiet == true) null else "슬슬 출발할까요?"
             else -> {
                 val call = rest.callAt
-                val target = rest.targetAt
                 when {
-                    call == null || target == null -> "${rest.plannedMinutes}분 지났어요. 준비되면 출발해 주세요."
-                    call - now >= MINUTE_MS ->
-                        "${DriveText.spokenClock(call)}에 출발하면 ${DriveText.spokenClock(target)} 도착에 맞아요. 출발 준비해 주세요."
+                    call == null || rest.targetAt == null -> "${rest.plannedMinutes}분 지났어요. 준비되면 출발해 주세요."
+                    call - now >= MINUTE_MS -> departNotice(rest, call)
                     // 출발 시각이 코앞이면 출발 알림이 곧바로 말한다.
                     else -> null
                 }
@@ -744,6 +852,32 @@ class RestMateEngine(
         }
         text?.let { effects += Effect.Speak(it) }
     }
+
+    /**
+     * 출발 2분 전 음성. 그때 떠나도 늦으면 맞는다고 하지 않고 언제 닿는지 말한다.
+     * 남은 길이 바뀌어 처음 알린 출발 시각이 옮겨졌으면 그것부터 말한다.
+     */
+    private fun departNotice(rest: RestSession, call: Long): String {
+        val target = rest.targetAt ?: return "곧 출발할 시간이에요. 출발 준비해 주세요."
+        val route = rest.remainingRouteMs
+        val late = readyLateMs(rest, call)
+        val arrival = if (route != null && late != null && late > LATE_MS) {
+            "${DriveText.spokenClock(call + route)}쯤 도착해요"
+        } else {
+            "${DriveText.spokenClock(target)} 도착에 맞아요"
+        }
+        val at = DriveText.spokenClock(call)
+        val moved = rest.callMovedFrom
+        return if (moved != null && moved != call) {
+            val how = if (moved > call) "당겼어요" else "늦췄어요"
+            "남은 길이 바뀌어 출발 시각을 ${DriveText.toward(at)} $how. 그때 출발하면 $arrival. 출발 준비해 주세요."
+        } else {
+            "${at}에 출발하면 $arrival. 출발 준비해 주세요."
+        }
+    }
+
+    /** 졸려서 쉬는 중인지 (레스트 모드 안내로 왔거나 주의 경고 뒤). 출발을 재촉하지 않는다 */
+    private fun drowsyRest(rest: RestSession): Boolean = rest.fatigue || rest.warned
 
     /**
      * 온타임 모드의 출발 알림 (기다리기, 깬 뒤의 눈 붙이기).
@@ -758,14 +892,14 @@ class RestMateEngine(
         val target = rest.targetAt ?: return
         val call = rest.callAt ?: return
         if (rest.kind == RestKind.NAP && (rest.wakeStartedAt == null || rest.alarmRinging)) return
+        // 이미 움직여 나가는 중이면 (막힌 길로 천천히) 출발을 재촉하지 않는다.
+        if (movingOff(rest)) return
         val margin = deadline?.marginMs ?: 0L
         if (rest.kind == RestKind.NAP && rest.remindedAt == null && now < call) {
             val wakeEnd = (rest.wakeStartedAt ?: now) + rest.wakeMs
             if (call - wakeEnd >= 3 * MINUTE_MS && now >= call - config.departNoticeMs) {
-                state = state.copy(rest = rest.copy(remindedAt = now))
-                effects += Effect.Speak(
-                    "${DriveText.spokenClock(call)}에 출발하면 ${DriveText.spokenClock(target)} 도착에 맞아요. 출발 준비해 주세요.",
-                )
+                state = state.copy(rest = rest.copy(remindedAt = now, callMovedFrom = null))
+                effects += Effect.Speak(departNotice(rest, call))
             }
             return
         }
@@ -775,18 +909,42 @@ class RestMateEngine(
             if (now < call) return
             state = state.copy(rest = rest.copy(departCalledAt = now))
             effects += Effect.Chime
+            val moved = rest.callMovedFrom
+            // 처음 알린 시각보다 당겨졌으면 왜 지금인지 먼저 말한다.
+            val head = if (moved != null && moved > call) "남은 길이 바뀌어 출발 시각이 당겨졌어요." else "출발할 시간이에요."
             effects += Effect.Speak(
-                if (lateNow > LATE_MS) {
-                    "출발할 시간이에요. 지금 출발해도 약 ${DriveText.duration(lateNow)} 늦어요."
-                } else {
-                    "출발할 시간이에요. 지금 출발하면 ${DriveText.spokenClock(target)} 도착에 맞아요."
+                when {
+                    // 졸려서 쉬었는데 늦으면 늦는 것은 쉬기 시작할 때 알렸다: 재촉하지 않는다.
+                    drowsyRest(rest) && lateNow > LATE_MS -> "충분히 쉬셨으면 천천히 출발해 주세요."
+                    lateNow > LATE_MS -> "$head 지금 출발해도 약 ${DriveText.duration(lateNow)} 늦어요."
+                    else -> "$head 지금 출발하면 ${DriveText.spokenClock(target)} 도착에 맞아요."
                 },
             )
             return
         }
-        if (rest.lateWarnedAt != null || lateNow < MINUTE_MS || now - called < ESCALATE_AFTER_CALL_MS) return
-        state = state.copy(rest = rest.copy(lateWarnedAt = now, alarmRinging = true))
-        effects += Effect.Alarm(true)
+        // 졸려서 쉬는 중이면 늦어도 알람으로 깨우거나 다시 알리지 않는다 (안전 때문에 늦는 것을 받아들였다).
+        if (drowsyRest(rest)) return
+        val warnedAt = rest.lateWarnedAt
+        if (warnedAt == null) {
+            if (lateNow < MINUTE_MS || now - called < ESCALATE_AFTER_CALL_MS) return
+            // 다시 잠들었을 때를 위해 알람을 울린다.
+            state = state.copy(rest = rest.copy(lateWarnedAt = now, alarmRinging = true))
+            effects += Effect.Alarm(true)
+            effects += Effect.Speak("지금 출발해도 약 ${DriveText.duration(lateNow)} 늦어요.")
+            return
+        }
+        if (rest.alarmRinging) {
+            // 늦음 알람은 오래 울리지 않는다 (차를 비웠을 수도 있다). 이후로는 짧게 다시 알린다.
+            if (now - warnedAt >= LATE_ALARM_RING_MS) {
+                state = state.copy(rest = rest.copy(alarmRinging = false))
+                effects += Effect.Alarm(false)
+            }
+            return
+        }
+        // 출발 알림 뒤 한참(20분) 지나도 그대로면 일부러 머무는 것으로 보고 더 알리지 않는다 (빈 차에서 계속 울리지 않게).
+        if (now - warnedAt < LATE_REPEAT_MS || now - called > LATE_REPEAT_UNTIL_MS) return
+        state = state.copy(rest = rest.copy(lateWarnedAt = now))
+        effects += Effect.Chime
         effects += Effect.Speak("지금 출발해도 약 ${DriveText.duration(lateNow)} 늦어요.")
     }
 
@@ -896,13 +1054,25 @@ class RestMateEngine(
         val remaining = d.remainingMs ?: state.remainingRouteMs ?: return
         val next = fitted(now, rest, remaining)
         val moved = abs(next.alarmAt - rest.alarmAt) >= MINUTE_MS
-        state = state.copy(
-            rest = when {
-                next.alarmAt == rest.alarmAt -> next
-                moved -> next.copy(previousAlarmAt = rest.alarmAt)
-                else -> withCall(next.copy(alarmAt = rest.alarmAt, plannedMinutes = rest.plannedMinutes))
-            },
-        )
+        val updated = when {
+            next.alarmAt == rest.alarmAt -> next
+            moved -> next.copy(previousAlarmAt = rest.alarmAt)
+            else -> withCall(next.copy(alarmAt = rest.alarmAt, plannedMinutes = rest.plannedMinutes))
+        }
+        state = state.copy(rest = withCallMove(rest, updated))
+    }
+
+    /**
+     * 출발 시각을 기다리는 중(눈 붙이기는 깬 뒤)에 출발 시각이 옮겨졌으면 처음 시각을 남긴다 (화면에 '2:03 → 1:57').
+     * 출발할 시각을 이미 알렸으면 남기지 않는다.
+     */
+    private fun withCallMove(before: RestSession, after: RestSession): RestSession {
+        val old = before.callAt
+        val new = after.callAt
+        val waitingToGo = after.kind != RestKind.STAY && (after.kind != RestKind.NAP || after.wakeStartedAt != null)
+        if (!waitingToGo || after.departCalledAt != null || old == null || new == null || old == new) return after
+        val from = before.callMovedFrom ?: old
+        return after.copy(callMovedFrom = from.takeIf { abs(new - it) >= MINUTE_MS })
     }
 
     /** 쉬는 중에 도착 목표가 바뀌었다 (+5분·+10분): 출발 알림을 다시 잡고 언제 출발하면 되는지 알린다. */
@@ -918,6 +1088,7 @@ class RestMateEngine(
             departCalledAt = null,
             lateWarnedAt = null,
             previousAlarmAt = null,
+            callMovedFrom = null,
         )
         lastRefitAt = now
         val remaining = d.remainingMs ?: state.remainingRouteMs ?: rest.remainingRouteMs ?: return
@@ -977,12 +1148,18 @@ class RestMateEngine(
         }
     }
 
-    private fun endRest(now: Long) {
+    /**
+     * 쉬기를 끝낸다 (출발).
+     * @param arrived 기다리던 곳 바로 옆 목적지에 닿아서 끝났는지. 도착은 시간 모드가 알리므로 말하지 않는다.
+     */
+    private fun endRest(now: Long, arrived: Boolean = false) {
         val rest = state.rest ?: return
         if (rest.alarmRinging) effects += Effect.Alarm(false)
         wantedMs = 0L
         driveSince = null
         val restedMs = now - rest.startedAt
+        // 목적지가 코앞인지 (기다리던 곳 바로 옆): '다시 출발하시네요'를 하지 않는다.
+        val destNear = state.destination?.let { dest -> state.position?.let { Geo.distanceMeters(it, dest) <= NEAR_DEST_METERS } } == true
         state = state.copy(
             phase = Phase.DRIVING,
             rest = null,
@@ -999,19 +1176,27 @@ class RestMateEngine(
         parkedPromptShown = true
         // 휴식 환경은 눈 붙이기에서만 바꾼다.
         if (rest.kind == RestKind.NAP) effects += Effect.Cabin(CabinMode.RESTORE)
-        if (rest.kind == RestKind.STAY) return
+        if (rest.kind == RestKind.STAY || arrived) return
         val wokeAt = rest.wakeStartedAt
+        // 깨우는 알람이 울리는 채로 출발했거나, 깨우는 시간이 아직 안 끝났으면 막 깬 것이다.
         val groggy = rest.kind == RestKind.NAP && restedMs >= RestTiming.NO_WAKE_UNDER_MS &&
-            (wokeAt == null || now - wokeAt < rest.wakeMs)
-        val caution = if (groggy) " 깬 지 얼마 안 됐으니 처음 몇 분은 천천히 가 주세요." else ""
+            (wokeAt == null || now - wokeAt < rest.wakeMs || (rest.alarmRinging && rest.lateWarnedAt == null))
+        // 졸려서 쉬었는데 조금만 쉬고 떠나면 다시 졸릴 때를 일러 둔다.
+        val enough = if (rest.warned) defaultMinutes() * MINUTE_MS else config.fatigueMinRestMs
+        val shortRest = (rest.fatigue || rest.warned) && restedMs < enough
+        val caution = when {
+            groggy -> " 깬 지 얼마 안 됐으니 처음 몇 분은 천천히 가 주세요."
+            shortRest -> " 많이 쉬지 못했어요. 다시 졸리면 바로 레스트 모드를 눌러 주세요."
+            else -> ""
+        }
         val d = deadline
         // 시간 모드로 달리는 중이면 어느 길로 가는지는 시간 모드가 알린다.
         val tail = when {
             config.compareAfterRest -> " 처음 ${RestMateText.duration(config.afterWindowMs)} 동안 휴식 전과 주행을 비교해 볼게요."
-            d != null -> ""
+            d != null || destNear -> ""
             else -> " 원래 가던 길로 다시 안내할게요."
         }
-        if (d?.quiet == true && caution.isEmpty() && tail.isEmpty()) return
+        if ((d?.quiet == true || destNear) && caution.isEmpty() && tail.isEmpty()) return
         effects += Effect.Speak("다시 출발하시네요.$caution$tail")
     }
 

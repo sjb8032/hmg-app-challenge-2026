@@ -67,6 +67,12 @@ class SavedTripTest {
         val all = listOf(pickup, early, date)
         assertEquals("4:50 아이	학원", pickup.title(all))
         assertEquals("집", date.title(all))
+        // 시각까지 같고 방식만 다르면 방식도 붙인다.
+        val loop = pickup.copy(onTimeStyle = OnTimeStyle.LOOP)
+        val wait = pickup.copy(onTimeStyle = OnTimeStyle.WAIT_NEAR)
+        val twins = listOf(loop, wait)
+        assertEquals("4:50 아이	학원 · 돌기", loop.title(twins))
+        assertEquals("4:50 아이	학원 · 기다리기", wait.title(twins))
     }
 
     @Test

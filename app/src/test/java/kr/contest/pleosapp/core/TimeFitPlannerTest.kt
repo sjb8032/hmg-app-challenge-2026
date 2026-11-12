@@ -279,8 +279,9 @@ class TimeFitPlannerTest {
     @Test
     fun directReasonSaysHowEarly() {
         val at = 1_700_000_000_000L
-        assertTrue(TimeFitPlanner.direct(12 * MINUTE_MS, at, 3 * MINUTE_MS).reason.endsWith("15분 일찍"))
-        assertTrue(TimeFitPlanner.direct(0L, at, MINUTE_MS).reason.endsWith("1분 일찍"))
+        assertEquals("바로 가면 15분 일찍", TimeFitPlanner.direct(12 * MINUTE_MS, at, 3 * MINUTE_MS).reason)
+        // 계획한 여유(+2분) 안으로 일찍 닿는 것은 '여유' (달리는 화면 칩·도착 안내와 같은 기준)
+        assertEquals("바로 가면 4분 여유", TimeFitPlanner.direct(MINUTE_MS, at, 3 * MINUTE_MS).reason)
         assertTrue(TimeFitPlanner.direct(-MINUTE_MS, at, MINUTE_MS).reason.endsWith("정각"))
         // 여유(3분)를 못 지키는 것과 늦는 것은 다르다: 늦음은 목표 시각 기준으로 센다.
         assertEquals("바로 가도 약 2분 늦어요", TimeFitPlanner.direct(-5 * MINUTE_MS, at, 3 * MINUTE_MS).reason)
@@ -364,5 +365,17 @@ class TimeFitPlannerTest {
         assertEquals("오후 7:02", DriveText.clock(base + 2 * MINUTE_MS + 20 * SECOND_MS))
         assertEquals("오후 7:02", DriveText.clockNow(base + 2 * MINUTE_MS + 40 * SECOND_MS))
         assertEquals("7시 3분", DriveText.spokenClock(base + 2 * MINUTE_MS + 40 * SECOND_MS))
+    }
+
+    @Test
+    fun earlyMinutesMatchTheShownClocks() {
+        // 6:45:30 도착 예상은 화면에 '6:46'이므로 목표 7:00보다 '14분 일찍' (차이 14.5분을 반올림한 15분이 아니라)
+        val target = DriveText.todayAt(1_700_000_000_000L, 19 * 60)
+        val eta = target - 14 * MINUTE_MS - 30 * SECOND_MS
+        assertEquals(-14 * MINUTE_MS, DriveText.gapMs(eta, target))
+        assertEquals("14분 일찍", DriveText.fit(FitStatus.EARLY, DriveText.gapMs(eta, target), 5 * MINUTE_MS))
+        // 계획한 여유(3분 + 2분) 안이면 '여유' (도착하면 '딱 맞춰 도착했어요. 4분 여유가 있어요')
+        assertEquals("4분 여유", DriveText.fit(FitStatus.EARLY, -4 * MINUTE_MS, 5 * MINUTE_MS))
+        assertEquals("정각", DriveText.fit(FitStatus.ON_TIME, 0L, 5 * MINUTE_MS))
     }
 }

@@ -335,14 +335,21 @@ data class SavedTrip(
         }
     }
 
-    /** 칩 큰 글씨: 보통은 장소 이름. 같은 장소 칩이 여럿이면 시각(롱웨이는 분위기)을 앞에 붙인다 ("4:50 아이 학원") */
+    /**
+     * 칩 큰 글씨: 보통은 장소 이름. 같은 장소 칩이 여럿이면 시각(롱웨이는 분위기)을 앞에 붙인다 ("4:50 아이 학원").
+     * 시각까지 같고 방식만 다르면 방식도 붙인다 ("4:50 아이 학원 · 기다리기").
+     */
     fun title(all: List<SavedTrip>): String {
         if (all.count { it.place.name == place.name } < 2) return place.name
         val tag = when (mode) {
             DriveMode.ON_TIME -> minuteOfDay?.let { DriveText.shortClockOfDay(it) }
             DriveMode.LONGER -> listOfNotNull(mood?.label, flavor?.label).joinToString(" ").ifEmpty { extraMinutes?.let { "+${it}분" } }
         }
-        return listOfNotNull(tag, place.name).joinToString(" ")
+        val head = listOfNotNull(tag, place.name).joinToString(" ")
+        val twin = mode == DriveMode.ON_TIME &&
+            all.count { it.mode == mode && it.place.name == place.name && it.minuteOfDay == minuteOfDay } >= 2
+        if (!twin) return head
+        return "$head · ${if (onTimeStyle == OnTimeStyle.WAIT_NEAR) "기다리기" else "돌기"}"
     }
 
     /** 한 줄 글자로 (탭으로 나눔). 장소 이름의 탭·줄바꿈은 빈칸으로 바꾼다 */

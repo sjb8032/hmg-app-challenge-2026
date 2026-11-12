@@ -186,6 +186,11 @@ data class RestSession(
     val callAt: Long? = null,
     /** 출발할 시각이라고 알린 때 (짧은 알림음 + 음성) */
     val departCalledAt: Long? = null,
+    /**
+     * 기다리는 동안(눈 붙이기는 깬 뒤) 남은 길이 바뀌어 [callAt]이 1분 넘게 옮겨졌으면 옮기기 전 시각
+     * (화면에 '출발 시각 2:03 → 1:57'). 시각을 다시 알리면 지운다.
+     */
+    val callMovedFrom: Long? = null,
     /** '지금 출발해도 늦어요'를 알린 때 */
     val lateWarnedAt: Long? = null,
     /** 멈춘 자리. 여기서 150m 넘게 움직이면 출발로 본다 */

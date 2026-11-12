@@ -35,8 +35,11 @@ object TimeFitPlanner {
     /** 이보다 오래 가는 길이면 휴게소에서만 쉬다 가고, 가는 길 축 위의 지점만 본다 */
     private const val LONG_TRIP_MS = 45 * MINUTE_MS
 
-    /** 먼 길은 남는 시간이 이만큼만 돼도 휴게소에서 쉬다 가는 코스를 낸다 (두 시간 운전에 15분 쉬기는 자연스럽다) */
-    private const val LONG_TRIP_REST_MIN_SLACK_MS = 15 * MINUTE_MS
+    /**
+     * 먼 길은 남는 시간이 이만큼만 돼도 휴게소에서 쉬다 가는 코스를 낸다
+     * (두 시간 운전에 10분 쉬기는 안전에도 좋고, 목적지 앞에서 15분 기다리는 것보다 낫다)
+     */
+    private const val LONG_TRIP_REST_MIN_SLACK_MS = 10 * MINUTE_MS
 
     /** 먼 길: 길의 30%를 지난 곳부터 목적지 조금 너머까지(온타임 모드는 목적지까지), 옆으로는 max(10km, 길이의 12%) 안 */
     private const val AXIS_MIN_PROGRESS = 0.3
@@ -106,8 +109,8 @@ object TimeFitPlanner {
      *
      * - 먼 길(45분 이상)은 가는 길 축 위의 지점만 본다 (지나온 쪽이나 옆으로 멀리 벗어난 곳 제외).
      * - 온타임 모드의 짧은 길은 목적지 쪽 반경 안의 지점만 본다.
-     * - 남는 시간이 [maxAddedMs]보다 길면: 쉬다 가는 곳이 있으면 그것만 내고(오래 돌기보다 쉬기),
-     *   없으면 [maxAddedMs]만큼만 채우는 경치 코스를 낸다.
+     * - 남는 시간이 [maxAddedMs]보다 길면: 쉬다 가는 곳이 있으면 그것을 앞에 두고 경치 코스는 하나만 곁들이며
+     *   (오래 돌기보다 쉬기), 없으면 [maxAddedMs]만큼만 채우는 경치 코스를 낸다.
      *
      * @param restPlaces 쉬다 가는 코스로 들를 수 있는 곳. 비우면 쉬다 가는 코스를 내지 않는다.
      * @param maxAddedMs 경치·우회 코스로 더 쓸 수 있는 최대 시간 (온타임 모드에서 한 시간씩 돌지 않게)
@@ -200,11 +203,13 @@ object TimeFitPlanner {
     fun direct(slackMs: Long, arriveAt: Long? = null, marginMs: Long = 0L): CourseOption {
         // 목표보다 얼마나 일찍 닿는지 (음수면 늦음)
         val early = slackMs + marginMs
+        // 도착 시각은 카드에 따로 나오므로 여기서는 목표와의 차이만 (계획한 여유 + 2분 안이면 '여유')
         val reason = when {
             early < -30 * SECOND_MS -> "바로 가도 약 ${DriveText.duration(early)} 늦어요"
             arriveAt == null -> "바로 가도 시간에 맞아요"
-            early <= 30 * SECOND_MS -> "바로 가면 ${DriveText.clock(arriveAt)} 도착 · 정각"
-            else -> "바로 가면 ${DriveText.clock(arriveAt)} 도착 · ${DriveText.duration(early)} 일찍"
+            early <= 30 * SECOND_MS -> "바로 가면 정각"
+            early <= marginMs + 2 * MINUTE_MS -> "바로 가면 ${DriveText.duration(early)} 여유"
+            else -> "바로 가면 ${DriveText.duration(early)} 일찍"
         }
         return CourseOption(
             id = "direct",
@@ -243,6 +248,10 @@ object TimeFitPlanner {
         return progress in AXIS_MIN_PROGRESS..maxProgress &&
             abs(across) <= max(AXIS_MIN_LATERAL_METERS, total * AXIS_LATERAL_RATIO)
     }
+
+    /** 코스의 경유지가 모두 도심을 피하는지 ('도심 피하기'로 달리는 중 시간을 더할 때) */
+    fun avoidsCity(from: LatLng, option: CourseOption, to: LatLng): Boolean =
+        option.via.none { throughCity(from, it.position, to) }
 
     /**
      * 도심(시청·강남역 가까이)이거나, 가는 길이 시청 가까이를 지나는지 ('도심 피하기').

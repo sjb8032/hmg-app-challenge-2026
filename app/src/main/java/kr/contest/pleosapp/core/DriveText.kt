@@ -38,12 +38,24 @@ object DriveText {
         else -> "${duration(diffMs)} 늦게"
     }
 
-    /** 달리는 중 도착 예상 표시 (목표 시각 기준): "정각", "3분 일찍", "약 4분 늦어요" */
-    fun fit(status: FitStatus, diffMs: Long): String = when {
+    /**
+     * 달리는 중 도착 예상 표시 (목표 시각 기준): "정각", "4분 여유", "9분 일찍", "약 4분 늦어요".
+     * @param spareMs 이만큼 안으로 일찍 닿는 것은 계획한 여유라 '여유'로 쓴다 (도착하면 '딱 맞춰 도착했어요'와 같은 기준)
+     */
+    fun fit(status: FitStatus, diffMs: Long, spareMs: Long = 0L): String = when {
         status == FitStatus.LATE || diffMs > 30 * SECOND_MS -> "약 ${duration(diffMs)} 늦어요"
+        diffMs < -30 * SECOND_MS && -diffMs <= spareMs -> "${duration(diffMs)} 여유"
         diffMs < -30 * SECOND_MS -> "${duration(diffMs)} 일찍"
         else -> "정각"
     }
+
+    /**
+     * 화면에 보이는 두 시각(분 반올림)의 차이. "7:06 도착 · 목표 7:20"이면 정확히 -14분이 되어
+     * 함께 쓰는 '14분 일찍'이 시각과 1분 어긋나지 않는다.
+     */
+    fun gapMs(at: Long, target: Long): Long = roundMinute(at) - roundMinute(target)
+
+    private fun roundMinute(ms: Long): Long = Math.floorDiv(ms + 30 * SECOND_MS, MINUTE_MS) * MINUTE_MS
 
     /** 롱웨이 모드는 마감이 없어 '늦어요' 대신: "예정대로", "약 6분 더", "8분 일찍" */
     fun fitLonger(status: FitStatus, diffMs: Long): String = when {

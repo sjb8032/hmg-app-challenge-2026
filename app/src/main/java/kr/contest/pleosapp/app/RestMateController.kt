@@ -185,6 +185,8 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
     private var tripDestination: Place? = null
     /** 가던 목적지가 없어 쉼터를 목적지로 안내했는지 */
     private var restAsDestination = false
+    /** 목적지 바로 옆에서 기다리다 목적지에 닿아 휴식이 끝났는지 (그러면 내비를 다시 안내하지 않는다) */
+    private var restEndedOnArrival = false
     private var lastPhase = Phase.DRIVING
 
     private var demo: DemoSession? = null
@@ -297,18 +299,27 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
         }
         if (lastPhase == Phase.RESTING && phase == Phase.DRIVING) {
             val dest = currentTrip()
-            if (dest != null && !restAsDestination) {
+            // 기다리던 곳 바로 옆 목적지에 닿아서 끝난 휴식이면 다시 안내하지 않는다.
+            if (dest != null && !restAsDestination && !restEndedOnArrival) {
                 val via = drive.activeVia()
                 routeNavi(dest, via)
                 note(
                     if (via.isEmpty()) "내비에 ${dest.name}까지 다시 안내를 요청했어요."
-                    else "내비에 ${via.joinToString(", ") { it.name }} 거쳐 ${dest.name}까지 다시 안내를 요청했어요.",
+                    else "내비에 ${DriveText.withObject(via.joinToString(", ") { it.name })} 거쳐 ${dest.name}까지 다시 안내를 요청했어요.",
                 )
             }
             shareDeadline()
             restAsDestination = false
         }
+        restEndedOnArrival = false
         lastPhase = phase
+    }
+
+    /** 목적지 도착 안내. 목적지 바로 옆에서 기다리다 옮겨 와 닿았으면 휴식도 끝나므로 내비를 다시 안내하지 않는다. */
+    private fun tripArrived(t: Long) {
+        val resting = engine.state.phase == Phase.RESTING
+        engine.onTripArrived(t)
+        if (resting && engine.state.phase != Phase.RESTING) restEndedOnArrival = true
     }
 
     private fun handle(effect: Effect) {
@@ -413,7 +424,7 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
             routeNavi(dest, via)
             note(
                 if (via.isEmpty()) "내비를 ${DriveText.toward(dest.name)} 가는 길로 되돌렸어요."
-                else "내비를 ${via.joinToString(", ") { it.name }} 거쳐 가는 원래 길로 되돌렸어요.",
+                else "내비를 ${DriveText.withObject(via.joinToString(", ") { it.name })} 거쳐 가는 원래 길로 되돌렸어요.",
             )
         } else {
             cancelNavi()
@@ -683,7 +694,7 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
                 }
                 is DemoNaviEvent.DestinationArrived -> {
                     note("모의: ${event.place.name}에 도착해 P단으로 주차했어요.")
-                    engine.onTripArrived(t)
+                    tripArrived(t)
                     parkDemoCar(t)
                     drive.onDestinationArrived(t)
                 }
@@ -802,7 +813,7 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
     override fun onNaviArrived(name: String?) {
         if (demo != null) return
         val t = now()
-        engine.onTripArrived(t)
+        tripArrived(t)
         drive.onDestinationArrived(t)
         note("목적지 도착: ${name ?: "목적지"}")
         publish()
