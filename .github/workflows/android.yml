@@ -21,10 +21,34 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build debug and release APKs
+      - name: Unit test and build APKs
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon assembleDebug assembleRelease
+          set -o pipefail
+          ./gradlew --no-daemon testDebugUnitTest assembleDebug assembleRelease 2>&1 | tee build.log
+
+      # 실패하면 컴파일 오류를 PR·실행 화면의 Annotations로 보여 준다.
+      - name: Report compile errors
+        if: failure()
+        run: |
+          grep -E '^e: |^> Task .* FAILED|What went wrong' -A2 build.log | grep -v '^--$' | head -10 \
+            | sed 's/%/%25/g' | while IFS= read -r line; do echo "::error::${line}"; done
+
+      - name: Report failed unit tests
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import glob, xml.etree.ElementTree as ET
+          shown = 0
+          for path in glob.glob('app/build/test-results/testDebugUnitTest/*.xml'):
+              for case in ET.parse(path).getroot().iter('testcase'):
+                  failure = case.find('failure')
+                  if failure is None or shown >= 10:
+                      continue
+                  message = (failure.get('message') or '').replace('%', '%25').replace('\n', ' ')[:300]
+                  print(f"::error::{case.get('classname')}.{case.get('name')}: {message}")
+                  shown += 1
+          PY
 
       - name: Upload APKs
         uses: actions/upload-artifact@v4

@@ -1,13 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- 실제로 쓰는 API의 최소 권한만 선언한다. 권한 목록은 docs/SETUP.md 참고 -->
+    <!--
+        레스트메이트가 쓰는 Pleos 권한. 권한 이름은 공식 Vehicle 샘플 앱(Pleos-Playground/pleos-sample-vehicle-app)의
+        Manifest를 따른다. 자세한 설명은 docs/SETUP.md '7. 권한' 참고.
+    -->
 
-    <!-- Vehicle SDK: 도어 상태 조회 -->
-    <uses-permission android:name="pleos.car.permission.CAR_DOORS" />
+    <!-- Vehicle SDK 조회: 기어·속도·조향각·브레이크 -->
+    <uses-permission android:name="pleos.car.permission.CAR_DRIVE" />
+    <uses-permission android:name="pleos.car.permission.CAR_POWERTRAIN" />
+    <uses-permission android:name="pleos.car.permission.CAR_SPEED" />
+    <uses-permission android:name="pleos.car.permission.READ_CAR_STEERING" />
+    <!-- 깜빡이 -->
+    <uses-permission android:name="pleos.car.permission.CAR_LIGHTS" />
+    <!-- 휴식 화면: 창문·공조·연료·주행 가능 거리 -->
+    <uses-permission android:name="pleos.car.permission.CAR_WINDOWS" />
+    <uses-permission android:name="pleos.car.permission.CAR_CLIMATE" />
+    <uses-permission android:name="pleos.car.permission.CAR_ENERGY" />
+    <uses-permission android:name="pleos.car.permission.CAR_MILEAGE" />
+    <uses-permission android:name="pleos.car.permission.CAR_INFO" />
+    <!-- 경고등(운전자 주의 경고·차로 유지 보조 등) -->
+    <uses-permission android:name="pleos.car.permission.CAR_SAFETY" />
+    <uses-permission android:name="pleos.car.permission.READ_ADAS_STATES" />
 
-    <!-- NaviHelper SDK: 경로·주행 정보 조회 -->
+    <!-- Vehicle SDK 제어: 휴식 모드·깨우기에서 공조와 무드등을 바꾸고 출발할 때 되돌림 -->
+    <uses-permission android:name="pleos.car.permission.CONTROL_CAR_CLIMATE" />
+    <uses-permission android:name="pleos.car.permission.CONTROL_CAR_LIGHTS" />
+
+    <!-- NaviHelper SDK: 경로 정보 조회(NAVI_ROUTE), 경로 요청·경유지 추가·삭제(NAVI_ROUTE_SEARCH) -->
     <uses-permission android:name="pleos.car.permission.NAVI_ROUTE" />
+    <uses-permission android:name="pleos.car.permission.NAVI_ROUTE_SEARCH" />
 
     <application
         android:allowBackup="false"
@@ -17,11 +39,17 @@
         android:theme="@style/Theme.PleosApp">
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|uiMode|density|keyboard|keyboardHidden|navigation"
+            android:exported="true"
+            android:screenOrientation="unspecified">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Android Automotive: 주행 중에도 화면을 띄울 수 있는 앱으로 표시 (운전자 주의 분산 기준을 지켜 설계) -->
+            <meta-data
+                android:name="distractionOptimized"
+                android:value="true" />
         </activity>
     </application>
 
