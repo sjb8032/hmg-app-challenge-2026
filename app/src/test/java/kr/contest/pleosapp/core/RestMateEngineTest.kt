@@ -18,6 +18,9 @@ class RestMateEngineTest {
     private fun engine(vararg areas: RestArea = arrayOf(a5, a25)) =
         RestMateEngine(RestAreaFinder(areas.toList()))
 
+    private fun comparingEngine() =
+        RestMateEngine(RestAreaFinder(listOf(a5, a25)), RestMateConfig(compareAfterRest = true))
+
     private fun RestMateEngine.driveAt(now: Long, position: LatLng = origin) {
         onGear(now, Gear.DRIVE)
         onSpeed(now, 100.0)
@@ -101,7 +104,7 @@ class RestMateEngineTest {
 
     @Test
     fun departureStartsComparisonAndResetsDrivingTime() {
-        val e = engine()
+        val e = comparingEngine()
         e.driveAt(t0)
         e.addDrivingTime(t0 + 1, 2 * HOUR_MS)
         val restAt = e.restAtNearest(t0 + 1_000)
@@ -121,6 +124,38 @@ class RestMateEngineTest {
         assertNotNull(result)
         // 휴식 전 고속 주행이 몇 초뿐이라 비교하지 않는다.
         assertEquals(StabilityVerdict.NOT_ENOUGH_DATA, result!!.verdict)
+    }
+
+    @Test
+    fun departureWithoutComparisonJustResumesGuidance() {
+        val e = engine()
+        e.driveAt(t0)
+        val restAt = e.restAtNearest(t0 + 1_000)
+        e.drainEffects()
+        val departAt = restAt + 20 * MINUTE_MS
+        e.onGear(departAt, Gear.DRIVE)
+        e.onSpeed(departAt, 100.0)
+        assertEquals(Phase.DRIVING, e.state.phase)
+        assertNull(e.state.recovery)
+        val speech = e.drainEffects().filterIsInstance<Effect.Speak>().joinToString(" ") { it.text }
+        assertTrue(speech, speech.contains("원래 가던 길"))
+    }
+
+    @Test
+    fun restUntilUsesGivenAlarmTime() {
+        val e = engine()
+        e.driveAt(t0)
+        e.onSpeed(t0 + 1_000, 0.0)
+        e.onGear(t0 + 1_000, Gear.PARK)
+        e.drainEffects()
+        e.startRestUntil(t0 + 2_000, t0 + 2_000 + 37 * MINUTE_MS, a5)
+        assertEquals(Phase.RESTING, e.state.phase)
+        assertEquals(t0 + 2_000 + 37 * MINUTE_MS, e.state.rest?.alarmAt)
+        assertEquals(37, e.state.rest?.plannedMinutes)
+        assertTrue(e.drainEffects().contains(Effect.Cabin(CabinMode.REST)))
+
+        e.onTick(t0 + 2_000 + 37 * MINUTE_MS)
+        assertTrue(e.state.rest!!.alarmRinging)
     }
 
     @Test

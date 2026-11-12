@@ -37,6 +37,23 @@ enum class CabinMode {
     RESTORE,
 }
 
+/** 좀 더 달려요의 차 안 분위기 (무드등 밝기·온도) */
+data class MoodPreset(
+    val label: String,
+    val temperatureC: Float,
+    /** 무드등 밝기 (0..1) */
+    val brightness: Double,
+    /** 바람 세기 (0..1) */
+    val fan: Double,
+) {
+    companion object {
+        fun of(mood: Mood): MoodPreset = when (mood) {
+            Mood.DATE -> MoodPreset("데이트", temperatureC = 22f, brightness = 0.35, fan = 0.3)
+            Mood.SOLO -> MoodPreset("혼자 쉬기", temperatureC = 23f, brightness = 0.2, fan = 0.25)
+        }
+    }
+}
+
 /** 사용자가 고르는 휴식 환경 */
 data class RestEnvironment(
     /** 휴식을 시작하면 차 실내 환경을 바꿀지 */
@@ -151,6 +168,8 @@ data class RestMateConfig(
     val defaultRestMinutes: Int = 20,
     /** 깨우기 시간: 깬 뒤 바로 출발하지 않고 몸을 깨우는 시간. 도착 예상에도 더한다 (시험값, 팀 결정 필요) */
     val wakeUpMs: Long = 10 * MINUTE_MS,
+    /** 다시 출발한 뒤 휴식 전후 주행을 비교할지 (드라이브메이트 기획에서 빠짐, 기본 꺼짐) */
+    val compareAfterRest: Boolean = false,
     val stability: StabilityConfig = StabilityConfig(),
 ) {
     companion object {

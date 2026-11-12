@@ -219,6 +219,34 @@ class RestMateEngine(
         effects += Effect.Speak("휴식을 시작할게요. ${planned}분 뒤에 알람으로 알려 드릴게요.")
     }
 
+    /**
+     * 딱 맞춰 가요의 '쉬다 가는 코스'에서 쉼터에 주차했을 때: 도착 시각에 맞춰 깨우도록 알람 시각을 정해 쉰다.
+     */
+    fun startRestUntil(now: Long, alarmAt: Long, area: RestArea?) {
+        advance(now)
+        if (state.phase == Phase.RESTING) return
+        val at = max(alarmAt, now + MINUTE_MS)
+        val minutes = ((at - now + MINUTE_MS - 1) / MINUTE_MS).toInt()
+        state = state.copy(
+            phase = Phase.RESTING,
+            prompt = null,
+            quiet = false,
+            recovery = null,
+            target = null,
+            targetRemainingMeters = null,
+            alternatives = emptyList(),
+            rest = RestSession(
+                startedAt = now,
+                plannedMinutes = minutes,
+                alarmAt = at,
+                area = area,
+                remainingRouteMs = state.remainingRouteMs,
+            ),
+        )
+        effects += Effect.Cabin(CabinMode.REST)
+        effects += Effect.Speak("도착 시각에 맞춰 쉬다 가요. ${minutes}분 뒤에 깨워 드릴게요.")
+    }
+
     fun setRestMinutes(now: Long, minutes: Int) {
         advance(now)
         val rest = state.rest ?: return
@@ -495,7 +523,7 @@ class RestMateEngine(
             prompt = null,
             quiet = false,
             continuousDrivingMs = if (restedMs >= config.restResetMs) 0L else state.continuousDrivingMs,
-            recovery = RecoveryCheck(restStartedAt = rest.startedAt, departedAt = now),
+            recovery = if (config.compareAfterRest) RecoveryCheck(restStartedAt = rest.startedAt, departedAt = now) else null,
         )
         longDriveSnoozeUntil = 0L
         // '출발' 버튼으로 끝냈는데 아직 P단이면, 방금 쉰 자리에서 다시 '여기서 쉬어 갈까요?'를 묻지 않는다.
@@ -504,9 +532,12 @@ class RestMateEngine(
         val wokeAt = rest.wakeStartedAt
         val groggy = wokeAt == null || now - wokeAt < config.wakeUpMs
         val caution = if (groggy) " 깬 지 얼마 안 됐으니 처음 몇 분은 천천히 가 주세요." else ""
-        effects += Effect.Speak(
-            "다시 출발하시네요.$caution 처음 ${RestMateText.duration(config.afterWindowMs)} 동안 휴식 전과 주행을 비교해 볼게요.",
-        )
+        val tail = if (config.compareAfterRest) {
+            " 처음 ${RestMateText.duration(config.afterWindowMs)} 동안 휴식 전과 주행을 비교해 볼게요."
+        } else {
+            " 원래 가던 길로 다시 안내할게요."
+        }
+        effects += Effect.Speak("다시 출발하시네요.$caution$tail")
     }
 
     private fun evaluateRecovery(now: Long) {
