@@ -142,6 +142,27 @@ class RestMateEngineTest {
     }
 
     @Test
+    fun parkingAtDestinationDoesNotAskToRest() {
+        val e = engine()
+        e.driveAt(t0)
+        e.onTripArrived(t0 + 1_000)
+        e.onSpeed(t0 + 30_000, 0.0)
+        e.onGear(t0 + 30_000, Gear.PARK)
+        e.onTick(t0 + 60_000)
+        assertNull(e.state.prompt)
+    }
+
+    @Test
+    fun parkingElsewhereStillAsksToRest() {
+        val e = engine()
+        e.driveAt(t0)
+        e.onSpeed(t0 + 1_000, 0.0)
+        e.onGear(t0 + 1_000, Gear.PARK)
+        e.onTick(t0 + 20_000)
+        assertEquals(Prompt.ParkedHere, e.state.prompt)
+    }
+
+    @Test
     fun restUntilUsesGivenAlarmTime() {
         val e = engine()
         e.driveAt(t0)

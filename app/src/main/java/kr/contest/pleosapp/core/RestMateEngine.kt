@@ -1,7 +1,11 @@
 package kr.contest.pleosapp.core
 
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToInt
+
+/** 목적지 도착 안내 앞뒤로 이 시간 안에 세운 차는 도착해서 세운 것으로 본다 */
+private const val ARRIVAL_PARK_WINDOW_MS = 5 * MINUTE_MS
 
 /**
  * 레스트메이트의 상태 전환을 맡는다. 안드로이드에 의존하지 않고, 시간은 밖에서 넣어 준다.
@@ -39,6 +43,7 @@ class RestMateEngine(
     private var closestToTarget = Double.MAX_VALUE
     private var lastPosition: LatLng? = null
     private var lastPrune = 0L
+    private var tripArrivedAt = Long.MIN_VALUE / 2
 
     fun drainEffects(): List<Effect> {
         if (effects.isEmpty()) return emptyList()
@@ -88,6 +93,12 @@ class RestMateEngine(
     /** 내비가 알려 주는 현재 도로 제한속도. 90km/h 이상이면 고속도로로 본다. */
     fun onSpeedLimit(kmh: Int?) {
         state = state.copy(onExpressway = kmh?.let { it >= 90 })
+    }
+
+    /** 목적지에 도착했다 (내비 도착 안내). 도착해서 세운 차에는 '여기서 쉬어 갈까요?'를 묻지 않는다. */
+    fun onTripArrived(now: Long) {
+        tripArrivedAt = now
+        if (state.prompt == Prompt.ParkedHere) state = state.copy(prompt = null)
     }
 
     /** 시연용으로 고속도로 주행 여부를 직접 정한다. */
@@ -390,7 +401,8 @@ class RestMateEngine(
             Phase.TO_REST_AREA -> startRest(now)
             Phase.DRIVING -> {
                 if (parkedFor >= config.restResetMs) state = state.copy(continuousDrivingMs = 0L)
-                if (!parkedPromptShown && state.prompt == null) {
+                val atDestination = abs(since - tripArrivedAt) <= ARRIVAL_PARK_WINDOW_MS
+                if (!parkedPromptShown && state.prompt == null && !atDestination) {
                     parkedPromptShown = true
                     state = state.copy(prompt = Prompt.ParkedHere)
                 }

@@ -4,6 +4,10 @@ enum class RestAreaType(val label: String) {
     SERVICE_AREA("휴게소"),
     DROWSY_SHELTER("졸음쉼터"),
     REST_STOP("쉼터"),
+    /** 시내에서 잠깐 세워 쉴 수 있는 공영 주차장 */
+    PARKING("공영 주차장"),
+    /** 주차장이 있는 공원 (한강공원 등) */
+    PARK("공원 주차장"),
 }
 
 data class RestArea(

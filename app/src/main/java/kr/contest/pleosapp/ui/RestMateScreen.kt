@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -47,13 +46,21 @@ import kr.contest.pleosapp.app.RestMateActions
 import kr.contest.pleosapp.app.RestMateController
 import kr.contest.pleosapp.app.UiState
 import kr.contest.pleosapp.core.CheckInAnswer
+import kr.contest.pleosapp.core.CourseOption
+import kr.contest.pleosapp.core.DemoTrips
+import kr.contest.pleosapp.core.DriveMode
+import kr.contest.pleosapp.core.DriveState
+import kr.contest.pleosapp.core.DriveStep
+import kr.contest.pleosapp.core.DriveText
 import kr.contest.pleosapp.core.Gear
 import kr.contest.pleosapp.core.HOUR_MS
 import kr.contest.pleosapp.core.LatLng
 import kr.contest.pleosapp.core.MINUTE_MS
+import kr.contest.pleosapp.core.Mood
 import kr.contest.pleosapp.core.Phase
+import kr.contest.pleosapp.core.Place
+import kr.contest.pleosapp.core.PlaceKind
 import kr.contest.pleosapp.core.Prompt
-import kr.contest.pleosapp.core.RecoveryCheck
 import kr.contest.pleosapp.core.RestArea
 import kr.contest.pleosapp.core.RestAreaCandidate
 import kr.contest.pleosapp.core.RestAreaType
@@ -61,18 +68,16 @@ import kr.contest.pleosapp.core.RestEnvironment
 import kr.contest.pleosapp.core.RestMateState
 import kr.contest.pleosapp.core.RestMateText
 import kr.contest.pleosapp.core.RestSession
-import kr.contest.pleosapp.core.StabilityComparison
-import kr.contest.pleosapp.core.StabilityVerdict
+import kr.contest.pleosapp.core.RoadStyle
+import kr.contest.pleosapp.data.CityRestPlaces
 import kr.contest.pleosapp.data.RestAreaRepository
 import kr.contest.pleosapp.sdk.VehicleExtras
-import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
 
 /**
- * 레스트메이트 화면 (가로형 차량 디스플레이).
- * 왼쪽: 지금 상태에 맞는 내용과 큰 버튼 하나 / 오른쪽: 차량·내비 연결 상태, 최근 안내, 시연 모드
+ * 드라이브메이트 화면 (가로형 차량 디스플레이).
+ * 왼쪽: 지금 상태에 맞는 내용과, 아래에 늘 있는 '쉬었다 가요' 버튼 / 오른쪽: 차량·내비 연결 상태, 최근 안내, 시연 모드
  *
  * 운전 중에 읽을 글은 짧게, 누를 곳은 크게 둔다. 화면이 하는 말은 음성으로도 나간다.
  */
@@ -117,9 +122,9 @@ private fun MainPanel(ui: UiState, actions: RestMateActions, modifier: Modifier)
 private fun Header(ui: UiState) {
     val waking = ui.core.rest?.wakeStartedAt != null
     val (title, dot) = when (ui.core.phase) {
-        Phase.DRIVING -> "주행 중" to RM.textDim
-        Phase.TO_REST_AREA -> "쉼터로 안내 중" to RM.amber
-        Phase.RESTING -> if (waking) "깨우는 중" to RM.amber else "휴식 중" to RM.teal
+        Phase.DRIVING -> driveTitle(ui.drive)
+        Phase.TO_REST_AREA -> "쉬었다 가요 · 쉴 곳으로 안내 중" to RM.amber
+        Phase.RESTING -> if (waking) "쉬었다 가요 · 깨우는 중" to RM.amber else "쉬었다 가요 · 휴식 중" to RM.teal
     }
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -127,45 +132,83 @@ private fun Header(ui: UiState) {
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Box(Modifier.size(14.dp).background(dot, CircleShape))
-        Text(title, color = RM.text, fontSize = 30.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.weight(1f))
-        if (ui.demoMode) Chip("시연 모드 · 모의 신호", RM.amber)
+        Text(
+            title,
+            color = RM.text,
+            fontSize = 30.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        if (ui.demoMode) Chip("시연 모드", RM.amber)
+        if (ui.now > 0L) Text(DriveText.clock(ui.now), color = RM.textDim, fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
     }
+}
+
+private fun driveTitle(d: DriveState): Pair<String, Color> {
+    val mode = d.mode
+    val color = modeColor(mode)
+    return when (d.step) {
+        DriveStep.HOME -> "어떻게 갈까요?" to RM.textDim
+        DriveStep.SETUP -> (mode?.title ?: "드라이브") to color
+        DriveStep.CHOOSE -> "${mode?.title ?: "드라이브"} · 코스 고르기" to color
+        DriveStep.ACTIVE -> "${mode?.title ?: "드라이브"} · 달리는 중" to color
+        DriveStep.ARRIVED -> "도착했어요" to color
+    }
+}
+
+internal fun modeColor(mode: DriveMode?): Color = when (mode) {
+    DriveMode.ON_TIME -> RM.teal
+    DriveMode.LONGER -> RM.violet
+    null -> RM.textDim
+}
+
+internal fun modeTone(mode: DriveMode?): Tone = when (mode) {
+    DriveMode.LONGER -> Tone.VIOLET
+    else -> Tone.TEAL
 }
 
 @Composable
 private fun DrivingContent(ui: UiState, actions: RestMateActions) {
     val s = ui.core
     s.prompt?.let { PromptCard(it, ui, actions) }
-    s.recovery?.let { RecoveryCard(it, ui, actions) }
-    Panel {
-        Label("연속 주행")
-        Text(
-            RestMateText.drivingTime(s.continuousDrivingMs),
-            color = RM.text,
-            fontSize = 52.sp,
-            fontWeight = FontWeight.Bold,
-        )
-        val fraction = s.continuousDrivingMs.toFloat() / ui.config.longDriveMs.toFloat()
-        Bar(fraction, if (fraction >= 1f) RM.amber else RM.teal)
-        Caption("${hoursText(ui.config.longDriveMs)}마다 한 번 쉬어 가기를 권해요.")
-    }
-    NextRestPanel(s)
+    DriveContent(ui, actions)
     s.searchFailure?.let { Notice(it, RM.amber) }
 }
 
+/** 처음 화면 아래에 두는 연속 주행 시간과 진행 방향 가까운 쉼터 */
 @Composable
-private fun NextRestPanel(s: RestMateState) {
+internal fun RestStatusPanel(ui: UiState) {
+    val s = ui.core
     Panel {
-        Label("진행 방향 가까운 쉼터")
-        val next = s.nextAhead
-        when {
-            next != null -> {
-                AreaName(next.area)
-                Body(liveSummary(next, s, withType = true))
+        Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Label("연속 주행")
+                Text(RestMateText.drivingTime(s.continuousDrivingMs), color = RM.text, fontSize = 30.sp, fontWeight = FontWeight.Bold)
+                val fraction = s.continuousDrivingMs.toFloat() / ui.config.longDriveMs.toFloat()
+                Bar(fraction, if (fraction >= 1f) RM.amber else RM.teal)
+                Caption("${hoursText(ui.config.longDriveMs)}마다 한 번 쉬어 가기를 권해요.")
             }
-            s.position == null -> Body("현재 위치를 기다리는 중이에요. 내비게이션 연결을 확인해 주세요.")
-            else -> Body("진행 방향 앞쪽에서 쉼터를 찾지 못했어요.")
+            Column(Modifier.weight(1.3f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Label("진행 방향 가까운 쉴 곳")
+                val next = s.nextAhead
+                when {
+                    next != null -> {
+                        Text(
+                            next.area.name,
+                            color = RM.text,
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Caption(liveSummary(next, s, withType = true))
+                    }
+                    s.position == null -> Caption("현재 위치를 기다리는 중이에요. 내비게이션 연결을 확인해 주세요.")
+                    else -> Caption("진행 방향 앞쪽에서 쉴 곳을 찾지 못했어요.")
+                }
+            }
         }
     }
 }
@@ -177,8 +220,8 @@ private fun PromptCard(prompt: Prompt, ui: UiState, actions: RestMateActions) {
         is Prompt.LongDrive -> ChoiceCard(
             title = "${prompt.drivenMinutes / 60}시간 넘게 운전하셨어요",
             detail = prompt.next?.let { "${it.area.name} · ${liveSummary(it, s)}" }
-                ?: "가장 빨리 닿는 쉼터를 찾아 안내할게요.",
-            primary = "쉬어 갈게요",
+                ?: "가장 빨리 닿는 쉴 곳을 찾아 안내할게요.",
+            primary = "쉬었다 갈게요",
             onPrimary = actions::acceptPrompt,
             secondary = "${RestMateText.duration(ui.config.longDriveSnoozeMs)} 뒤에",
             onSecondary = actions::dismissPrompt,
@@ -240,49 +283,6 @@ private fun CheckInCard(actions: RestMateActions) {
 }
 
 @Composable
-private fun RecoveryCard(rec: RecoveryCheck, ui: UiState, actions: RestMateActions) {
-    val result = rec.result
-    if (result == null) {
-        val left = rec.departedAt + ui.config.afterWindowMs - ui.core.now
-        Panel(border = RM.line) {
-            Label("휴식 전후 주행 비교")
-            Text(
-                "다시 출발한 뒤의 주행을 살펴보는 중이에요",
-                color = RM.text,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Caption(
-                "남은 시간 ${clock(left)} · 시속 ${ui.config.stability.minSpeedKmh.roundToInt()}km 이상, " +
-                    "깜빡이를 켜지 않은 구간만 비교해요.",
-            )
-            Caption(RestMateText.NOT_A_DIAGNOSIS)
-            ActionButton("그만 보기", actions::dismissRecovery, Modifier.fillMaxWidth(), Tone.NEUTRAL, 64.dp, 20.sp)
-        }
-    } else {
-        val verdict = result.verdict
-        val accent = when (verdict) {
-            StabilityVerdict.MORE_STABLE -> RM.teal
-            StabilityVerdict.LESS_STABLE -> RM.amber
-            StabilityVerdict.SIMILAR, StabilityVerdict.NOT_ENOUGH_DATA -> RM.line
-        }
-        Panel(color = RM.cardHigh, border = accent) {
-            Label("휴식 전후 주행 비교")
-            Text(RestMateText.recoveryTitle(verdict), color = RM.text, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-            Body(RestMateText.recoveryDetail(verdict, rec.nextRest))
-            if (verdict != StabilityVerdict.NOT_ENOUGH_DATA) Caption(metricsLine(result))
-            Caption(RestMateText.NOT_A_DIAGNOSIS)
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (verdict == StabilityVerdict.LESS_STABLE) {
-                    ActionButton("한 번 더 쉬기", actions::acceptRecoveryRest, Modifier.weight(1f), Tone.AMBER)
-                }
-                ActionButton("닫기", actions::dismissRecovery, Modifier.weight(1f), Tone.NEUTRAL)
-            }
-        }
-    }
-}
-
-@Composable
 private fun GuidanceContent(ui: UiState, actions: RestMateActions) {
     val s = ui.core
     var showAlternatives by remember { mutableStateOf(false) }
@@ -291,7 +291,7 @@ private fun GuidanceContent(ui: UiState, actions: RestMateActions) {
         val live = target.updatedFor(s.position, s.speedKmh)
         val near = (s.targetRemainingMeters ?: Double.MAX_VALUE) <= ui.config.nearArrivalMeters
         Panel(border = RM.amber) {
-            Label("${target.area.type.label}로 안내 중")
+            Label("${DriveText.toward(target.area.type.label)} 안내 중")
             AreaName(target.area)
             Text(
                 "약 ${RestMateText.distance(live.roadMeters)} · ${RestMateText.etaMinutes(live.etaMinutes)}분",
@@ -312,10 +312,13 @@ private fun GuidanceContent(ui: UiState, actions: RestMateActions) {
         prompt != null -> PromptCard(prompt, ui, actions)
         s.quiet -> Notice("조용히 모드예요. 도착할 때까지 상태를 묻지 않아요.", RM.textDim)
     }
+    if (ui.drive.step == DriveStep.ACTIVE) {
+        Notice("쉬었다 가는 동안 도착 시각 맞추기는 잠시 멈춰요. 다시 출발하면 이어서 맞춰요.", RM.textDim)
+    }
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         ActionButton("주차했어요", actions::startRest, Modifier.weight(1f), Tone.TEAL, sub = "휴식 시작")
         ActionButton(
-            text = if (showAlternatives) "목록 닫기" else "다른 쉼터",
+            text = if (showAlternatives) "목록 닫기" else "다른 곳",
             onClick = { showAlternatives = !showAlternatives },
             modifier = Modifier.weight(1f),
             sub = if (showAlternatives) null else "${s.alternatives.size}곳",
@@ -369,6 +372,11 @@ private fun RestingContent(ui: UiState, actions: RestMateActions) {
     } else {
         RestTimerPanel(rest, s.now)
     }
+    val drive = ui.drive
+    val target = drive.targetAt
+    if (drive.step == DriveStep.ACTIVE && target != null) {
+        Notice("${DriveText.clock(target)} 도착에 맞춰 깨워 드려요. 시간을 바꾸면 도착 시각도 달라져요.", RM.teal)
+    }
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         for (m in REST_OPTIONS) {
             ActionButton(
@@ -405,7 +413,7 @@ private fun RestTimerPanel(rest: RestSession, now: Long) {
         }
         val total = (rest.alarmAt - rest.startedAt).coerceAtLeast(1L)
         Bar(rested.toFloat() / total.toFloat(), RM.teal)
-        Caption("${wallClock(rest.alarmAt)} 알람 · 지금까지 ${RestMateText.duration(rested)} 쉬었어요")
+        Caption("${DriveText.clock(rest.alarmAt)} 알람 · 지금까지 ${RestMateText.duration(rested)} 쉬었어요")
         if (!rest.alarmRinging) {
             Caption("커피는 자기 전에 마시면 깰 무렵 효과가 나요 (효과까지 20분쯤 걸려요).")
         }
@@ -518,7 +526,7 @@ private fun ArrivalPanel(rest: RestSession, ui: UiState) {
                         modifier = Modifier.weight(1f),
                     )
                     Text(
-                        "${wallClock(arriveAt)} 도착",
+                        "${DriveText.clock(arriveAt)} 도착",
                         color = if (chosen) RM.teal else RM.text,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
@@ -558,14 +566,15 @@ private fun CabinPanel(extras: VehicleExtras) {
     }
 }
 
+/** 화면 아래 큰 버튼. 달리는 중에는 어느 화면에서나 '쉬었다 가요'를 누를 수 있다. */
 @Composable
 private fun BottomAction(ui: UiState, actions: RestMateActions) {
     val s = ui.core
     when (s.phase) {
         Phase.DRIVING ->
-            BigButton("졸려요", "가장 빨리 닿는 쉼터로 바로 안내해요", Tone.AMBER, actions::pressDrowsy)
+            BigButton("쉬었다 가요", "가까운 휴게소·졸음쉼터·주차장으로 바로 안내해요", Tone.AMBER, actions::pressDrowsy)
         Phase.TO_REST_AREA ->
-            BigButton("더 졸려요", "더 빨리 닿는 곳이 있으면 바꿔서 안내해요", Tone.AMBER, actions::pressDrowsy)
+            BigButton("더 빨리 쉴래요", "더 빨리 닿는 곳이 있으면 바꿔서 안내해요", Tone.AMBER, actions::pressDrowsy)
         Phase.RESTING -> {
             val rest = s.rest
             when {
@@ -592,8 +601,8 @@ private fun SidePanel(ui: UiState, actions: RestMateActions, modifier: Modifier)
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("레스트메이트", color = RM.text, fontSize = 26.sp, fontWeight = FontWeight.Bold)
-        Caption("졸릴 때 쉼터 안내부터 휴식, 다시 출발까지")
+        Text("드라이브메이트", color = RM.text, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+        Caption("도착 시각에 맞춰 달리고, 졸리면 쉬었다 가요")
         Rule()
         StatusRow("기어", gearLabel(s.gear))
         StatusRow("속도", s.speedKmh?.let { "${it.roundToInt()} km/h" } ?: "—")
@@ -605,6 +614,7 @@ private fun SidePanel(ui: UiState, actions: RestMateActions, modifier: Modifier)
                 null -> "—"
             },
         )
+        StatusRow("연속 주행", RestMateText.drivingTime(s.continuousDrivingMs))
         StatusRow("차량 SDK", ui.connection.vehicle, connectionColor(ui.connection.vehicle))
         StatusRow("내비 SDK", ui.connection.navi, connectionColor(ui.connection.navi))
         StatusRow(
@@ -621,6 +631,7 @@ private fun SidePanel(ui: UiState, actions: RestMateActions, modifier: Modifier)
         DemoControls(ui, actions)
         Rule()
         Caption("쉼터 데이터 ${ui.restAreaCount}곳 · ${RestAreaRepository.ATTRIBUTION}")
+        Caption("${CityRestPlaces.ATTRIBUTION} · 경치 지점은 팀이 고른 표본")
     }
 }
 
@@ -629,7 +640,7 @@ private fun DemoControls(ui: UiState, actions: RestMateActions) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text("시연 모드", color = RM.text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            Caption("모의 차량 신호 · 대기 시간 단축")
+            Caption("모의 내비 · 빨리 가는 가상 시계")
         }
         Switch(
             checked = ui.demoMode,
@@ -637,49 +648,63 @@ private fun DemoControls(ui: UiState, actions: RestMateActions) {
             colors = SwitchDefaults.colors(checkedThumbColor = RM.onAmber, checkedTrackColor = RM.amber),
         )
     }
-    if (ui.demoMode) {
-        ui.demoScenario?.let { Caption("출발: $it") }
-        Caption(
-            if (ui.demoDriving) {
-                "모의 주행 중 · 시속 100km · ${if (ui.demoWobbly) "조향 흔들림" else "조향 안정"}"
-            } else {
-                "정차 중"
-            },
-            if (ui.demoDriving) RM.amber else RM.textDim,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SmallButton("주행 · 흔들림", { actions.demoDrive(true) }, Modifier.weight(1f))
-            SmallButton("주행 · 안정", { actions.demoDrive(false) }, Modifier.weight(1f))
+    if (!ui.demoMode) return
+    val trip = ui.demoTrip
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        for (t in DemoTrips.ALL) {
+            ActionButton(
+                t.title.substringBefore(" ·"),
+                { actions.selectDemoTrip(t.id) },
+                Modifier.weight(1f),
+                if (trip?.id == t.id) Tone.AMBER else Tone.NEUTRAL,
+                minHeight = 52.dp,
+                textSize = 17.sp,
+            )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SmallButton("P단 주차", actions::demoPark, Modifier.weight(1f))
-            SmallButton("+2시간 운전", actions::demoAddDrivingTime, Modifier.weight(1f))
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SmallButton("주의 경고(모의)", actions::demoAttentionWarning, Modifier.weight(1f))
-            SmallButton("차로 이탈(모의)", actions::demoLaneEvent, Modifier.weight(1f))
-        }
-        SmallButton(
-            "휴식 시간 건너뛰기",
-            actions::demoSkipRest,
-            Modifier.fillMaxWidth(),
-            enabled = ui.core.phase == Phase.RESTING && ui.core.rest?.wakeStartedAt == null,
-        )
-        SmallButton("처음 위치로", actions::demoRestart, Modifier.fillMaxWidth())
-        Caption("위치는 실제 시간보다 6배 빠르게 움직여요. 시연 모드의 차량 신호는 실제 값이 아니에요.")
     }
+    if (trip != null) Caption("${trip.title} · 가상 시계 ×${trip.timeScale.roundToInt()}")
+    val speed = ui.core.speedKmh?.roundToInt() ?: 0
+    Caption(
+        when {
+            ui.demoDriving && ui.demoJammed -> "모의 주행 중 · 시속 ${speed}km (정체)"
+            ui.demoDriving -> "모의 주행 중 · 시속 ${speed}km"
+            else -> "서 있는 중"
+        },
+        if (ui.demoDriving) RM.amber else RM.textDim,
+    )
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        SmallButton("출발 · 주행", actions::demoDrive, Modifier.weight(1f))
+        SmallButton("P단 주차", actions::demoPark, Modifier.weight(1f))
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        SmallButton("막힘 +6분", actions::demoTraffic, Modifier.weight(1f), enabled = ui.demoDriving)
+        SmallButton("10분 건너뛰기", { actions.demoSkip(10) }, Modifier.weight(1f))
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        SmallButton("졸음 경고(모의)", actions::demoAttentionWarning, Modifier.weight(1f))
+        SmallButton("+2시간 운전", actions::demoAddDrivingTime, Modifier.weight(1f))
+    }
+    SmallButton(
+        "휴식 시간 건너뛰기",
+        actions::demoSkipRest,
+        Modifier.fillMaxWidth(),
+        enabled = ui.core.phase == Phase.RESTING && ui.core.rest?.wakeStartedAt == null,
+    )
+    SmallButton("처음부터", actions::demoRestart, Modifier.fillMaxWidth())
+    Caption("시연 모드의 위치·속도·시각은 실제 값이 아니에요.")
 }
 
 // ---------------------------------------------------------------- 공통 요소
 
-private enum class Tone(val container: Color, val content: Color) {
+internal enum class Tone(val container: Color, val content: Color) {
     TEAL(RM.teal, RM.onTeal),
+    VIOLET(RM.violet, RM.onViolet),
     AMBER(RM.amber, RM.onAmber),
     NEUTRAL(RM.button, RM.text),
 }
 
 @Composable
-private fun ActionButton(
+internal fun ActionButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -712,17 +737,17 @@ private fun ActionButton(
 }
 
 @Composable
-private fun BigButton(text: String, sub: String?, tone: Tone, onClick: () -> Unit) {
+internal fun BigButton(text: String, sub: String?, tone: Tone, onClick: () -> Unit) {
     ActionButton(text, onClick, Modifier.fillMaxWidth(), tone, minHeight = 112.dp, textSize = 40.sp, sub = sub)
 }
 
 @Composable
-private fun SmallButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+internal fun SmallButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     ActionButton(text, onClick, modifier, Tone.NEUTRAL, minHeight = 56.dp, textSize = 17.sp, enabled = enabled)
 }
 
 @Composable
-private fun Panel(
+internal fun Panel(
     modifier: Modifier = Modifier,
     color: Color = RM.card,
     border: Color? = null,
@@ -735,22 +760,22 @@ private fun Panel(
 }
 
 @Composable
-private fun Label(text: String, color: Color = RM.textDim) {
+internal fun Label(text: String, color: Color = RM.textDim) {
     Text(text, color = color, fontSize = 17.sp, fontWeight = FontWeight.Medium)
 }
 
 @Composable
-private fun Body(text: String, color: Color = RM.text) {
+internal fun Body(text: String, color: Color = RM.text) {
     Text(text, color = color, fontSize = 21.sp, lineHeight = 30.sp)
 }
 
 @Composable
-private fun Caption(text: String, color: Color = RM.textDim) {
+internal fun Caption(text: String, color: Color = RM.textDim) {
     Text(text, color = color, fontSize = 16.sp, lineHeight = 23.sp)
 }
 
 @Composable
-private fun Notice(text: String, color: Color) {
+internal fun Notice(text: String, color: Color) {
     Text(text, color = color, fontSize = 19.sp, lineHeight = 27.sp, modifier = Modifier.padding(horizontal = 4.dp))
 }
 
@@ -767,7 +792,7 @@ private fun AreaName(area: RestArea) {
 }
 
 @Composable
-private fun Chip(text: String, color: Color) {
+internal fun Chip(text: String, color: Color) {
     Text(
         text,
         color = color,
@@ -780,7 +805,7 @@ private fun Chip(text: String, color: Color) {
 }
 
 @Composable
-private fun Bar(fraction: Float, color: Color) {
+internal fun Bar(fraction: Float, color: Color) {
     Box(
         Modifier
             .fillMaxWidth()
@@ -797,7 +822,7 @@ private fun Bar(fraction: Float, color: Color) {
 }
 
 @Composable
-private fun Rule() {
+internal fun Rule() {
     Box(
         Modifier
             .fillMaxWidth()
@@ -844,24 +869,6 @@ private fun liveSummary(c: RestAreaCandidate, s: RestMateState, withType: Boolea
     return parts.joinToString(" · ")
 }
 
-private fun metricsLine(c: StabilityComparison): String {
-    fun f(v: Double) = String.format(Locale.KOREA, "%.1f", v)
-    val parts = buildList<String> {
-        add("분당 조향 보정 ${f(c.before.steeringCorrectionsPerMin)} → ${f(c.after.steeringCorrectionsPerMin)}회")
-        add("10분당 제동 ${f(c.before.brakePressesPer10Min)} → ${f(c.after.brakePressesPer10Min)}회")
-        if (c.before.laneEvents + c.after.laneEvents > 0) {
-            add("차로 유지 개입 ${c.before.laneEvents} → ${c.after.laneEvents}회")
-        }
-        if (c.before.collisionWarnings + c.after.collisionWarnings > 0) {
-            add("전방 충돌 경고 ${c.before.collisionWarnings} → ${c.after.collisionWarnings}회")
-        }
-        if (c.before.warnings + c.after.warnings > 0) {
-            add("주의 경고 ${c.before.warnings} → ${c.after.warnings}회")
-        }
-    }
-    return "휴식 전 → 후: " + parts.joinToString(" · ")
-}
-
 private fun cabinHints(e: VehicleExtras): List<String> = buildList {
     if (e.windowsAllClosed == true && e.recirculationOn == true) {
         add("창문이 닫혀 있고 내기 순환 중이에요. 쉬는 동안 한 번 환기해 주세요.")
@@ -869,7 +876,7 @@ private fun cabinHints(e: VehicleExtras): List<String> = buildList {
         add("다시 출발할 때 외기 유입으로 바꾸면 실내 공기를 바꾸는 데 도움이 돼요.")
     }
     val lowFuel = (e.fuelPercent ?: 100) <= 15 || (e.rangeKm ?: Double.MAX_VALUE) <= 80.0
-    if (lowFuel) add("연료가 얼마 남지 않았어요. 이 휴게소에 주유소가 있는지 확인해 보세요.")
+    if (lowFuel) add("연료가 얼마 남지 않았어요. 쉬는 곳에 주유소가 있는지 확인해 보세요.")
 }
 
 private fun hoursText(ms: Long): String =
@@ -889,7 +896,8 @@ private fun connectionColor(status: String): Color = when {
     else -> RM.textDim
 }
 
-private fun clock(ms: Long): String {
+/** 남은 시간 표시: "12:05", "1:02:03" */
+internal fun clock(ms: Long): String {
     val total = (ms.coerceAtLeast(0L) + 999L) / 1000L
     val h = total / 3600L
     val m = (total % 3600L) / 60L
@@ -901,11 +909,9 @@ private fun clock(ms: Long): String {
     }
 }
 
-private fun wallClock(ms: Long): String = SimpleDateFormat("a h:mm", Locale.KOREA).format(Date(ms))
-
 // ---------------------------------------------------------------- 미리보기 (Android Studio)
 
-private object PreviewActions : RestMateActions {
+internal object PreviewActions : RestMateActions {
     override fun pressDrowsy() = Unit
     override fun selectRestArea(candidate: RestAreaCandidate) = Unit
     override fun cancelGuidance() = Unit
@@ -917,14 +923,26 @@ private object PreviewActions : RestMateActions {
     override fun extendRest(minutes: Int) = Unit
     override fun stopAlarm() = Unit
     override fun wakeUp() = Unit
-    override fun setRestEnvironment(env: RestEnvironment) = Unit
-    override fun demoLaneEvent() = Unit
     override fun departNow() = Unit
-    override fun dismissRecovery() = Unit
-    override fun acceptRecoveryRest() = Unit
+    override fun setRestEnvironment(env: RestEnvironment) = Unit
+    override fun openMode(mode: DriveMode) = Unit
+    override fun driveBack() = Unit
+    override fun setDriveDestination(place: Place) = Unit
+    override fun shiftTarget(minutes: Int) = Unit
+    override fun setExtraMinutes(minutes: Int) = Unit
+    override fun setMood(mood: Mood) = Unit
+    override fun setRoadStyle(style: RoadStyle) = Unit
+    override fun planCourses() = Unit
+    override fun chooseCourse(option: CourseOption) = Unit
+    override fun goDirect() = Unit
+    override fun extendCourse() = Unit
+    override fun finishDrive() = Unit
     override fun setDemoMode(on: Boolean) = Unit
-    override fun demoDrive(wobbly: Boolean) = Unit
+    override fun selectDemoTrip(id: String) = Unit
+    override fun demoDrive() = Unit
     override fun demoPark() = Unit
+    override fun demoTraffic() = Unit
+    override fun demoSkip(minutes: Int) = Unit
     override fun demoAddDrivingTime() = Unit
     override fun demoAttentionWarning() = Unit
     override fun demoSkipRest() = Unit
@@ -933,32 +951,45 @@ private object PreviewActions : RestMateActions {
 
 private val previewArea = RestArea(
     id = "preview",
-    name = "안성휴게소(부산방향)",
+    name = "평창 휴게소 (강릉 방향)",
     type = RestAreaType.SERVICE_AREA,
-    position = LatLng(37.03, 127.17),
+    position = LatLng(37.6058, 128.4534),
     onExpressway = true,
+)
+
+internal val PREVIEW_NOW = 1_700_000_000_000L
+
+internal val previewPlaces = listOf(
+    Place("집", LatLng(37.5145, 127.1059), PlaceKind.HOME),
+    Place("회사", LatLng(37.5219, 126.9245), PlaceKind.OFFICE),
+    Place("아이 학원", LatLng(37.4946, 127.0576), PlaceKind.BOOKMARK),
 )
 
 @Preview(widthDp = 1280, heightDp = 720)
 @Composable
-private fun DrivingPreview() {
-    val now = 1_700_000_000_000L
+private fun HomePreview() {
     val next = RestAreaCandidate(previewArea, 8_000.0, 10_000.0, 6.0)
     RestMateTheme {
         RestMateScreen(
             UiState(
+                now = PREVIEW_NOW,
                 core = RestMateState(
-                    now = now,
-                    continuousDrivingMs = 2 * HOUR_MS + 5 * MINUTE_MS,
+                    now = PREVIEW_NOW,
+                    continuousDrivingMs = 65 * MINUTE_MS,
                     gear = Gear.DRIVE,
-                    speedKmh = 98.0,
-                    onExpressway = true,
+                    speedKmh = 32.0,
+                    onExpressway = false,
                     nextAhead = next,
-                    prompt = Prompt.LongDrive(125, next),
+                ),
+                drive = DriveState(
+                    now = PREVIEW_NOW,
+                    naviDestination = Place("광화문 약속 장소", LatLng(37.5717, 126.9768), PlaceKind.CURRENT),
+                    naviRemainingMs = 19 * MINUTE_MS,
+                    places = previewPlaces,
                 ),
                 demoMode = true,
-                restAreaCount = 1119,
-                lastMessage = "2시간 넘게 운전하셨어요. 다음 쉼터에 들를까요?",
+                demoTrip = DemoTrips.CITY,
+                restAreaCount = 1132,
             ),
             PreviewActions,
         )
@@ -968,20 +999,20 @@ private fun DrivingPreview() {
 @Preview(widthDp = 1280, heightDp = 720)
 @Composable
 private fun RestingPreview() {
-    val now = 1_700_000_000_000L
     RestMateTheme {
         RestMateScreen(
             UiState(
+                now = PREVIEW_NOW,
                 core = RestMateState(
-                    now = now,
+                    now = PREVIEW_NOW,
                     phase = Phase.RESTING,
                     gear = Gear.PARK,
                     rest = RestSession(
-                        startedAt = now - 6 * MINUTE_MS,
+                        startedAt = PREVIEW_NOW - 6 * MINUTE_MS,
                         plannedMinutes = 20,
-                        alarmAt = now + 14 * MINUTE_MS,
+                        alarmAt = PREVIEW_NOW + 14 * MINUTE_MS,
                         area = previewArea,
-                        remainingRouteMs = 2 * HOUR_MS + 40 * MINUTE_MS,
+                        remainingRouteMs = 40 * MINUTE_MS,
                     ),
                 ),
                 extras = VehicleExtras(windowsAllClosed = true, recirculationOn = true, fuelPercent = 42, rangeKm = 310.0),

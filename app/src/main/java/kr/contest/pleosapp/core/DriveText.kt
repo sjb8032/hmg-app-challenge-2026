@@ -49,6 +49,16 @@ object DriveText {
         return word + if (hasFinal) "을" else "를"
     }
 
+    /** 받침에 맞춰 '로/으로'를 붙인다 (ㄹ 받침은 '로'): "휴게소로", "공영 주차장으로", "서울로" */
+    fun toward(word: String): String {
+        val last = word.trimEnd().lastOrNull() ?: return word
+        if (last !in '가'..'힣') return "$word(으)로"
+        val final = (last.code - '가'.code) % 28
+        return word + if (final == 0 || final == RIEUL_FINAL) "로" else "으로"
+    }
+
+    private const val RIEUL_FINAL = 8
+
     private fun hourMinute(ms: Long, zone: TimeZone): Pair<Int, Int> {
         val c = Calendar.getInstance(zone).apply { timeInMillis = ms }
         return c.get(Calendar.HOUR_OF_DAY) to c.get(Calendar.MINUTE)

@@ -37,7 +37,7 @@ class TimeFitPlannerTest {
             point("p6", sideKm(6.0)),
             point("p10", sideKm(10.0)),
         )
-        val options = TimeFitPlanner.options(origin, dest, direct, 17 * MINUTE_MS, points, emptyList(), RoadStyle.LESS_TRAFFIC, config)
+        val options = TimeFitPlanner.options(origin, dest, direct, 17 * MINUTE_MS, points, emptyList(), RoadStyle.BEST_FIT, config)
         assertEquals(listOf("scenic-p6"), options.map { it.id })
         val added = options.first().addedMs
         assertTrue("약 11분 더 걸려야 함: $added", added in 9 * MINUTE_MS..13 * MINUTE_MS)
@@ -76,6 +76,41 @@ class TimeFitPlannerTest {
     }
 
     @Test
+    fun longTripRestsAtServiceAreaAroundTheMiddleNotCityParkNearStart() {
+        val far = Place("강릉", southKm(150.0))
+        val park = RestArea("park", "출발지공원", RestAreaType.PARK, southKm(3.0))
+        val early = TestAreas.area("early", southKm(30.0))
+        val middle = TestAreas.area("middle", southKm(90.0))
+        val options = TimeFitPlanner.options(
+            origin, far, 160 * MINUTE_MS, 40 * MINUTE_MS, emptyList(), listOf(park, early, middle), RoadStyle.SCENIC, config,
+        )
+        assertEquals("rest-middle", options.single { it.kind == CourseKind.REST_STOP }.id)
+    }
+
+    @Test
+    fun restStopSkipsOppositeDirectionTwin() {
+        val far = Place("남쪽 도시", southKm(150.0))
+        val wrongWay = TestAreas.area("wrong", southKm(90.0), directionTarget = TestAreas.northCity)
+        val rightWay = TestAreas.area("right", southKm(95.0), directionTarget = TestAreas.southCity)
+        val options = TimeFitPlanner.options(
+            origin, far, 160 * MINUTE_MS, 40 * MINUTE_MS, emptyList(), listOf(wrongWay, rightWay), RoadStyle.SCENIC, config,
+        )
+        assertEquals("rest-right", options.single { it.kind == CourseKind.REST_STOP }.id)
+    }
+
+    @Test
+    fun shortTripRestsNearDestination() {
+        val nearStart = RestArea("a", "출발 근처 주차장", RestAreaType.PARKING, Geo.destinationPoint(southKm(2.5), 90.0, 300.0))
+        val nearDest = RestArea("b", "도착 근처 공원", RestAreaType.PARK, Geo.destinationPoint(southKm(7.5), 90.0, 300.0))
+        val options = TimeFitPlanner.options(
+            origin, dest, direct, 40 * MINUTE_MS, emptyList(), listOf(nearStart, nearDest), RoadStyle.SCENIC, config,
+        )
+        val rest = options.single { it.kind == CourseKind.REST_STOP }
+        assertEquals("rest-b", rest.id)
+        assertTrue(rest.reason.startsWith("공원 주차장"))
+    }
+
+    @Test
     fun noRestStopWhenSlackIsShort() {
         val ahead = RestArea("ahead", "앞쪽휴게소", RestAreaType.SERVICE_AREA, southKm(6.0))
         val options = TimeFitPlanner.options(origin, dest, direct, 15 * MINUTE_MS, emptyList(), listOf(ahead), RoadStyle.SCENIC, config)
@@ -104,5 +139,12 @@ class TimeFitPlannerTest {
     fun objectParticleFollowsFinalConsonant() {
         assertEquals("팔각정을", DriveText.withObject("팔각정"))
         assertEquals("북악스카이웨이를", DriveText.withObject("북악스카이웨이"))
+    }
+
+    @Test
+    fun directionParticleFollowsFinalConsonant() {
+        assertEquals("휴게소로", DriveText.toward("휴게소"))
+        assertEquals("공영 주차장으로", DriveText.toward("공영 주차장"))
+        assertEquals("서울로", DriveText.toward("서울"))
     }
 }

@@ -10,7 +10,8 @@ import androidx.compose.ui.graphics.Color
 
 /**
  * 차 안에서 한눈에 읽히도록 어두운 바탕에 대비가 큰 색만 쓴다.
- * - 청록: 휴식·안정 / 호박색: 졸음·주의 (행동을 부르는 버튼) / 빨강: 연결 실패 같은 오류
+ * - 청록: 딱 맞춰 가요·휴식·안정 / 보라: 좀 더 달려요 / 호박색: 쉬었다 가요·주의 (행동을 부르는 버튼)
+ * - 빨강: 연결 실패 같은 오류
  */
 object RM {
     val background = Color(0xFF0B0F14)
@@ -25,6 +26,8 @@ object RM {
     val onTeal = Color(0xFF00201D)
     val amber = Color(0xFFFFB547)
     val onAmber = Color(0xFF2A1A00)
+    val violet = Color(0xFFB9A6FF)
+    val onViolet = Color(0xFF1C1240)
     val red = Color(0xFFFF6B6B)
 }
 

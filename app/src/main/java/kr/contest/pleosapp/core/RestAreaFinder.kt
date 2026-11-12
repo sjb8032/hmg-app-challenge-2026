@@ -64,6 +64,15 @@ class RestAreaFinder(
             val speed = speedKmh?.takeIf { it >= MIN_TRUSTED_SPEED_KMH } ?: fallbackSpeedKmh
             return roadMeters / 1000.0 / speed * 60.0
         }
+
+        /** "○○방향" 쉼터가 진행 방향(travelHeading)과 맞는 쪽인지. 방향 표시가 없으면 true */
+        fun matchesDirection(area: RestArea, travelHeading: Double): Boolean {
+            val target = area.directionTarget ?: return true
+            // 방향 지명 바로 근처에서는 방위각이 흔들리므로 판단하지 않는다.
+            if (Geo.distanceMeters(area.position, target) < 5_000.0) return true
+            val toward = Geo.bearingDegrees(area.position, target)
+            return Geo.angleDiff(toward, travelHeading) <= 90.0
+        }
     }
 
     /**
@@ -141,12 +150,4 @@ class RestAreaFinder(
 
     private fun baseName(name: String): String =
         RestMateText.spokenName(name).replace(" ", "")
-
-    private fun matchesDirection(area: RestArea, travelHeading: Double): Boolean {
-        val target = area.directionTarget ?: return true
-        // 방향 지명 바로 근처에서는 방위각이 흔들리므로 판단하지 않는다.
-        if (Geo.distanceMeters(area.position, target) < 5_000.0) return true
-        val toward = Geo.bearingDegrees(area.position, target)
-        return Geo.angleDiff(toward, travelHeading) <= 90.0
-    }
 }

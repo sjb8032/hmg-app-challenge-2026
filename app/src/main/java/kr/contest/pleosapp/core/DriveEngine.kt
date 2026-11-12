@@ -29,6 +29,8 @@ class DriveEngine(
     private var moodApplied = false
     private var planFrom: LatLng? = null
     private var planDirectMs: Long? = null
+    /** 쉬다 가는 코스에서 쉴 곳 가까이까지 왔는지 */
+    private var restStopReached = false
 
     fun drainEffects(): List<DriveEffect> {
         if (effects.isEmpty()) return emptyList()
@@ -84,7 +86,23 @@ class DriveEngine(
 
     fun onWaypointArrived(now: Long) {
         if (state.step != DriveStep.ACTIVE || !state.viaActive) return
+        if (state.chosen?.kind == CourseKind.REST_STOP) {
+            // 쉬다 가는 곳: 주차해서 휴식을 시작할 때까지 쉬는 시간을 계속 셈에 넣는다.
+            restStopReached = true
+            state = state.copy(now = now, message = "쉬다 갈 곳에 왔어요. P단으로 주차하면 도착 시각에 맞춰 깨워 드릴게요.")
+            return
+        }
         state = state.copy(now = now, viaCleared = true, message = "경유지를 지났어요. 이제 목적지로 가요.")
+    }
+
+    /** 쉬다 가는 코스에서 지금 쉴 곳에 와 있으면 그곳. 아니면 null (앱이 주차를 보고 휴식을 시작할 때 쓴다) */
+    fun restStopHere(position: LatLng?): RestArea? {
+        if (state.step != DriveStep.ACTIVE || !state.viaActive || state.paused) return null
+        val option = state.chosen ?: return null
+        if (option.kind != CourseKind.REST_STOP) return null
+        val area = option.restArea ?: return null
+        val at = position ?: return null
+        return area.takeIf { Geo.distanceMeters(at, it.position) <= REST_STOP_NEAR_METERS }
     }
 
     fun onDestinationArrived(now: Long) {
@@ -181,6 +199,7 @@ class DriveEngine(
         if (state.step != DriveStep.CHOOSE) return
         val dest = state.destination ?: return
         lateHandled = false
+        restStopReached = false
         routeChangedAt = now
         state = state.copy(
             now = now,
@@ -377,6 +396,7 @@ class DriveEngine(
             arrive(now)
             return
         }
+        checkRestStopPassed(position)
         val settled = now - routeChangedAt >= ROUTE_SETTLE_MS
         // 경로를 막 바꿨으면 내비가 새 경로를 계산할 때까지 계획한 값으로 보여 준다.
         val remain = if (settled) remainingMs() else plannedRemainingMs(now) ?: remainingMs()
@@ -409,6 +429,19 @@ class DriveEngine(
                 )
             }
             status != FitStatus.EARLY && state.extendOffered -> state = state.copy(extendOffered = false)
+        }
+    }
+
+    /** 쉬다 가는 곳까지 왔다가 쉬지 않고 떠나면 쉬는 시간을 셈에서 뺀다. */
+    private fun checkRestStopPassed(position: LatLng?) {
+        val area = state.chosen?.restArea ?: return
+        if (!state.viaActive || state.paused || position == null) return
+        val d = Geo.distanceMeters(position, area.position)
+        if (d <= REST_STOP_NEAR_METERS) {
+            restStopReached = true
+        } else if (restStopReached && d > REST_STOP_LEFT_METERS) {
+            restStopReached = false
+            state = state.copy(viaCleared = true, message = "쉬지 않고 지나왔어요. 도착 시각을 다시 맞춰 볼게요.")
         }
     }
 
@@ -477,6 +510,7 @@ class DriveEngine(
     private fun reset() {
         askedDirectAt = null
         lateHandled = false
+        restStopReached = false
         planFrom = null
         planDirectMs = null
         state = DriveState(
@@ -516,6 +550,8 @@ class DriveEngine(
         private const val ROUTE_SETTLE_MS = 20 * SECOND_MS
         private const val ARRIVE_REMAIN_MS = 30 * SECOND_MS
         private const val MIN_REST_MS = 5 * MINUTE_MS
+        private const val REST_STOP_NEAR_METERS = 400.0
+        private const val REST_STOP_LEFT_METERS = 1_200.0
 
         fun roundUp(ms: Long, step: Long): Long = ((ms + step - 1) / step) * step
     }

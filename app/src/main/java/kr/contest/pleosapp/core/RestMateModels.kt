@@ -173,16 +173,13 @@ data class RestMateConfig(
     val stability: StabilityConfig = StabilityConfig(),
 ) {
     companion object {
-        /** PT 시연용: 대기 시간과 비교 구간을 줄인다. 화면에 '시연 모드'로 표시한다. */
-        val DEMO = RestMateConfig(
-            parkConfirmMs = 3 * SECOND_MS,
-            restResetMs = 30 * SECOND_MS,
-            checkInIntervalMs = 20 * SECOND_MS,
-            beforeWindowMs = 2 * MINUTE_MS,
-            afterWindowMs = 30 * SECOND_MS,
-            aheadSearchIntervalMs = 5 * SECOND_MS,
-            wakeUpMs = 30 * SECOND_MS,
-            stability = StabilityConfig(minBeforeMinutes = 0.5, minAfterMinutes = 0.25),
+        /**
+         * PT 시연용: 가상 시계가 timeScale배로 흐르므로 대기 시간은 그대로 두고(실제로는 짧아짐),
+         * 상태 확인·쉼터 재검색만 실제 시간으로 너무 잦지 않게 늘린다. 화면에 '시연 모드'로 표시한다.
+         */
+        fun forDemo(timeScale: Double) = RestMateConfig(
+            checkInIntervalMs = (20 * SECOND_MS * timeScale).toLong(),
+            aheadSearchIntervalMs = (5 * SECOND_MS * timeScale).toLong(),
         )
     }
 }

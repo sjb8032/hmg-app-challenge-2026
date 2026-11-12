@@ -7,16 +7,20 @@ import ai.pleos.playground.vehicle.constant.control.LightSwitch
 import ai.pleos.playground.vehicle.constant.unit.TemperatureUnit
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
 import kr.contest.pleosapp.core.CabinMode
+import kr.contest.pleosapp.core.Mood
+import kr.contest.pleosapp.core.MoodPreset
 import kr.contest.pleosapp.core.RestEnvironment
 
 /**
- * 휴식 모드·깨우기에 맞춰 차 실내 환경(공조·무드등)을 바꾸고, 출발하면 휴식 전 설정으로 되돌린다.
+ * 차 실내 환경(공조·무드등)을 상황에 맞게 바꾸고, 끝나면 바꾸기 전 설정으로 되돌린다.
  *
  * - 휴식: 무드등 은은하게, 원하는 온도, 약한 바람, (선택) 바깥 공기
  * - 깨우기: 무드등을 몇 단계에 걸쳐 밝게, 2도 낮춘 온도, 센 바람, 바깥 공기
  * - 출발: 휴식 시작 전에 읽어 둔 값으로 되돌림
+ * - 좀 더 달려요 분위기: 데이트·혼자 쉬기에 맞춘 무드등 밝기와 온도. 도착하면 되돌림
  *
  * 제어할 수 있는 영역과 범위는 차량마다 달라 시작할 때 capability로 읽는다.
  * 제어가 실패해도 앱 흐름은 멈추지 않고, 결과를 문구로 알린다.
@@ -42,6 +46,8 @@ class CabinControl(
     private var changed = false
     private var failureReported = false
     private var generation = 0
+    /** 마지막으로 되돌린 시각. 되돌린 직후에는 되돌린 값이 아직 반영되지 않았을 수 있어 다시 읽지 않는다. */
+    private var restoredAt = Long.MIN_VALUE / 2
 
     /** 차량 연결 뒤 한 번: 제어 가능한 영역과 범위를 읽는다. */
     fun prepare() {
@@ -82,20 +88,44 @@ class CabinControl(
         // 원래 설정을 읽는 동안 기다렸다가 바꾼다. 그 사이에 다른 단계로 넘어가면(예: 바로 출발) 건너뛴다.
         when (mode) {
             CabinMode.REST -> if (env.enabled) {
-                // 처음 휴식 모드로 바꿀 때만 원래 설정을 읽어 둔다 (깨우기에서 다시 잠들 때는 그대로 둔다).
-                val fresh = !changed
-                if (fresh) snapshot()
-                changed = true
-                main.postDelayed({ if (gen == generation) applyRest(env) }, if (fresh) SNAPSHOT_WAIT_MS else 0L)
+                // 처음 바꿀 때만 원래 설정을 읽어 둔다 (깨우기에서 다시 잠들 때·분위기 중 쉴 때는 그대로 둔다).
+                val wait = beginChange()
+                main.postDelayed({ if (gen == generation) applyRest(env) }, wait)
             }
             CabinMode.WAKE -> if (env.enabled) {
-                val fresh = !changed
-                if (fresh) snapshot()
-                changed = true
-                main.postDelayed({ if (gen == generation) applyWake(env) }, if (fresh) SNAPSHOT_WAIT_MS else 0L)
+                val wait = beginChange()
+                main.postDelayed({ if (gen == generation) applyWake(env) }, wait)
             }
-            CabinMode.RESTORE -> if (changed) restore()
+            CabinMode.RESTORE -> if (changed) restore("출발: 실내 환경을 휴식 전 설정으로 되돌렸어요.")
         }
+    }
+
+    /** 좀 더 달려요의 분위기를 켠다. null이면 분위기 전 설정으로 되돌린다. */
+    fun applyMood(mood: Mood?) {
+        if (mood == null) {
+            if (changed) restore("드라이브를 마쳐서 실내 환경을 원래대로 되돌렸어요.")
+            return
+        }
+        if (!isConnected()) {
+            report("차량이 연결되지 않아 분위기는 바꾸지 않았어요.")
+            return
+        }
+        val gen = ++generation
+        failureReported = false
+        val preset = MoodPreset.of(mood)
+        val wait = beginChange()
+        main.postDelayed({ if (gen == generation) applyPreset(preset) }, wait)
+    }
+
+    /** 바꾸기 시작: 처음이면 원래 설정을 읽어 두고, 읽는 동안 기다릴 시간을 돌려준다. */
+    private fun beginChange(): Long {
+        val fresh = !changed
+        changed = true
+        if (!fresh) return 0L
+        // 막 되돌린 직후면 읽어 둔 원래 설정을 그대로 쓴다 (되돌린 값이 아직 반영되지 않았을 수 있음).
+        if (SystemClock.elapsedRealtime() - restoredAt < RESNAPSHOT_GUARD_MS) return 0L
+        snapshot()
+        return SNAPSHOT_WAIT_MS
     }
 
     // ---- 단계별 설정 ----
@@ -138,7 +168,19 @@ class CabinControl(
         report("깨우기: 무드등을 점점 밝게 · ${formatTemp(env.restTemperatureC - 2f)} 센 바람 · 바깥 공기")
     }
 
-    private fun restore() {
+    private fun applyPreset(p: MoodPreset) {
+        for (area in hvacAreas()) {
+            setTemperature(area, p.temperatureC)
+            setFan(area, fraction = p.fan)
+        }
+        lightTargets().forEach { area ->
+            setLightSwitch(area, LightSwitch.ON)
+            setBrightness(area, fraction = p.brightness)
+        }
+        report("${p.label} 분위기: 무드등 ${Math.round(p.brightness * 100)}% · ${formatTemp(p.temperatureC)} · 약한 바람")
+    }
+
+    private fun restore(message: String) {
         generation++
         savedTemp.forEach { (area, value) -> setTemperature(area, value) }
         savedFan.forEach { (area, value) -> setFanExact(area, value) }
@@ -146,7 +188,8 @@ class CabinControl(
         savedBrightness.forEach { (area, value) -> setBrightnessExact(area, value) }
         savedLightSwitch.forEach { (area, value) -> setLightSwitch(area, value) }
         changed = false
-        report("출발: 실내 환경을 휴식 전 설정으로 되돌렸어요.")
+        restoredAt = SystemClock.elapsedRealtime()
+        report(message)
     }
 
     // ---- 휴식 전 설정 읽기 ----
@@ -287,6 +330,7 @@ class CabinControl(
     companion object {
         private const val TAG = "RestMateCabin"
         private const val SNAPSHOT_WAIT_MS = 800L
+        private const val RESNAPSHOT_GUARD_MS = 5_000L
         private const val WAKE_LIGHT_STEPS = 5
         private const val WAKE_LIGHT_STEP_MS = 4_000L
         private val DEFAULT_FAN_RANGE = 1..8

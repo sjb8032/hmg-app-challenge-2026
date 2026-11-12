@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- 앱 이름(가칭). 확정되면 README와 함께 바꾼다 -->
-    <string name="app_name">레스트메이트</string>
+    <string name="app_name">드라이브메이트</string>
 </resources>

@@ -1,5 +1,6 @@
 package kr.contest.pleosapp.core
 
+import kotlin.math.abs
 import kotlin.math.sqrt
 
 /**
@@ -21,7 +22,10 @@ object TimeFitPlanner {
     private const val MAX_DETOUR_OFFSET_METERS = 15_000.0
     private const val MIN_SPEED_MPS = 12.0 / 3.6
     private const val MAX_SPEED_MPS = 100.0 / 3.6
-    private val SCENIC_TAGS = setOf(CourseTag.RIVER, CourseTag.NIGHT_VIEW, CourseTag.LAKE)
+    private val SCENIC_TAGS = setOf(CourseTag.RIVER, CourseTag.NIGHT_VIEW, CourseTag.LAKE, CourseTag.SEA)
+
+    /** 이보다 오래 가는 길이면 휴게소에서만 쉬다 간다 (시내 공원·주차장 제외) */
+    private const val LONG_TRIP_MS = 45 * MINUTE_MS
 
     fun slackMs(now: Long, targetAt: Long, directMs: Long, config: DriveConfig): Long =
         targetAt - now - directMs - config.marginMs
@@ -66,7 +70,7 @@ object TimeFitPlanner {
         val to = destination.position
         val speed = effectiveSpeedMps(from, to, directMs, config)
         val scenic = scenicOptions(from, to, slackMs, speed, points, style, config)
-        val rest = if (slackMs >= config.restStopMinSlackMs) restStopOption(from, to, slackMs, speed, restPlaces, config) else null
+        val rest = if (slackMs >= config.restStopMinSlackMs) restStopOption(from, to, directMs, slackMs, speed, restPlaces, config) else null
         val detour = if (scenic.isEmpty()) detourOption(from, to, slackMs, speed, config) else null
         return (scenic + listOfNotNull(rest, detour)).take(MAX_OPTIONS).ifEmpty { listOf(direct(slackMs)) }
     }
@@ -119,23 +123,45 @@ object TimeFitPlanner {
         }
     }
 
-    /** 가는 길에 들를 수 있는 쉼터 중 가장 적게 돌아가는 곳에서 남는 시간만큼 쉬다 간다. */
+    /**
+     * 가는 길에 들를 수 있는 쉼터에서 남는 시간만큼 쉬다 간다.
+     * - 먼 길(고속도로)은 휴게소만, 길의 60% 즈음을 좋게 본다.
+     * - 가까운 길(시내)은 공원·공영 주차장도 보고, 목적지 가까이(70% 즈음)를 좋게 본다. 깬 뒤 남은 길이 짧아 시간이 잘 맞는다.
+     * - 돌아가는 시간이 짧을수록 좋다.
+     */
     private fun restStopOption(
         from: LatLng,
         to: LatLng,
+        directMs: Long,
         slackMs: Long,
         speed: Double,
         restPlaces: List<RestArea>,
         config: DriveConfig,
     ): CourseOption? {
         val total = Geo.distanceMeters(from, to)
-        val best = restPlaces.asSequence()
+        val longTrip = directMs >= LONG_TRIP_MS
+        val idealProgress = if (longTrip) 0.6 else 0.7
+        val progressWeightMs = if (longTrip) 20 * MINUTE_MS else 5 * MINUTE_MS
+        val pool = if (longTrip) {
+            restPlaces.filter { it.type == RestAreaType.SERVICE_AREA }.ifEmpty {
+                restPlaces.filter { it.type == RestAreaType.DROWSY_SHELTER || it.type == RestAreaType.REST_STOP }
+            }
+        } else {
+            restPlaces
+        }
+        val best = pool.asSequence()
             .filter { Geo.distanceMeters(from, it.position) >= NEAR_METERS }
             // 목적지 쪽에 있는 곳만 (지나온 쪽은 빼기)
             .filter { Geo.distanceMeters(it.position, to) < total }
+            // "○○방향" 쉼터는 가는 방향과 맞는 쪽만 (반대편 차로 제외)
+            .filter { RestAreaFinder.matchesDirection(it, Geo.bearingDegrees(it.position, to)) }
             .map { it to addedMs(from, to, it.position, speed, config) }
             .filter { (_, detour) -> detour <= config.restStopMaxDetourMs && detour < slackMs }
-            .minByOrNull { it.second } ?: return null
+            .minByOrNull { (area, detour) ->
+                val a = Geo.distanceMeters(from, area.position)
+                val progress = a / (a + Geo.distanceMeters(area.position, to))
+                detour + abs(progress - idealProgress) * progressWeightMs
+            } ?: return null
         val (area, detour) = best
         val stay = slackMs - detour
         return CourseOption(

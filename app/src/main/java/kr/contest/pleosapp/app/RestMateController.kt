@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,13 +13,25 @@ import kr.contest.pleosapp.audio.AlarmPlayer
 import kr.contest.pleosapp.audio.Speaker
 import kr.contest.pleosapp.core.CabinMode
 import kr.contest.pleosapp.core.CheckInAnswer
-import kr.contest.pleosapp.core.DemoScenarios
+import kr.contest.pleosapp.core.CourseOption
+import kr.contest.pleosapp.core.DemoNavi
+import kr.contest.pleosapp.core.DemoNaviEvent
+import kr.contest.pleosapp.core.DemoTrip
+import kr.contest.pleosapp.core.DemoTrips
+import kr.contest.pleosapp.core.DriveEffect
+import kr.contest.pleosapp.core.DriveEngine
+import kr.contest.pleosapp.core.DriveMode
+import kr.contest.pleosapp.core.DriveState
+import kr.contest.pleosapp.core.DriveStep
 import kr.contest.pleosapp.core.Effect
 import kr.contest.pleosapp.core.Gear
-import kr.contest.pleosapp.core.Geo
 import kr.contest.pleosapp.core.HOUR_MS
 import kr.contest.pleosapp.core.LatLng
+import kr.contest.pleosapp.core.MINUTE_MS
+import kr.contest.pleosapp.core.Mood
 import kr.contest.pleosapp.core.Phase
+import kr.contest.pleosapp.core.Place
+import kr.contest.pleosapp.core.PlaceKind
 import kr.contest.pleosapp.core.RestArea
 import kr.contest.pleosapp.core.RestAreaCandidate
 import kr.contest.pleosapp.core.RestAreaFinder
@@ -26,13 +39,16 @@ import kr.contest.pleosapp.core.RestEnvironment
 import kr.contest.pleosapp.core.RestMateConfig
 import kr.contest.pleosapp.core.RestMateEngine
 import kr.contest.pleosapp.core.RestMateState
+import kr.contest.pleosapp.core.RoadStyle
+import kr.contest.pleosapp.core.SECOND_MS
 import kr.contest.pleosapp.core.VehicleEvent
+import kr.contest.pleosapp.data.CityRestPlaces
+import kr.contest.pleosapp.data.CourseCatalog
 import kr.contest.pleosapp.data.RestAreaRepository
 import kr.contest.pleosapp.sdk.NaviSignals
 import kr.contest.pleosapp.sdk.VehicleExtras
 import kr.contest.pleosapp.sdk.VehicleSignals
-import kotlin.math.PI
-import kotlin.math.sin
+import java.util.Calendar
 
 data class ConnectionStatus(
     val vehicle: String = "연결 중…",
@@ -40,12 +56,17 @@ data class ConnectionStatus(
 )
 
 data class UiState(
+    /** 지금 시각 (시연 모드에서는 가상 시계) */
+    val now: Long = 0L,
+    /** 쉬었다 가요 */
     val core: RestMateState = RestMateState(),
-    /** 시연 모드: 실제 차량 신호 대신 모의 신호를 쓰고 대기 시간을 줄인다. 화면에 늘 표시한다. */
+    /** 딱 맞춰 가요·좀 더 달려요 */
+    val drive: DriveState = DriveState(),
+    /** 시연 모드: 실제 차량·내비 신호 대신 모의 내비와 가상 시계를 쓴다. 화면에 늘 표시한다. */
     val demoMode: Boolean = false,
+    val demoTrip: DemoTrip? = null,
     val demoDriving: Boolean = false,
-    val demoWobbly: Boolean = true,
-    val demoScenario: String? = null,
+    val demoJammed: Boolean = false,
     val extras: VehicleExtras = VehicleExtras(),
     val connection: ConnectionStatus = ConnectionStatus(),
     val restAreaCount: Int = 0,
@@ -61,6 +82,7 @@ data class UiState(
 
 /** 화면에서 부르는 동작. */
 interface RestMateActions {
+    // ---- 쉬었다 가요 ----
     fun pressDrowsy()
     fun selectRestArea(candidate: RestAreaCandidate)
     fun cancelGuidance()
@@ -73,30 +95,52 @@ interface RestMateActions {
     fun stopAlarm()
     fun wakeUp()
     fun departNow()
-    fun dismissRecovery()
-    fun acceptRecoveryRest()
     fun setRestEnvironment(env: RestEnvironment)
 
+    // ---- 딱 맞춰 가요·좀 더 달려요 ----
+    fun openMode(mode: DriveMode)
+    fun driveBack()
+    fun setDriveDestination(place: Place)
+    fun shiftTarget(minutes: Int)
+    fun setExtraMinutes(minutes: Int)
+    fun setMood(mood: Mood)
+    fun setRoadStyle(style: RoadStyle)
+    fun planCourses()
+    fun chooseCourse(option: CourseOption)
+    fun goDirect()
+    fun extendCourse()
+    fun finishDrive()
+
+    // ---- 시연 ----
     fun setDemoMode(on: Boolean)
-    fun demoDrive(wobbly: Boolean)
+    fun selectDemoTrip(id: String)
+    fun demoDrive()
     fun demoPark()
+    fun demoTraffic()
+    fun demoSkip(minutes: Int)
     fun demoAddDrivingTime()
     fun demoAttentionWarning()
-    fun demoLaneEvent()
     fun demoSkipRest()
     fun demoRestart()
 }
 
 /**
- * 엔진과 SDK·음성·알람을 잇는다. 모든 호출은 메인 스레드에서 한다.
+ * 두 엔진([RestMateEngine]: 쉬었다 가요, [DriveEngine]: 시간 모드)과 SDK·음성·알람을 잇는다. 모든 호출은 메인 스레드에서 한다.
+ *
+ * 내비 경로는 여기서만 요청한다.
+ * - 시간 모드가 고른 코스: 목적지 + 경유지
+ * - 쉬었다 가요: 가던 목적지가 있으면 쉼터를 경유지로 넣고, 없으면 쉼터를 목적지로
+ * - 쉬고 다시 출발하면: 가던 목적지로 바로
  */
 class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sink, NaviSignals.Sink {
     private val appContext = context.applicationContext
-    private val areas: List<RestArea> = runCatching { RestAreaRepository.load(appContext) }
+    private val highwayAreas: List<RestArea> = runCatching { RestAreaRepository.load(appContext) }
         .onFailure { Log.e(TAG, "rest area data", it) }
         .getOrDefault(emptyList())
+    private val areas: List<RestArea> = highwayAreas + CityRestPlaces.SAMPLES
     private val finder = RestAreaFinder(areas)
     private var engine = RestMateEngine(finder)
+    private var drive = newDriveEngine()
     private val vehicle = VehicleSignals(appContext, this)
     private val navi = NaviSignals(appContext, this)
     private val speaker = Speaker(appContext)
@@ -108,23 +152,52 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
     private val _ui = MutableStateFlow(UiState(restAreaCount = areas.size, env = env))
     val ui: StateFlow<UiState> = _ui
 
-    private var useRealSignals = true
     private var nextManeuverMeters: Double? = null
 
     // 실제 차량·내비에서 마지막으로 받은 값. 시연 모드를 끌 때 새 엔진에 다시 넣는다.
     private var realGear = Gear.UNKNOWN
     private var realSpeedLimit: Int? = null
-    private var realDestination: LatLng? = null
+    private var realDestination: Place? = null
     private var realRemainingMs: Long? = null
+    private var realPlaces: List<Place> = emptyList()
 
-    private val scenario by lazy { DemoScenarios.pick(areas) }
-    private var demoPosition: LatLng? = null
-    private var demoHeading = 180.0
-    private var demoClock = 0.0
+    /** 쉬었다 가요 전에 가던 목적지 (쉼터를 경유지로 넣고, 쉰 뒤 다시 안내할 때 쓴다) */
+    private var tripDestination: Place? = null
+    /** 가던 목적지가 없어 쉼터를 목적지로 안내했는지 */
+    private var restAsDestination = false
+    private var lastPhase = Phase.DRIVING
+
+    private var demo: DemoSession? = null
+
+    /** 시연: 모의 내비와 가상 시계 (실제 1초에 trip.timeScale초가 흐른다) */
+    private class DemoSession(val trip: DemoTrip) {
+        val navi = DemoNavi(trip)
+        private val realBase = SystemClock.elapsedRealtime()
+        private var virtualBase = trip.startTimeOfDayMs?.let { todayAt(it) } ?: System.currentTimeMillis()
+        var lastStepAt = now()
+
+        fun now(): Long = virtualBase + ((SystemClock.elapsedRealtime() - realBase) * trip.timeScale).toLong()
+
+        fun shift(ms: Long) {
+            virtualBase += ms
+        }
+
+        private fun todayAt(timeOfDayMs: Long): Long {
+            val c = Calendar.getInstance()
+            c.set(Calendar.HOUR_OF_DAY, 0)
+            c.set(Calendar.MINUTE, 0)
+            c.set(Calendar.SECOND, 0)
+            c.set(Calendar.MILLISECOND, 0)
+            return c.timeInMillis + timeOfDayMs
+        }
+    }
 
     private val ticker = object : Runnable {
         override fun run() {
-            engine.onTick(now())
+            val t = now()
+            engine.onTick(t)
+            drive.onTick(t)
+            checkRestStopParking(t)
             speaker.flush()
             publish()
             main.postDelayed(this, TICK_MS)
@@ -133,14 +206,15 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
 
     private val demoLoop = object : Runnable {
         override fun run() {
-            demoStep()
+            stepDemo()
+            publish()
             main.postDelayed(this, DEMO_STEP_MS)
         }
     }
 
     fun start() {
         // 회전·진입 안내 직전에는 말을 미룬다 (실제 내비 안내를 따를 때만).
-        speaker.shouldHold = { useRealSignals && (nextManeuverMeters ?: Double.MAX_VALUE) < HOLD_SPEECH_METERS }
+        speaker.shouldHold = { demo == null && (nextManeuverMeters ?: Double.MAX_VALUE) < HOLD_SPEECH_METERS }
         vehicle.start()
         navi.start()
         main.post(ticker)
@@ -150,37 +224,159 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
     fun stop() {
         main.removeCallbacks(ticker)
         main.removeCallbacks(demoLoop)
-        // 쉬는 중에 앱이 꺼지면 실내 환경을 원래대로 돌려 둔다.
+        // 쉬는 중이거나 분위기를 바꿔 둔 채 앱이 꺼지면 실내 환경을 원래대로 돌려 둔다.
         if (engine.state.phase == Phase.RESTING) vehicle.cabin.apply(CabinMode.RESTORE, env)
+        vehicle.cabin.applyMood(null)
         vehicle.stop()
         navi.stop()
         speaker.release()
         alarm.release()
     }
 
-    private fun now() = System.currentTimeMillis()
+    private fun now(): Long = demo?.now() ?: System.currentTimeMillis()
+
+    private fun newDriveEngine() = DriveEngine(CourseCatalog.POINTS, areas)
 
     private fun publish() {
+        val t = now()
         for (effect in engine.drainEffects()) handle(effect)
-        _ui.update { it.copy(core = engine.state, speechAvailable = speaker.available, config = engine.config) }
+        syncRest(t)
+        for (effect in drive.drainEffects()) handleDrive(t, effect)
+        val d = demo
+        _ui.update {
+            it.copy(
+                now = t,
+                core = engine.state,
+                drive = drive.state,
+                speechAvailable = speaker.available,
+                config = engine.config,
+                demoDriving = d?.navi?.moving == true,
+                demoJammed = d?.navi?.jammed == true,
+            )
+        }
+    }
+
+    /** 쉬었다 가요가 진행 중이면 시간 맞추기를 멈추고, 쉬고 출발하면 가던 목적지로 다시 안내한다. */
+    private fun syncRest(t: Long) {
+        val phase = engine.state.phase
+        drive.onRestActive(t, phase != Phase.DRIVING)
+        if (lastPhase == Phase.RESTING && phase == Phase.DRIVING) {
+            val dest = currentTrip()
+            if (dest != null && !restAsDestination) {
+                routeNavi(dest, emptyList())
+                note("내비에 ${dest.name}까지 다시 안내를 요청했어요.")
+            }
+            restAsDestination = false
+        }
+        lastPhase = phase
     }
 
     private fun handle(effect: Effect) {
         when (effect) {
-            is Effect.StartGuidance -> {
-                val sent = navi.guideTo(effect.area)
-                _ui.update {
-                    it.copy(naviNote = if (sent) "내비에 ${effect.area.name} 안내를 요청했어요." else "내비가 연결되지 않아 화면으로만 안내해요.")
-                }
-            }
-            Effect.CancelGuidance -> navi.cancelGuidance()
-            is Effect.Speak -> {
-                speaker.say(effect.text)
-                _ui.update { it.copy(lastMessage = effect.text) }
-            }
+            is Effect.StartGuidance -> routeToRest(effect.area)
+            Effect.CancelGuidance -> cancelRestRoute()
+            is Effect.Speak -> say(effect.text)
             is Effect.Alarm -> if (effect.on) alarm.start() else alarm.stop()
             is Effect.Cabin -> vehicle.cabin.apply(effect.mode, env)
         }
+    }
+
+    private fun handleDrive(t: Long, effect: DriveEffect) {
+        when (effect) {
+            is DriveEffect.AskDirectTime -> askDirectTime(t, effect.destination)
+            is DriveEffect.Route -> {
+                val sent = routeNavi(effect.destination, effect.via)
+                note(
+                    when {
+                        !sent -> "내비가 연결되지 않아 화면으로만 안내해요."
+                        effect.via.isEmpty() -> "내비에 ${effect.destination.name}까지 바로 가는 길을 요청했어요."
+                        else -> "내비에 ${effect.via.joinToString(", ") { it.name }} 경유 경로를 요청했어요."
+                    },
+                )
+            }
+            is DriveEffect.Speak -> say(effect.text)
+            is DriveEffect.CabinMood -> vehicle.cabin.applyMood(effect.mood)
+        }
+    }
+
+    private fun say(text: String) {
+        speaker.say(text)
+        _ui.update { it.copy(lastMessage = text) }
+    }
+
+    private fun note(text: String) {
+        _ui.update { it.copy(naviNote = text) }
+    }
+
+    // ---- 내비 경로 (실제 내비 또는 시연용 모의 내비) ----
+
+    private fun routeNavi(destination: Place, via: List<Place>): Boolean {
+        val d = demo
+        if (d != null) {
+            d.navi.routeTo(destination, via)
+            return true
+        }
+        return navi.routeTo(destination, via)
+    }
+
+    private fun cancelNavi() {
+        val d = demo
+        if (d != null) d.navi.cancel() else navi.cancelRoute()
+    }
+
+    private fun askDirectTime(t: Long, place: Place) {
+        val d = demo
+        if (d != null) {
+            drive.onDirectTime(t, place, d.navi.tripTimeMs(place))
+        } else {
+            navi.requestTripTime(place)
+        }
+    }
+
+    /** 지금 가는 목적지: 시간 모드로 달리는 중이면 그 목적지, 아니면 쉼터 안내 전에 내비에 걸려 있던 목적지 */
+    private fun currentTrip(): Place? {
+        val d = drive.state
+        if (d.step == DriveStep.ACTIVE) d.destination?.let { return it }
+        return tripDestination
+    }
+
+    private fun routeToRest(area: RestArea) {
+        val stop = Place(area.name, area.position, PlaceKind.WAYPOINT)
+        val dest = currentTrip()
+        val sent = if (dest != null && !dest.sameSpot(stop)) {
+            restAsDestination = false
+            routeNavi(dest, listOf(stop))
+        } else {
+            restAsDestination = true
+            routeNavi(stop, emptyList())
+        }
+        note(
+            when {
+                !sent -> "내비가 연결되지 않아 화면으로만 안내해요."
+                restAsDestination -> "내비에 ${area.name} 안내를 요청했어요."
+                else -> "내비에 ${area.name}을(를) 경유지로 넣었어요. 쉬고 나면 ${dest?.name}(으)로 이어서 가요."
+            },
+        )
+    }
+
+    private fun cancelRestRoute() {
+        val dest = currentTrip()
+        if (dest != null && !restAsDestination) routeNavi(dest, emptyList()) else cancelNavi()
+        restAsDestination = false
+    }
+
+    /** 내비 목적지가 바뀌면 기억해 둔다. 쉼터로 안내하는 동안에는 바꾸지 않는다. */
+    private fun noteNaviDestination(place: Place?) {
+        if (engine.state.phase != Phase.DRIVING || restAsDestination) return
+        tripDestination = place
+    }
+
+    /** 쉬다 가는 코스에서 쉴 곳에 P단으로 세우면 도착 시각에 맞춰 깨우도록 휴식을 시작한다. */
+    private fun checkRestStopParking(t: Long) {
+        if (engine.state.gear != Gear.PARK || engine.state.phase != Phase.DRIVING) return
+        val area = drive.restStopHere(engine.state.position) ?: return
+        val alarmAt = drive.restStopAlarmAt(t, engine.config.wakeUpMs) ?: return
+        engine.startRestUntil(t, alarmAt, area)
     }
 
     private inline fun act(block: (Long) -> Unit) {
@@ -188,7 +384,7 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
         publish()
     }
 
-    // ---- 화면 조작 ----
+    // ---- 화면 조작: 쉬었다 가요 ----
 
     override fun pressDrowsy() = act { engine.pressDrowsy(it) }
     override fun selectRestArea(candidate: RestAreaCandidate) = act { engine.selectRestArea(it, candidate) }
@@ -200,9 +396,26 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
     override fun extendRest(minutes: Int) = act { engine.extendRest(it, minutes) }
     override fun stopAlarm() = act { engine.stopAlarm(it) }
     override fun wakeUp() = act { engine.wakeUp(it) }
-    override fun departNow() = act { engine.departNow(it) }
-    override fun dismissRecovery() = act { engine.dismissRecovery(it) }
-    override fun acceptRecoveryRest() = act { engine.acceptRecoveryRest(it) }
+
+    override fun departNow() {
+        val d = demo
+        if (d != null && engine.state.phase == Phase.RESTING) {
+            // 시연에서는 '출발할게요'를 누르면 모의 차량도 출발한다.
+            d.navi.moving = true
+            engine.onGear(now(), Gear.DRIVE)
+        }
+        act { engine.departNow(it) }
+    }
+
+    override fun startRest() {
+        // 시연 중 '주차했어요'를 누르면 모의 차량도 세운다.
+        val d = demo
+        if (d != null && d.navi.moving) {
+            d.navi.moving = false
+            engine.onSpeed(now(), 0.0)
+        }
+        act { engine.startRest(it) }
+    }
 
     override fun setRestEnvironment(env: RestEnvironment) {
         val previous = this.env
@@ -217,137 +430,198 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
         }
     }
 
-    override fun startRest() {
-        // 시연 중 '주차했어요'를 누르면 모의 차량도 세운다.
-        if (_ui.value.demoMode && _ui.value.demoDriving) {
-            stopDemoDriving()
-            engine.onSpeed(now(), 0.0)
-        }
-        act { engine.startRest(it) }
+    // ---- 화면 조작: 딱 맞춰 가요·좀 더 달려요 ----
+
+    override fun openMode(mode: DriveMode) {
+        if (demo == null) navi.requestPlaces()
+        act { drive.openMode(it, mode) }
     }
+
+    override fun driveBack() = act { drive.back(it) }
+    override fun setDriveDestination(place: Place) = act { drive.setDestination(it, place) }
+    override fun shiftTarget(minutes: Int) = act { drive.shiftTarget(it, minutes) }
+    override fun setExtraMinutes(minutes: Int) = act { drive.setExtraMinutes(minutes) }
+    override fun setMood(mood: Mood) = act { drive.setMood(mood) }
+    override fun setRoadStyle(style: RoadStyle) = act { drive.setStyle(style) }
+    override fun planCourses() = act { drive.plan(it) }
+    override fun chooseCourse(option: CourseOption) = act { drive.choose(it, option) }
+    override fun goDirect() = act { drive.goDirect(it) }
+    override fun extendCourse() = act { drive.extend(it) }
+    override fun finishDrive() = act { drive.finish(it) }
 
     // ---- 시연 모드 ----
 
     override fun setDemoMode(on: Boolean) {
-        stopDemoDriving()
-        useRealSignals = !on
-        resetEngine(if (on) RestMateConfig.DEMO else RestMateConfig())
-        if (on) placeDemoCar() else replayRealSignals()
-        _ui.update {
-            it.copy(
-                demoMode = on,
-                demoScenario = if (on) scenario.description else null,
-                lastMessage = null,
-                naviNote = null,
-            )
-        }
-        publish()
+        if (on) startDemo(demo?.trip ?: DemoTrips.CITY) else stopDemo()
+    }
+
+    override fun selectDemoTrip(id: String) {
+        val trip = DemoTrips.ALL.firstOrNull { it.id == id } ?: return
+        startDemo(trip)
     }
 
     override fun demoRestart() {
-        if (_ui.value.demoMode) setDemoMode(true)
+        demo?.let { startDemo(it.trip) }
     }
 
-    override fun demoDrive(wobbly: Boolean) {
-        if (!_ui.value.demoMode) return
+    override fun demoDrive() {
+        val d = demo ?: return
+        d.navi.moving = true
         engine.onGear(now(), Gear.DRIVE)
-        _ui.update { it.copy(demoDriving = true, demoWobbly = wobbly) }
-        main.removeCallbacks(demoLoop)
-        main.post(demoLoop)
+        stepDemo()
         publish()
     }
 
     override fun demoPark() {
-        if (!_ui.value.demoMode) return
-        stopDemoDriving()
-        val t = now()
-        engine.onSpeed(t, 0.0)
-        engine.onGear(t, Gear.PARK)
+        if (demo == null) return
+        parkDemoCar(now())
         publish()
     }
 
+    override fun demoTraffic() {
+        val d = demo ?: return
+        d.navi.jam(DEMO_JAM_MS)
+        note("모의 정체: 앞길이 막혀 도착이 약 ${DEMO_JAM_MS / MINUTE_MS}분 늦어져요.")
+        stepDemo()
+        publish()
+    }
+
+    /** 가상 시계를 minutes분 앞으로 돌린다. 차와 엔진은 30초씩 나눠서 따라간다. */
+    override fun demoSkip(minutes: Int) {
+        val d = demo ?: return
+        repeat(minutes * 2) {
+            d.shift(30 * SECOND_MS)
+            stepDemo()
+            val t = now()
+            engine.onTick(t)
+            drive.onTick(t)
+            checkRestStopParking(t)
+            publish()
+        }
+    }
+
     override fun demoAddDrivingTime() {
-        if (_ui.value.demoMode) act { engine.addDrivingTime(it, 2 * HOUR_MS) }
+        if (demo != null) act { engine.addDrivingTime(it, 2 * HOUR_MS) }
     }
 
     override fun demoAttentionWarning() {
-        if (_ui.value.demoMode) act { engine.onAttentionWarning(it) }
-    }
-
-    override fun demoLaneEvent() {
-        if (_ui.value.demoMode) act { engine.onVehicleEvent(it, VehicleEvent.LANE_ASSIST) }
+        if (demo != null) act { engine.onAttentionWarning(it) }
     }
 
     override fun demoSkipRest() {
-        if (_ui.value.demoMode) act { engine.skipToAlarm(it) }
+        if (demo != null) act { engine.skipToAlarm(it) }
     }
 
-    /** 새 엔진으로 처음부터 시작한다. 진행 중이던 안내와 알람은 끈다. */
-    private fun resetEngine(config: RestMateConfig) {
+    private fun startDemo(trip: DemoTrip) {
+        main.removeCallbacks(demoLoop)
+        resetEngines()
+        val session = DemoSession(trip)
+        demo = session
+        val t = now()
+        engine = RestMateEngine(finder, RestMateConfig.forDemo(trip.timeScale))
+        engine.setOnExpressway(trip.expressway)
+        // 출발 직전: D단으로 서 있는 상태 ('주행'을 누르면 움직인다)
+        engine.onGear(t, Gear.DRIVE)
+        engine.onSpeed(t, 0.0)
+        drive.onPlaces(trip.places)
+        feedDemo(t)
+        _ui.update { it.copy(demoMode = true, demoTrip = trip, lastMessage = null, naviNote = null) }
+        main.post(demoLoop)
+        publish()
+    }
+
+    private fun stopDemo() {
+        main.removeCallbacks(demoLoop)
+        resetEngines()
+        demo = null
+        engine = RestMateEngine(finder)
+        replayRealSignals()
+        _ui.update { it.copy(demoMode = false, demoTrip = null, lastMessage = null, naviNote = null) }
+        publish()
+    }
+
+    /** 진행 중이던 안내·휴식·분위기를 정리하고 엔진을 새로 만든다. */
+    private fun resetEngines() {
         when (engine.state.phase) {
-            Phase.TO_REST_AREA -> navi.cancelGuidance()
+            Phase.TO_REST_AREA -> cancelRestRoute()
             Phase.RESTING -> vehicle.cabin.apply(CabinMode.RESTORE, env)
             Phase.DRIVING -> Unit
         }
+        if (drive.state.step != DriveStep.HOME) {
+            drive.finish(now())
+            for (effect in drive.drainEffects()) {
+                if (effect is DriveEffect.CabinMood) vehicle.cabin.applyMood(effect.mood)
+            }
+        }
         alarm.stop()
-        engine = RestMateEngine(finder, config)
-    }
-
-    private fun placeDemoCar() {
-        val t = now()
-        val s = scenario
-        demoPosition = s.start
-        demoHeading = s.headingDeg
-        demoClock = 0.0
-        engine.setOnExpressway(true)
-        engine.onDestination(s.destination)
-        engine.onGear(t, Gear.DRIVE)
-        engine.onSpeed(t, 0.0)
-        engine.onLocation(t, s.start, s.headingDeg)
+        engine.drainEffects()
+        drive = newDriveEngine()
+        tripDestination = null
+        restAsDestination = false
+        lastPhase = Phase.DRIVING
     }
 
     private fun replayRealSignals() {
         val t = now()
         engine.onGear(t, realGear)
         engine.onSpeedLimit(realSpeedLimit)
-        engine.onDestination(realDestination)
+        engine.onDestination(realDestination?.position)
         engine.onRemainingRoute(realRemainingMs)
+        drive.onPlaces(realPlaces)
+        drive.onNaviDestination(t, realDestination, realRemainingMs)
+        tripDestination = realDestination
     }
 
-    private fun stopDemoDriving() {
-        main.removeCallbacks(demoLoop)
-        _ui.update { it.copy(demoDriving = false) }
-    }
-
-    /** 모의 주행 한 걸음: 시속 100km로 표시하되 위치는 6배 빠르게 옮기고, 조향각을 흔든다. */
-    private fun demoStep() {
+    /** 모의 차를 가상 시계에 맞춰 옮기고, 경유지·목적지에 닿으면 실제 내비 사건처럼 처리한다. */
+    private fun stepDemo() {
+        val d = demo ?: return
         val t = now()
-        val position = demoPosition ?: return
-        val dtSec = DEMO_STEP_MS / 1000.0
-        val next = Geo.destinationPoint(position, demoHeading, DEMO_SPEED_KMH / 3.6 * dtSec * DEMO_TIME_SCALE)
-        demoPosition = next
-        demoClock += dtSec
-        val amplitude = if (_ui.value.demoWobbly) WOBBLY_AMPLITUDE_DEG else CALM_AMPLITUDE_DEG
-        val angle = amplitude * sin(2 * PI * demoClock / STEERING_PERIOD_SEC)
-
-        engine.onSpeed(t, DEMO_SPEED_KMH)
-        engine.onLocation(t, next, demoHeading)
-        engine.onSteeringAngle(t, angle)
-
-        // 쉼터에 거의 닿으면 진입해서 P단으로 주차하는 것까지 흉내 낸다.
-        val state = engine.state
-        val target = state.target
-        if (state.phase == Phase.TO_REST_AREA && target != null &&
-            Geo.distanceMeters(next, target.area.position) <= DEMO_ARRIVE_METERS
-        ) {
-            demoPosition = target.area.position
-            engine.onLocation(t, target.area.position, demoHeading)
-            stopDemoDriving()
-            engine.onSpeed(t, 0.0)
-            engine.onGear(t, Gear.PARK)
-            _ui.update { it.copy(naviNote = "모의: ${target.area.name}에 진입해 P단으로 주차했어요.") }
+        val dt = t - d.lastStepAt
+        d.lastStepAt = t
+        val events = d.navi.advance(dt)
+        feedDemo(t)
+        for (event in events) {
+            when (event) {
+                is DemoNaviEvent.WaypointArrived -> {
+                    drive.onWaypointArrived(t)
+                    note("모의: 경유지 ${event.place.name}에 도착했어요.")
+                    // 쉬러 들른 곳이면 진입해서 P단으로 주차하는 것까지 흉내 낸다.
+                    if (isRestTarget(event.place)) parkDemoCar(t)
+                }
+                is DemoNaviEvent.DestinationArrived -> {
+                    note("모의: ${event.place.name}에 도착해 P단으로 주차했어요.")
+                    engine.onTripArrived(t)
+                    parkDemoCar(t)
+                    drive.onDestinationArrived(t)
+                }
+            }
         }
-        publish()
+    }
+
+    private fun isRestTarget(place: Place): Boolean {
+        val target = engine.state.target?.area
+        if (target != null && Place(target.name, target.position).sameSpot(place)) return true
+        return drive.restStopHere(place.position) != null
+    }
+
+    private fun parkDemoCar(t: Long) {
+        demo?.navi?.moving = false
+        engine.onSpeed(t, 0.0)
+        engine.onGear(t, Gear.PARK)
+        checkRestStopParking(t)
+    }
+
+    private fun feedDemo(t: Long) {
+        val n = demo?.navi ?: return
+        engine.onSpeed(t, n.speedKmh)
+        engine.onLocation(t, n.position, n.headingDeg)
+        drive.onLocation(t, n.position)
+        val dest = n.destination
+        val remain = n.remainingMs()
+        engine.onDestination(dest?.position)
+        engine.onRemainingRoute(remain)
+        drive.onNaviDestination(t, dest, remain)
+        noteNaviDestination(dest)
     }
 
     // ---- 차량 신호 ----
@@ -358,21 +632,23 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
 
     override fun onGear(gear: Gear) {
         realGear = gear
-        if (!useRealSignals) return
-        engine.onGear(now(), gear)
+        if (demo != null) return
+        val t = now()
+        engine.onGear(t, gear)
+        checkRestStopParking(t)
         publish()
     }
 
     override fun onSteeringAngle(degrees: Double) {
-        if (useRealSignals) engine.onSteeringAngle(now(), degrees)
+        if (demo == null) engine.onSteeringAngle(now(), degrees)
     }
 
     override fun onBrake(pressed: Boolean) {
-        if (useRealSignals) engine.onBrake(now(), pressed)
+        if (demo == null) engine.onBrake(now(), pressed)
     }
 
     override fun onTurnSignal(on: Boolean) {
-        if (useRealSignals) engine.onTurnSignal(now(), on)
+        if (demo == null) engine.onTurnSignal(now(), on)
     }
 
     override fun onExtras(extras: VehicleExtras) {
@@ -396,19 +672,22 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
     }
 
     override fun onNaviLocation(position: LatLng, headingDeg: Double?, speedKmh: Double?) {
-        if (!useRealSignals) return
+        if (demo != null) return
         val t = now()
         engine.onSpeed(t, speedKmh)
         engine.onLocation(t, position, headingDeg)
+        drive.onLocation(t, position)
         publish()
     }
 
-    override fun onNaviDestination(destination: LatLng?, name: String?, remainSeconds: Int?) {
+    override fun onNaviDestination(destination: Place?, remainSeconds: Int?) {
         realDestination = destination
         realRemainingMs = remainSeconds?.takeIf { it > 0 }?.let { it * 1_000L }
-        if (!useRealSignals) return
-        engine.onDestination(realDestination)
+        if (demo != null) return
+        engine.onDestination(destination?.position)
         engine.onRemainingRoute(realRemainingMs)
+        drive.onNaviDestination(now(), destination, realRemainingMs)
+        noteNaviDestination(destination)
     }
 
     override fun onNaviNextManeuver(meters: Double?) {
@@ -417,15 +696,38 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
 
     override fun onNaviSpeedLimit(kmh: Int?) {
         realSpeedLimit = kmh
-        if (useRealSignals) engine.onSpeedLimit(kmh)
+        if (demo == null) engine.onSpeedLimit(kmh)
     }
 
     override fun onNaviWaypointArrived(name: String?) {
-        _ui.update { it.copy(naviNote = "경유지 도착: ${name ?: "쉼터"}") }
+        if (demo != null) return
+        drive.onWaypointArrived(now())
+        note("경유지 도착: ${name ?: "경유지"}")
+        publish()
+    }
+
+    override fun onNaviArrived(name: String?) {
+        if (demo != null) return
+        val t = now()
+        engine.onTripArrived(t)
+        drive.onDestinationArrived(t)
+        note("목적지 도착: ${name ?: "목적지"}")
+        publish()
+    }
+
+    override fun onNaviPlaces(places: List<Place>) {
+        realPlaces = places
+        if (demo == null) drive.onPlaces(places)
+    }
+
+    override fun onNaviTripTime(destination: Place, durationMs: Long) {
+        if (demo != null) return
+        drive.onDirectTime(now(), destination, durationMs)
+        publish()
     }
 
     override fun onNaviMessage(message: String) {
-        _ui.update { it.copy(naviNote = message) }
+        note(message)
     }
 
     private fun loadEnvironment(): RestEnvironment {
@@ -454,15 +756,10 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
         private const val KEY_ENV_TEMP = "env_temp"
         private const val KEY_ENV_DIM = "env_dim"
         private const val KEY_ENV_FRESH = "env_fresh"
-        private const val TAG = "RestMate"
+        private const val TAG = "DriveMate"
         private const val TICK_MS = 1_000L
         private const val HOLD_SPEECH_METERS = 300.0
         private const val DEMO_STEP_MS = 200L
-        private const val DEMO_SPEED_KMH = 100.0
-        private const val DEMO_TIME_SCALE = 6.0
-        private const val DEMO_ARRIVE_METERS = 400.0
-        private const val WOBBLY_AMPLITUDE_DEG = 4.0
-        private const val CALM_AMPLITUDE_DEG = 0.5
-        private const val STEERING_PERIOD_SEC = 2.4
+        private const val DEMO_JAM_MS = 6 * MINUTE_MS
     }
 }

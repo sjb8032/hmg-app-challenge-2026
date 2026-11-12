@@ -200,6 +200,25 @@ class DriveEngineTest {
     }
 
     @Test
+    fun restStopKeepsStayUntilParkedAndClearsIfPassed() {
+        val e = engine(points = emptyList()).planOnTime(shiftMinutes = 20)
+        val option = e.state.options.first { it.kind == CourseKind.REST_STOP }
+        e.choose(t0 + 1_000, option)
+        val at = t0 + 10 * MINUTE_MS
+        // 내비 남은 시간은 운전 시간만: 쉬는 시간을 더하면 목표 시각에 딱 맞는 상황
+        e.onNaviDestination(at, dest, e.state.targetAt!! - at - option.stayMs)
+        e.onLocation(at, stop.position)
+        e.onWaypointArrived(at)
+        assertTrue(e.state.viaActive)
+        assertEquals(stop, e.restStopHere(stop.position))
+
+        // 쉬지 않고 떠나면 쉬는 시간을 셈에서 뺀다.
+        e.onLocation(at + MINUTE_MS, Geo.destinationPoint(stop.position, 180.0, 2_000.0))
+        assertFalse(e.state.viaActive)
+        assertNull(e.restStopHere(stop.position))
+    }
+
+    @Test
     fun finishReturnsHomeAndKeepsPlaces() {
         val home = Place("집", southKm(4.0), PlaceKind.HOME)
         val e = engine()

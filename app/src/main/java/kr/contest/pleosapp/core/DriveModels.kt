@@ -45,7 +45,8 @@ enum class Mood(val label: String) {
 }
 
 enum class RoadStyle(val label: String) {
-    LESS_TRAFFIC("덜 막히는 길"),
+    /** 경치 가산 없이 남는 시간을 가장 잘 채우는 경유지 (경로별 정체 정보는 SDK에서 받을 수 없어 시간 맞춤을 우선) */
+    BEST_FIT("시간에 딱 맞는 길"),
     SCENIC("경치 좋은 길"),
 }
 
@@ -55,6 +56,7 @@ enum class CourseTag(val label: String) {
     PARK("공원"),
     MOUNTAIN("산길"),
     LAKE("호숫가"),
+    SEA("바닷가"),
 }
 
 /** 경유지로 넣을 만한 경치 좋은 지점 (팀이 고른 목록) */
