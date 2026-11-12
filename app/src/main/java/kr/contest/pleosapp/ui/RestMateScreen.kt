@@ -67,9 +67,10 @@ fun RestMateScreen(ui: UiState, actions: RestMateActions) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val sideWidth = if (maxWidth >= 1500.dp) 400.dp else 340.dp
         val mainWidth = maxWidth - sideWidth - 72.dp
+        // 미니맵은 남는 높이를 채운다 (머리말·아래 버튼·여백을 뺀 만큼, 280~640dp)
         val screen = ScreenSize(
             wide = mainWidth >= 960.dp,
-            mapHeight = if (maxHeight >= 1000.dp) 420.dp else 300.dp,
+            mapHeight = (maxHeight - 560.dp).coerceIn(280.dp, 640.dp),
         )
         CompositionLocalProvider(LocalScreenSize provides screen) {
             Row(

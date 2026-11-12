@@ -1,6 +1,8 @@
 package kr.contest.pleosapp.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -8,15 +10,20 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kr.contest.pleosapp.app.UiState
@@ -105,12 +112,12 @@ private fun Explain(ui: UiState) {
     val restName = d.chosen?.restArea?.name?.let { RestMateText.spokenName(it) }
     val stopDepart = d.stopDepartAt
     val extend = d.extendOption
+    if (lateSince != null && d.viaActive && !d.paused) {
+        WatchBanner(ui.now - lateSince)
+        return
+    }
     val (text, color) = when {
         d.paused -> "쉬었다 가는 동안 시간 맞추기를 잠시 멈췄어요. 다시 출발하면 이어서 맞춰요." to RM.amber
-        lateSince != null && d.viaActive -> {
-            val left = ((LATE_OBSERVE_MS - (ui.now - lateSince)) / SECOND_MS).coerceAtLeast(0)
-            "늦을 것 같아요. 잠깐 막힌 것일 수 있어 지켜보는 중이에요 · ${left}초 뒤에도 늦으면 더 짧은 길로 바꿔요." to RM.amber
-        }
         d.mode != DriveMode.LONGER && d.status == FitStatus.LATE ->
             "바로 가도 약 ${DriveText.duration(gap)} 늦어요. 서두르지 말고 안전하게 가세요." to RM.amber
         d.extendOffered && extend != null -> {
@@ -127,6 +134,39 @@ private fun Explain(ui: UiState) {
         else -> "약 ${DriveText.duration(gap)} 늦을 수 있어요." to RM.amber
     }
     Caption(text, color)
+}
+
+/**
+ * 늦을 것 같아 지켜보는 중: 잠깐 막힌 것에 흔들리지 않게 1분 30초 지켜본 뒤 길을 바꾼다.
+ * 남은 초와 막대로 보여 줘서 '왜 아직 안 바꾸는지'가 보이게 한다.
+ */
+@Composable
+private fun WatchBanner(elapsedMs: Long) {
+    val left = ((LATE_OBSERVE_MS - elapsedMs) / SECOND_MS).coerceAtLeast(0L)
+    val fraction = (elapsedMs.toFloat() / LATE_OBSERVE_MS.toFloat()).coerceIn(0f, 1f)
+    val shape = RoundedCornerShape(14.dp)
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(RM.amber.copy(alpha = 0.12f))
+            .border(1.dp, RM.amber.copy(alpha = 0.5f), shape)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "늦을 것 같아 지켜보는 중",
+                color = RM.amber,
+                fontSize = 19.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f),
+            )
+            Text("${left}초 남음", color = RM.amber, fontSize = 19.sp, fontWeight = FontWeight.Bold, style = NumStyle)
+        }
+        Bar(fraction, RM.amber)
+        Caption("잠깐 막힌 것일 수 있어 1분 30초 지켜봐요. 그래도 늦으면 지금 위치에서 더 짧은 길로 바꿔요.", RM.text)
+    }
 }
 
 @Composable
@@ -193,6 +233,10 @@ private fun TrackBar(
             drawCircle(etaColor, 7.dp.toPx(), Offset(ex, cy))
         }
         val pins = ArrayList<Pin>()
+        // 출발 시각 (지금과 붙어 있으면 뺀다)
+        if (x(now) - x(from) > with(density) { 90.dp.toPx() }) {
+            pins += TextPin(Offset(x(from) + with(density) { 24.dp.toPx() }, cy + below), "${shortClock(from)} 출발", RM.textFaint)
+        }
         // 지금과 도착 예상이 붙어 있으면 '지금'은 뺀다
         if (abs(x(eta) - x(now)) > with(density) { 72.dp.toPx() }) pins += TextPin(Offset(x(now), cy + below), "지금", RM.textDim)
         pins += TextPin(Offset(x(eta), cy + below), "도착 예상", etaColor)
@@ -203,6 +247,9 @@ private fun TrackBar(
         PinLayer(pins, Modifier.fillMaxSize())
     }
 }
+
+/** "6:32" (오전·오후 없이) */
+private fun shortClock(ms: Long): String = DriveText.shortClockOfDay(DriveText.minuteOfDay(ms))
 
 /** 도착 예상 색. 롱웨이 모드는 마감이 없어 늦어도 경고 색을 쓰지 않는다. */
 internal fun fitColor(status: FitStatus, longer: Boolean): Color = if (longer) {

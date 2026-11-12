@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -248,8 +250,61 @@ private fun SetupSummary(ui: UiState) {
                     Stat("더 달리면", DriveText.clock(ui.now + direct + d.extraMinutes * MINUTE_MS), RM.violet, valueSize = 26.sp)
                 }
             }
+            val target = d.targetAt
+            if (d.mode == DriveMode.ON_TIME && target != null) TimeBudget(ui.now, direct, target)
             if (d.directEstimated) Caption("내비 값이 없어 거리로 추정했어요.")
         }
+    }
+}
+
+/**
+ * 온타임 모드의 시간 나눔: 지금부터 목표까지 = 바로 가는 시간 + 남는 시간 + 여유 3분.
+ * 남는 시간을 경치 코스나 근처에서 기다리기로 채운다는 것을 한눈에 보여 준다.
+ */
+@Composable
+private fun TimeBudget(now: Long, direct: Long, target: Long) {
+    val total = target - now
+    val margin = MARGIN_MINUTES * MINUTE_MS
+    val spare = total - direct - margin
+    if (total <= 0L || spare < 0L || direct <= 0L) {
+        Caption("바로 가도 목표 시각에 맞추기 빠듯해요.", RM.amber)
+        return
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .height(30.dp)
+                .clip(RoundedCornerShape(8.dp)),
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            BudgetPart("바로 가는 길", direct, RM.blue, Modifier.weight(direct.toFloat()))
+            if (spare >= MINUTE_MS) BudgetPart("남는 시간", spare, RM.violet, Modifier.weight(spare.toFloat()))
+            BudgetPart("여유", margin, RM.teal, Modifier.weight(margin.toFloat()))
+        }
+        Caption(
+            "목표까지 ${DriveText.duration(total)} = 바로 가는 길 ${DriveText.duration(direct)} + 남는 시간 ${DriveText.duration(spare)}" +
+                " + 여유 ${MARGIN_MINUTES}분 · 남는 시간을 코스로 채워요",
+        )
+    }
+}
+
+@Composable
+private fun BudgetPart(label: String, ms: Long, color: Color, modifier: Modifier) {
+    Box(
+        modifier
+            .fillMaxHeight()
+            .background(color.copy(alpha = 0.85f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            "$label ${DriveText.minutes(ms)}분",
+            color = RM.background,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Clip,
+        )
     }
 }
 
@@ -279,7 +334,8 @@ private fun PlaceChoices(places: List<Place>, selected: Place?, tone: Tone, onSe
                     if (on) tone else Tone.NEUTRAL,
                     minHeight = 68.dp,
                     textSize = 20.sp,
-                    sub = p.kind.label,
+                    // '집'·'회사'처럼 이름과 같으면 아랫줄을 비운다
+                    sub = p.kind.label.takeIf { it != p.name },
                 )
             }
             repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
@@ -486,7 +542,8 @@ private fun CourseCard(index: Int, option: CourseOption, arrival: Long?, target:
                     color = RM.text,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
-                    maxLines = 1,
+                    lineHeight = 30.sp,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false),
                 )
@@ -635,7 +692,8 @@ private fun DriveArrived(ui: UiState, actions: RestMateActions) {
                     Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                         Stat("도착", DriveText.clock(arrived), color, valueSize = 36.sp)
                         Stat(if (longer) "예정" else "목표", DriveText.clock(target), RM.text, valueSize = 36.sp)
-                        Chip(DriveText.diff(gap), color, fontSize = 18.sp)
+                        val text = if (longer) DriveText.fitLonger(d.status, gap) else DriveText.fit(d.status, gap, (MARGIN_MINUTES + 2) * MINUTE_MS)
+                        Chip(text, color, fontSize = 18.sp)
                     }
                 }
             }

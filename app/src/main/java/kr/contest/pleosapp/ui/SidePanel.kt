@@ -61,9 +61,10 @@ internal fun SidePanel(ui: UiState, actions: RestMateActions, modifier: Modifier
         Brand()
         VehicleTiles(ui)
         Connections(ui)
+        // 시연할 때 누를 것이 늘 보이게 시연 카드를 안내 기록보다 위에 둔다
+        DemoCard(ui, actions)
         Rule()
         GuidanceLog(ui)
-        DemoCard(ui, actions)
         Caption("쉼터 데이터 ${ui.restAreaCount}곳 · ${RestAreaRepository.ATTRIBUTION}", RM.textFaint)
         Caption("${CityRestPlaces.ATTRIBUTION} · 경치 지점은 팀이 고른 표본", RM.textFaint)
     }

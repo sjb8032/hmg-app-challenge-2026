@@ -249,6 +249,55 @@ internal object PreviewSamples {
         )
     }
 
+    /** 롱웨이 모드: 데이트, 30분 더 달려 반포한강공원을 거쳐 집으로 */
+    fun longerActive(): UiState {
+        val now = CITY_START + 12 * MINUTE_MS
+        val banpo = Place("반포한강공원", LatLng(37.5103, 126.9959), PlaceKind.WAYPOINT)
+        val home = places[0]
+        val at = lerp(nonhyeon, banpo.position, 0.7)
+        val option = CourseOption(
+            "scenic-banpo", CourseKind.SCENIC, "반포한강공원 거쳐 가기", "강변·야경 · 약 30분 더",
+            listOf(banpo), 30 * MINUTE_MS, tags = setOf(CourseTag.RIVER, CourseTag.NIGHT_VIEW),
+        )
+        val planned = CITY_START + 58 * MINUTE_MS
+        return base(now).copy(
+            core = RestMateState(
+                now = now,
+                continuousDrivingMs = 50 * MINUTE_MS,
+                gear = Gear.DRIVE,
+                speedKmh = 30.0,
+                position = at,
+                headingDeg = Geo.bearingDegrees(at, banpo.position),
+                onExpressway = false,
+            ),
+            drive = DriveState(
+                now = now,
+                step = DriveStep.ACTIVE,
+                mode = DriveMode.LONGER,
+                position = at,
+                destination = home,
+                targetAt = planned,
+                extraMinutes = 30,
+                mood = Mood.DATE,
+                flavor = CourseFlavor.RIVER,
+                chosen = option,
+                arrivalEstimate = planned + 2 * MINUTE_MS,
+                diffMs = 2 * MINUTE_MS,
+                status = FitStatus.ON_TIME,
+            ),
+            demoDriving = true,
+            driveStartedAt = CITY_START,
+            trail = trail(nonhyeon, at, 1.0),
+            route = RouteView(home, listOf(banpo)),
+            cabinNote = "분위기: 데이트 · 무드등 35% · 22°C",
+            log = listOf(
+                LogEntry(CITY_START + MINUTE_MS, "분위기: 데이트 · 무드등 35% · 22°C", LogKind.VEHICLE),
+                LogEntry(CITY_START + MINUTE_MS, "내비에 반포한강공원 경유 경로를 요청했어요.", LogKind.NAVI),
+            ),
+            console = ConsoleStatus(ConsoleLinkState.ON, Gear.DRIVE, 30, browserActive = true),
+        )
+    }
+
     // ---------------------------------------------------------------- 고속도로 (레스트 모드)
 
     private val highway = DemoTrips.HIGHWAY
@@ -298,9 +347,9 @@ internal object PreviewSamples {
             driveStartedAt = HIGHWAY_START,
             trail = trail(highway.start, car, 1.0),
             route = RouteView(highway.destination, listOf(Place(munmakArea.name, munmakArea.position, PlaceKind.WAYPOINT))),
-            lastMessage = "문막휴게소로 안내할게요. 약 7분 걸려요.",
+            lastMessage = "졸릴 땐 쉬어 가요. 가장 빨리 닿는 문막휴게소로 안내할게요.",
             log = listOf(
-                LogEntry(now, "문막휴게소로 안내할게요. 약 7분 걸려요.", LogKind.VOICE),
+                LogEntry(now, "졸릴 땐 쉬어 가요. 가장 빨리 닿는 문막휴게소로 안내할게요.", LogKind.VOICE),
                 LogEntry(now, "내비에 문막휴게소 (강릉방향) 경유 경로를 요청했어요.", LogKind.NAVI),
             ),
             console = ConsoleStatus(ConsoleLinkState.ON, Gear.DRIVE, 95, browserActive = true),

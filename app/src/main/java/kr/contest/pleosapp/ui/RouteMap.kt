@@ -76,11 +76,14 @@ internal data class MapScene(
     val car: LatLng? = null,
     val heading: Double? = null,
     val carColor: Color = RM.blue,
+    /** 이 지점들만 화면에 담는다 (가까운 곳을 크게 볼 때). null이면 모두 */
+    val focus: List<LatLng>? = null,
 ) {
     val isEmpty: Boolean get() = car == null && marks.isEmpty() && trail.isEmpty()
 
     /** 화면에 담을 지점 (지나온 길은 성기게) */
     fun fitPoints(): List<LatLng> {
+        focus?.let { if (it.isNotEmpty()) return it }
         val out = ArrayList<LatLng>()
         car?.let { out += it }
         trail.forEachIndexed { i, p -> if (i % 6 == 0 || i == trail.lastIndex) out += p }
@@ -108,6 +111,8 @@ internal fun mapSceneFor(ui: UiState): MapScene {
     val lines = ArrayList<MapLine>()
     val mode = d.mode
     var carColor = if (mode != null && d.step == DriveStep.ACTIVE) modeColor(mode) else RM.blue
+    var showCar = true
+    var focus: List<LatLng>? = null
 
     val origin = ui.origin
     if (origin != null && ui.trail.size > 1 && (car == null || !samePlace(origin, car))) {
@@ -126,6 +131,8 @@ internal fun mapSceneFor(ui: UiState): MapScene {
                     marks += destinationMark(dest)
                 }
                 marks += MapMark(area.position, MarkKind.REST_TARGET, area.name, RM.amber, badge = "P")
+                // 쉼터까지를 크게 본다 (목적지는 점선 방향으로만)
+                if (car != null) focus = listOf(car, area.position) + ui.trail.takeLast(FOCUS_TRAIL)
             }
         }
         Phase.RESTING -> {
@@ -178,10 +185,14 @@ internal fun mapSceneFor(ui: UiState): MapScene {
                 val dest = d.destination ?: route?.destination
                 val active = d.step == DriveStep.ACTIVE
                 val via = when {
-                    !active || !d.viaActive -> emptyList()
+                    // 도착: 거쳐 온 경유지를 그대로 보여 준다
+                    !active -> d.chosen?.via.orEmpty()
+                    !d.viaActive -> emptyList()
                     route != null -> route.via
                     else -> d.chosen?.via.orEmpty()
                 }
+                // 도착하면 차 대신 목적지를 보인다
+                if (!active) showCar = false
                 if (dest != null) {
                     if (active && car != null) {
                         lines += MapLine(listOf(car) + via.map { it.position } + dest.position, carColor, 6.dp)
@@ -204,11 +215,15 @@ internal fun mapSceneFor(ui: UiState): MapScene {
         trail = ui.trail,
         lines = lines,
         marks = marks,
-        car = car,
+        car = car.takeIf { showCar },
         heading = s.headingDeg,
         carColor = carColor,
+        focus = focus,
     )
 }
+
+/** 쉼터로 갈 때 화면에 담는 지나온 길 끝부분 (점 개수) */
+private const val FOCUS_TRAIL = 12
 
 private fun destinationMark(p: Place) = MapMark(p.position, MarkKind.DESTINATION, p.name, RM.teal)
 
@@ -264,15 +279,21 @@ internal fun RouteMap(scene: MapScene, modifier: Modifier = Modifier, emptyText:
                 val car = scene.car
                 if (car != null) drawCar(at(car), scene.heading, scene.carColor)
             }
+            // 화면 밖(가까운 곳을 크게 볼 때의 먼 목적지 등)은 이름표를 달지 않는다
+            fun inside(o: Offset) = o.x in 0f..widthPx && o.y in 0f..heightPx
             val pins = ArrayList<Pin>()
             for (m in scene.marks) {
                 val badge = m.badge ?: continue
+                val p = at(m.position)
+                if (!inside(p)) continue
                 val small = m.kind == MarkKind.REST_AHEAD
-                pins += BadgePin(at(m.position), badge, m.color, if (small) 22.dp else 28.dp)
+                pins += BadgePin(p, badge, m.color, if (small) 22.dp else 28.dp)
             }
             for (m in scene.marks) {
                 val label = m.label ?: continue
-                pins += LabelPin(at(m.position), label, m.color, strong = m.kind == MarkKind.DESTINATION)
+                val p = at(m.position)
+                if (!inside(p)) continue
+                pins += LabelPin(p, label, m.color, strong = m.kind == MarkKind.DESTINATION)
             }
             PinLayer(pins, Modifier.fillMaxSize())
             ScaleBar(frame.widthMeters / widthPx, Modifier.align(Alignment.BottomStart).padding(12.dp))

@@ -41,6 +41,9 @@ class ScreenSnapshots {
     fun s6_arrived() = paparazzi.snapshot { PreviewScreen(PreviewSamples.arrived()) }
 
     @Test
+    fun s6b_longerActive() = paparazzi.snapshot { PreviewScreen(PreviewSamples.longerActive()) }
+
+    @Test
     fun s7_restGuidance() = paparazzi.snapshot { PreviewScreen(PreviewSamples.guidance()) }
 
     @Test
