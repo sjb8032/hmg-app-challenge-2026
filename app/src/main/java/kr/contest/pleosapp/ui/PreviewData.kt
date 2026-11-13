@@ -2,6 +2,9 @@ package kr.contest.pleosapp.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
+import kr.contest.pleosapp.app.AutoChapter
+import kr.contest.pleosapp.app.AutoCue
+import kr.contest.pleosapp.app.AutoStatus
 import kr.contest.pleosapp.app.ConnectionStatus
 import kr.contest.pleosapp.app.LogEntry
 import kr.contest.pleosapp.app.LogKind
@@ -398,6 +401,66 @@ internal object PreviewSamples {
             console = ConsoleStatus(ConsoleLinkState.ON, Gear.PARK, 0, browserActive = true),
         )
     }
+
+    // ---------------------------------------------------------------- 자동 시연
+
+    /** 자동 시연: 온타임 모드 카드를 짚는 중 (곧 누름) */
+    fun autoCue(): UiState = home().copy(
+        auto = AutoStatus(
+            chapter = AutoChapter.ON_TIME,
+            scene = 3,
+            total = 25,
+            title = "온타임 모드 켜기",
+            text = "약속·픽업 시각에 딱 맞춰 도착하게 길을 짜 주는 모드예요.",
+            cue = AutoCue.MODE_ON_TIME,
+            cueLabel = "'온타임 모드' 누르기",
+        ),
+    )
+
+    /** 자동 시연: 길이 막혀 늦음을 지켜보는 장면의 해설 */
+    fun autoWatching(): UiState = watchingLate().copy(
+        auto = AutoStatus(
+            chapter = AutoChapter.ON_TIME,
+            scene = 7,
+            total = 25,
+            title = "갑자기 길이 막혔어요",
+            text = "도착 예상이 목표보다 늦어졌어요. 잠깐 막힌 것일 수도 있어서 바로 길을 바꾸지 않고, " +
+                "1분 30초 지켜본 뒤에도 늦으면 지금 자리에서 늦지 않는 코스로 바꿔요.",
+            tag = "시연 조작 · 막힘 +6분",
+        ),
+    )
+
+    /** 자동 시연: 레스트 모드로 쉼터 안내를 시작한 장면의 해설 */
+    fun autoGuidance(): UiState = guidance().copy(
+        auto = AutoStatus(
+            chapter = AutoChapter.REST,
+            scene = 19,
+            total = 25,
+            title = "졸릴 때는 레스트 모드 한 번",
+            text = "진행 방향에서 가장 빨리 닿는 문막휴게소(11.4km, 약 7분)로 안내해요. " +
+                "가던 목적지는 그대로 두고 쉼터를 경유지로 넣어요.",
+        ),
+    )
+
+    /** 자동 시연: 알람이 울리는 휴식 화면에서 '알람 끄기'를 짚는 중 */
+    fun autoAlarm(): UiState {
+        val r = resting()
+        val rest = r.core.rest ?: return r
+        val now = rest.alarmAt
+        return r.copy(
+            now = now,
+            core = r.core.copy(now = now, rest = rest.copy(alarmRinging = true, wakeStartedAt = now, wakeMs = 10 * MINUTE_MS)),
+            auto = AutoStatus(
+                chapter = AutoChapter.REST,
+                scene = 23,
+                total = 25,
+                title = "깬 뒤 몸 깨우기",
+                text = "알람을 꺼요.",
+                cue = AutoCue.BOTTOM,
+                cueLabel = "'알람 끄기' 누르기",
+            ),
+        )
+    }
 }
 
 /** 미리보기·캡처용: 아무것도 하지 않는 동작 */
@@ -446,6 +509,9 @@ internal object PreviewActions : RestMateActions {
     override fun demoAttentionWarning() = Unit
     override fun demoSkipRest() = Unit
     override fun demoRestart() = Unit
+    override fun startAutoDemo(chapter: AutoChapter?) = Unit
+    override fun stopAutoDemo() = Unit
+    override fun nextAutoScene() = Unit
 }
 
 /** 미리보기 한 장 */
@@ -481,6 +547,14 @@ private fun GuidancePreview() = PreviewScreen(PreviewSamples.guidance())
 @Preview(name = "6 휴식", widthDp = 1696, heightDp = 1180)
 @Composable
 private fun RestingPreview() = PreviewScreen(PreviewSamples.resting())
+
+@Preview(name = "7 자동 시연 해설", widthDp = 1696, heightDp = 1180)
+@Composable
+private fun AutoWatchingPreview() = PreviewScreen(PreviewSamples.autoWatching())
+
+@Preview(name = "8 자동 시연 짚기", widthDp = 1696, heightDp = 1180)
+@Composable
+private fun AutoCuePreview() = PreviewScreen(PreviewSamples.autoCue())
 
 @Preview(name = "작은 화면", widthDp = 1280, heightDp = 720)
 @Composable

@@ -138,8 +138,8 @@ internal fun ActionButton(
 }
 
 @Composable
-internal fun BigButton(text: String, sub: String?, tone: Tone, onClick: () -> Unit) {
-    ActionButton(text, onClick, Modifier.fillMaxWidth(), tone, minHeight = 104.dp, textSize = 38.sp, sub = sub)
+internal fun BigButton(text: String, sub: String?, tone: Tone, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    ActionButton(text, onClick, modifier.fillMaxWidth(), tone, minHeight = 104.dp, textSize = 38.sp, sub = sub)
 }
 
 @Composable

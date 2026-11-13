@@ -48,6 +48,18 @@ class ScreenSnapshots {
 
     @Test
     fun s8_resting() = paparazzi.snapshot { PreviewScreen(PreviewSamples.resting()) }
+
+    @Test
+    fun s9_autoCue() = paparazzi.snapshot { PreviewScreen(PreviewSamples.autoCue()) }
+
+    @Test
+    fun s9b_autoWatching() = paparazzi.snapshot { PreviewScreen(PreviewSamples.autoWatching()) }
+
+    @Test
+    fun s9c_autoGuidance() = paparazzi.snapshot { PreviewScreen(PreviewSamples.autoGuidance()) }
+
+    @Test
+    fun s9d_autoAlarm() = paparazzi.snapshot { PreviewScreen(PreviewSamples.autoAlarm()) }
 }
 
 /** 작은 가로 화면 (1280×720)에서도 깨지지 않는지 */
@@ -68,6 +80,9 @@ class SmallScreenSnapshots {
 
     @Test
     fun small_home() = paparazzi.snapshot { PreviewScreen(PreviewSamples.home()) }
+
+    @Test
+    fun small_autoWatching() = paparazzi.snapshot { PreviewScreen(PreviewSamples.autoWatching()) }
 }
 
 /** 1px = 1dp인 가로 화면 */

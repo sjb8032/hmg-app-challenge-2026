@@ -106,6 +106,8 @@ data class UiState(
     val demoClockHeld: Boolean = false,
     /** 시연: Virtual Console(계기판·3D 주행 화면) 연동 상태 */
     val console: ConsoleStatus = ConsoleStatus(),
+    /** 자동 시연 중이면 지금 장면과 해설 */
+    val auto: AutoStatus? = null,
 )
 
 /** 화면에서 부르는 동작. */
@@ -163,6 +165,11 @@ interface RestMateActions {
     fun demoAttentionWarning()
     fun demoSkipRest()
     fun demoRestart()
+
+    /** 자동 시연 시작. [chapter]가 null이면 세 이야기를 모두 */
+    fun startAutoDemo(chapter: AutoChapter?)
+    fun stopAutoDemo()
+    fun nextAutoScene()
 }
 
 /**
@@ -176,7 +183,7 @@ interface RestMateActions {
  *
  * 시간 모드로 달리는 중이면 도착 시각을 레스트 모드에 넘겨, 쉬는 동안 알람·출발 시각을 거기에 맞춘다.
  */
-class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sink, NaviSignals.Sink {
+class RestMateController(context: Context) : RestMateActions, AutoDemoHost, VehicleSignals.Sink, NaviSignals.Sink {
     private val appContext = context.applicationContext
     private val highwayAreas: List<RestArea> = runCatching { RestAreaRepository.load(appContext) }
         .onFailure { Log.e(TAG, "rest area data", it) }
@@ -274,6 +281,17 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
         }
     }
 
+    /** 자동 시연: 장면을 스스로 진행한다 (시연 모드의 모의 차와 따로 돈다) */
+    private val autoRunner = AutoDemoRunner(this)
+
+    private val autoLoop = object : Runnable {
+        override fun run() {
+            autoRunner.tick(SystemClock.elapsedRealtime())
+            _ui.update { it.copy(auto = autoRunner.status) }
+            if (autoRunner.running) main.postDelayed(this, AUTO_STEP_MS)
+        }
+    }
+
     fun start() {
         // 회전·진입 안내 직전에는 말을 미룬다 (실제 내비 안내를 따를 때만).
         speaker.shouldHold = { demo == null && (nextManeuverMeters ?: Double.MAX_VALUE) < HOLD_SPEECH_METERS }
@@ -286,6 +304,8 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
     fun stop() {
         main.removeCallbacks(ticker)
         main.removeCallbacks(demoLoop)
+        main.removeCallbacks(autoLoop)
+        autoRunner.stop()
         console.release()
         // 쉬는 중이거나 분위기를 바꿔 둔 채 앱이 꺼지면 실내 환경을 원래대로 돌려 둔다.
         if (engine.state.phase == Phase.RESTING) vehicle.cabin.apply(CabinMode.RESTORE, env)
@@ -710,6 +730,40 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
         if (demo != null) act { engine.skipToAlarm(it) }
     }
 
+    // ---- 자동 시연 ----
+
+    override fun startAutoDemo(chapter: AutoChapter?) {
+        main.removeCallbacks(autoLoop)
+        autoRunner.start(chapter, SystemClock.elapsedRealtime())
+        _ui.update { it.copy(auto = autoRunner.status) }
+        if (autoRunner.running) main.postDelayed(autoLoop, AUTO_STEP_MS)
+    }
+
+    override fun stopAutoDemo() {
+        main.removeCallbacks(autoLoop)
+        autoRunner.stop()
+        _ui.update { it.copy(auto = null) }
+    }
+
+    override fun nextAutoScene() {
+        autoRunner.skip(SystemClock.elapsedRealtime())
+        _ui.update { it.copy(auto = autoRunner.status) }
+        if (!autoRunner.running) main.removeCallbacks(autoLoop)
+    }
+
+    override fun view(): AutoView {
+        val u = _ui.value
+        return AutoView(
+            now = u.now,
+            core = u.core,
+            drive = u.drive,
+            tripId = u.demoTrip?.id,
+            driving = u.demoDriving,
+            jammed = u.demoJammed,
+            clockHeld = u.demoClockHeld,
+        )
+    }
+
     private fun startDemo(trip: DemoTrip) {
         main.removeCallbacks(demoLoop)
         resetEngines()
@@ -730,6 +784,8 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
     }
 
     private fun stopDemo() {
+        // 시연 모드를 끄면 자동 시연도 멈춘다.
+        stopAutoDemo()
         main.removeCallbacks(demoLoop)
         resetEngines()
         demo = null
@@ -976,6 +1032,7 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
         private const val TICK_MS = 1_000L
         private const val HOLD_SPEECH_METERS = 300.0
         private const val DEMO_STEP_MS = 200L
+        private const val AUTO_STEP_MS = 200L
         private const val DEMO_JAM_MS = 6 * MINUTE_MS
         private const val TRAIL_STEP_METERS = 25.0
         private const val TRAIL_MAX = 600

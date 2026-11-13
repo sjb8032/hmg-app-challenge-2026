@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kr.contest.pleosapp.app.AutoChapter
 import kr.contest.pleosapp.app.LogKind
 import kr.contest.pleosapp.app.RestMateActions
 import kr.contest.pleosapp.app.RestMateController
@@ -211,8 +212,43 @@ private fun DemoCard(ui: UiState, actions: RestMateActions) {
                 colors = SwitchDefaults.colors(checkedThumbColor = RM.onAmber, checkedTrackColor = RM.amber),
             )
         }
-        if (ui.demoMode) DemoControls(ui, actions)
+        AutoDemoControls(ui, actions)
+        // 자동 시연 중에는 손으로 누르는 시연 조작을 숨긴다 (대본과 엇갈리지 않게)
+        if (ui.demoMode && ui.auto == null) DemoControls(ui, actions)
     }
+}
+
+/** 자동 시연: 세 이야기를 한 번에, 또는 하나씩. 진행 중이면 몇 번째 장면인지와 다음·멈추기 */
+@Composable
+private fun AutoDemoControls(ui: UiState, actions: RestMateActions) {
+    val auto = ui.auto
+    if (auto == null) {
+        ActionButton(
+            "자동 시연 시작",
+            { actions.startAutoDemo(null) },
+            Modifier.fillMaxWidth(),
+            Tone.AMBER,
+            minHeight = 60.dp,
+            textSize = 20.sp,
+            sub = "온타임 → 롱웨이 → 레스트 · 약 3분 30초",
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            for (chapter in AutoChapter.entries) {
+                SmallButton(chapter.label, { actions.startAutoDemo(chapter) }, Modifier.weight(1f))
+            }
+        }
+        return
+    }
+    StatusLine(
+        "자동 시연",
+        "${auto.scene} / ${auto.total} · ${auto.chapter?.label ?: "인사"}",
+        chapterColor(auto.chapter),
+    )
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        SmallButton("다음 장면", actions::nextAutoScene, Modifier.weight(1f))
+        SmallButton("멈추기", actions::stopAutoDemo, Modifier.weight(1f))
+    }
+    Caption("자동 시연 중에는 시연 조작 버튼을 숨겨요. 멈추면 그 자리에서 손으로 이어 갈 수 있어요.", RM.textFaint)
 }
 
 @Composable

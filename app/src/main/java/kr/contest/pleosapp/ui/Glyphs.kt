@@ -162,6 +162,16 @@ internal fun PlayGlyph(color: Color, modifier: Modifier) {
     }
 }
 
+/** 누르기 표시 (자동 시연이 버튼을 짚을 때): 가운데 점과 바깥 고리 */
+@Composable
+internal fun TapGlyph(color: Color, modifier: Modifier) {
+    Canvas(modifier) {
+        val r = size.minDimension / 2f
+        drawCircle(color, radius = r * 0.36f)
+        drawCircle(color, radius = r * 0.84f, style = Stroke(width = r * 0.16f))
+    }
+}
+
 /** 안내 기록 종류별 그림과 색 */
 @Composable
 internal fun LogGlyph(kind: LogKind, modifier: Modifier) {
