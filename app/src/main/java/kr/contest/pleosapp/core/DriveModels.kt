@@ -217,6 +217,14 @@ data class DriveState(
     val arrivedAt: Long? = null,
     /** 늦을 것 같다고 본 시각. 이 상태가 [DriveConfig.lateObserveMs] 이어지면 길을 바꾼다 (화면에 '지켜보는 중' 표시) */
     val lateSince: Long? = null,
+
+    // ---- 픽업 알림 (온타임 모드) ----
+    /** 픽업 알림을 받을 사람. null이면 보내지 않는다 */
+    val pickupTo: String? = null,
+    /** 이번 드라이브에 보낸 픽업 알림 (시연: 화면과 안내 기록에만 남기고 실제로 보내지 않는다) */
+    val pickupNotices: List<PickupNotice> = emptyList(),
+    /** '자리 없음'을 눌러 한 바퀴 돌고 다시 오는 중 (그동안은 늦어도 길을 줄이지 않는다) */
+    val circling: Boolean = false,
 ) {
     /** 아직 지나지 않은 경유지가 있는지 */
     val viaActive: Boolean get() = !viaCleared && chosen?.via?.isNotEmpty() == true
@@ -235,6 +243,7 @@ fun DriveState.toSavedTrip(): SavedTrip? {
             place = place,
             minuteOfDay = targetAt?.let { DriveText.minuteOfDay(it) },
             onTimeStyle = onTimeStyle,
+            pickupTo = pickupTo,
         )
         DriveMode.LONGER -> SavedTrip(
             mode = m,
@@ -258,6 +267,9 @@ sealed interface DriveEffect {
 
     /** 차 안 분위기. null이면 원래 설정으로 되돌림 */
     data class CabinMood(val mood: Mood?) : DriveEffect
+
+    /** 픽업할 사람에게 문자 (시연: 앱이 화면과 안내 기록에만 남긴다) */
+    data class SendPickup(val notice: PickupNotice) : DriveEffect
 }
 
 data class DriveConfig(
@@ -299,6 +311,12 @@ data class DriveConfig(
     val minWaitStayMs: Long = 3 * MINUTE_MS,
     /** 코스를 고른 뒤 이만큼은 '조금 더 돌기'를 권하지 않는다 */
     val extendAfterChooseQuietMs: Long = 3 * MINUTE_MS,
+    /** 픽업 알림: 도착까지 이만큼 남으면 도착 예정 시각·만날 곳을 보낸다 */
+    val pickupNoticeMs: Long = 3 * MINUTE_MS,
+    /** 픽업 알림: 픽업할 곳에서 이만큼 안에 P단으로 세우면 세운 곳을 보낸다 ('자리 없음'도 이 안에서) */
+    val pickupParkMeters: Double = 300.0,
+    /** '자리 없음': 한 바퀴 돌고 다시 오는 데 쓰는 시간 */
+    val circleMs: Long = 3 * MINUTE_MS,
 )
 
 /**
@@ -315,8 +333,10 @@ data class SavedTrip(
     val mood: Mood? = null,
     val onTimeStyle: OnTimeStyle? = null,
     val flavor: CourseFlavor? = null,
+    /** 온타임 모드: 픽업 알림을 받을 사람 (없으면 보내지 않음) */
+    val pickupTo: String? = null,
 ) {
-    /** 칩 아랫줄: "온타임 · 오후 4:50 · 근처에서 기다리기", "롱웨이 · +30분 · 데이트 · 야경" */
+    /** 칩 아랫줄: "온타임 · 오후 4:50 · 근처에서 기다리기 · 픽업 알림", "롱웨이 · +30분 · 데이트 · 야경" */
     val detail: String
         get() = listOfNotNull(
             if (mode == DriveMode.ON_TIME) "온타임" else "롱웨이",
@@ -325,10 +345,12 @@ data class SavedTrip(
             onTimeStyle?.takeIf { it == OnTimeStyle.WAIT_NEAR }?.label,
             mood?.takeIf { mode == DriveMode.LONGER }?.label,
             flavor?.takeIf { mode == DriveMode.LONGER }?.label,
+            "픽업 알림".takeIf { mode == DriveMode.ON_TIME && pickupTo != null },
         ).joinToString(" · ")
 
     /**
      * 같은 설정인지 (다시 저장하면 바꿔 쓴다). 곳과 시각(더 달릴 시간)이 같아도 방식·분위기·길이 다르면 다른 설정이다.
+     * 픽업 알림을 켜고 끈 것은 같은 설정으로 본다 (다시 저장하면 알림 설정만 바뀐다).
      */
     fun sameAs(other: SavedTrip): Boolean {
         if (mode != other.mode || !place.sameSpot(other.place)) return false
@@ -372,6 +394,8 @@ data class SavedTrip(
         mood?.name.orEmpty(),
         onTimeStyle?.name.orEmpty(),
         flavor?.name.orEmpty(),
+        // 15번째 칸: 픽업 알림 받는 사람 (예전 저장값에는 없다)
+        clean(pickupTo.orEmpty()),
     ).joinToString("\t")
 
     companion object {
@@ -403,6 +427,7 @@ data class SavedTrip(
                 mood = Mood.entries.firstOrNull { it.name == f[11] },
                 onTimeStyle = OnTimeStyle.entries.firstOrNull { it.name == f[12] },
                 flavor = CourseFlavor.entries.firstOrNull { it.name == f[13] },
+                pickupTo = f.getOrNull(14)?.takeIf { it.isNotBlank() && mode == DriveMode.ON_TIME },
             )
         }
 

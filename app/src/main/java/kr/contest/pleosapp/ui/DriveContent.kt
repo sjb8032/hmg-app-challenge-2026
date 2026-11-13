@@ -423,6 +423,7 @@ private fun TargetPanel(ui: UiState, actions: RestMateActions, tone: Tone) {
                 )
             }
         }
+        PickupToggle(ui, actions, tone)
     }
 }
 
@@ -692,9 +693,20 @@ private fun DriveActive(ui: UiState, actions: RestMateActions) {
             }
         },
         right = {
-            MapPanel(ui)
+            MapWithPickup(ui)
         },
     )
+}
+
+/** 미니맵. 픽업 알림을 켰으면 미니맵을 조금 줄이고 아래에 픽업 알림 카드를 둔다 (왼쪽 버튼들이 밀리지 않게). */
+@Composable
+private fun MapWithPickup(ui: UiState) {
+    if (!ui.drive.pickupOn()) {
+        MapPanel(ui)
+        return
+    }
+    MapPanel(ui, (LocalScreenSize.current.mapHeight - PICKUP_CARD_HEIGHT).coerceAtLeast(260.dp))
+    PickupPanel(ui)
 }
 
 /** 코스 한 곳: 출발 · 경유지 · 쉼터 · 목적지. [detailColor]는 아랫줄 색 (늦을 것 같으면 호박색) */
@@ -826,10 +838,24 @@ private fun DriveArrived(ui: UiState, actions: RestMateActions) {
                 }
             }
             CourseStops(ui)
-            ActionButton("처음으로", actions::finishDrive, Modifier.fillMaxWidth(), modeTone(d.mode))
+            if (d.pickupOn()) {
+                // 픽업: 세울 곳이 없으면 한 바퀴 돌고 다시 오기 (픽업할 사람에게 다시 오는 시각을 알린다)
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ActionButton(
+                        "자리 없음",
+                        actions::circleForSpot,
+                        Modifier.weight(1f).cueRing(ui.cueing(AutoCue.NO_SPOT)),
+                        modeTone(d.mode),
+                        sub = "한 바퀴 돌고 다시 오기",
+                    )
+                    ActionButton("처음으로", actions::finishDrive, Modifier.weight(1f))
+                }
+            } else {
+                ActionButton("처음으로", actions::finishDrive, Modifier.fillMaxWidth(), modeTone(d.mode))
+            }
         },
         right = {
-            MapPanel(ui)
+            MapWithPickup(ui)
         },
     )
 }

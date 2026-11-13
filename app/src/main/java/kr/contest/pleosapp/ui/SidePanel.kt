@@ -218,7 +218,7 @@ private fun DemoCard(ui: UiState, actions: RestMateActions) {
     }
 }
 
-/** 자동 시연: 세 이야기를 한 번에, 또는 하나씩. 진행 중이면 몇 번째 장면인지와 다음·멈추기 */
+/** 자동 시연: 네 이야기(온타임·픽업·롱웨이·레스트)를 한 번에, 또는 하나씩. 진행 중이면 몇 번째 장면인지와 다음·멈추기 */
 @Composable
 private fun AutoDemoControls(ui: UiState, actions: RestMateActions) {
     val auto = ui.auto
@@ -230,7 +230,7 @@ private fun AutoDemoControls(ui: UiState, actions: RestMateActions) {
             Tone.AMBER,
             minHeight = 60.dp,
             textSize = 20.sp,
-            sub = "온타임 → 롱웨이 → 레스트 · 약 3분 30초",
+            sub = "온타임 → 픽업 → 롱웨이 → 레스트 · 약 4분 40초",
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             for (chapter in AutoChapter.entries) {
