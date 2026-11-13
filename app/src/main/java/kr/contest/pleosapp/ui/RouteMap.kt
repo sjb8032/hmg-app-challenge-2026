@@ -136,7 +136,7 @@ private fun lerp(a: LatLng, b: LatLng, t: Double) = LatLng(a.lat + (b.lat - a.la
  * @param carNow 지금 달리는 구간이면 모의 차의 실제 자리 (도로 길이 없을 때 차를 그 자리에 그린다)
  */
 private class LegView(val leg: DriveLeg, val from: LatLng, val road: List<LatLng>?, carNow: LatLng?) {
-    private val f = leg.progress.toDouble()
+    val f = leg.progress.toDouble()
 
     /** 모의 차가 곧게 달려 닿은 자리 */
     val straightEnd: LatLng = lerp(leg.from, leg.to, f)
@@ -150,17 +150,25 @@ private class LegView(val leg: DriveLeg, val from: LatLng, val road: List<LatLng
 
 /**
  * 시연 구간들 (지난 구간 → 지금 구간). 도중에 경로가 바뀐 곳에서 시작한 구간은 앞 구간을 화면에 그린 자리(도로 위)에서 이어 그린다
- * (모의 차는 곧은 선 위에 있어 도로에서 떨어져 있을 수 있다). [road]로 두 곳 사이 도로 길을 읽는다.
+ * (모의 차는 곧은 선 위에 있어 도로에서 떨어져 있을 수 있다). 이때는 달리던 방향을 함께 넘겨, 길찾기가 맞은편 차로에서
+ * 출발해 돌아오는 길을 내지 않게 한다. [road]로 두 곳 사이 도로 길을 읽는다 (출발 방향을 알면 셋째 값).
  */
-private fun legViews(ui: UiState, road: (LatLng, LatLng) -> List<LatLng>?): List<LegView> {
+private fun legViews(ui: UiState, road: (LatLng, LatLng, Double?) -> List<LatLng>?): List<LegView> {
     val all = ui.legs + listOfNotNull(ui.leg)
     val out = ArrayList<LegView>(all.size)
     all.forEachIndexed { i, leg ->
         val prev = out.lastOrNull()
-        val from = if (prev != null && Geo.distanceMeters(leg.from, prev.straightEnd) < CHAIN_METERS) prev.end else leg.from
+        val chained = prev != null && Geo.distanceMeters(leg.from, prev.straightEnd) < CHAIN_METERS
+        val from = if (chained) prev!!.end else leg.from
+        // 도중에 바뀐 곳(앞 구간을 다 달리지 않음)에서만 달리던 방향을 이어 간다
+        val bearing = if (chained && prev!!.leg.progress < 1f) {
+            prev.road?.let { RoadPath.bearingAt(it, prev.f, aheadMeters = 60.0) } ?: Geo.bearingDegrees(prev.leg.from, prev.leg.to)
+        } else {
+            null
+        }
         val current = ui.leg != null && i == all.lastIndex
         val carNow = if (current && from == leg.from) ui.core.position else null
-        out += LegView(leg, from, road(from, leg.to), carNow)
+        out += LegView(leg, from, road(from, leg.to, bearing), carNow)
     }
     return out
 }
@@ -222,14 +230,14 @@ private fun standing(ui: UiState): Boolean = ui.demoClockHeld || (!ui.demoDrivin
  * 지금 장면에 필요한 도로 길 구간. 위치가 계속 바뀌는 차에서 시작하는 구간은 묻지 않는다
  * (시연의 달리는 구간은 시작점이 고정이라 묻는다, 코스 후보는 차가 서 있을 때만).
  */
-internal fun roadLegsFor(ui: UiState): List<Pair<LatLng, LatLng>> {
-    val out = LinkedHashSet<Pair<LatLng, LatLng>>()
-    legViews(ui) { a, b ->
-        out += a to b
+internal fun roadLegsFor(ui: UiState): List<RoadLeg> {
+    val out = LinkedHashSet<RoadLeg>()
+    legViews(ui) { a, b, bearing ->
+        out += RoadLeg(a, b, bearing)
         RoadRoutes.get(a, b)
     }
     val stops = stopsAhead(ui)
-    for (i in 0 until stops.lastIndex) out += stops[i] to stops[i + 1]
+    for (i in 0 until stops.lastIndex) out += RoadLeg(stops[i], stops[i + 1])
     val d = ui.drive
     val car = ui.core.position
     if (ui.core.phase == Phase.DRIVING && d.step == DriveStep.CHOOSE) {
@@ -237,8 +245,8 @@ internal fun roadLegsFor(ui: UiState): List<Pair<LatLng, LatLng>> {
         if (dest != null) {
             for (option in d.options) {
                 val chain = option.via.map { it.position } + dest.position
-                if (car != null && standing(ui)) out += car to chain.first()
-                for (i in 0 until chain.lastIndex) out += chain[i] to chain[i + 1]
+                if (car != null && standing(ui)) out += RoadLeg(car, chain.first())
+                for (i in 0 until chain.lastIndex) out += RoadLeg(chain[i], chain[i + 1])
             }
         }
     }
@@ -250,7 +258,7 @@ internal fun mapSceneFor(ui: UiState): MapScene {
     val s = ui.core
     val d = ui.drive
     val roads = RoadUse()
-    val views = legViews(ui, roads::get)
+    val views = legViews(ui) { a, b, _ -> roads.get(a, b) }
     val current = views.lastOrNull()?.takeIf { ui.leg != null }
     // 차: 시연에서는 지금 구간을 온 비율만큼 도로 길을 따라간 자리
     val car = current?.end ?: s.position

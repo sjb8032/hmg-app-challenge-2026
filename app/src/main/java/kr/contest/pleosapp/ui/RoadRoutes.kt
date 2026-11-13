@@ -21,7 +21,12 @@ import java.util.concurrent.Executors
 import kotlin.math.max
 import kotlin.math.roundToInt
 
-/** 도로 길을 받을 구간 (양 끝을 약 10m 단위로 반올림해 같은 구간을 다시 받지 않는다) */
+/**
+ * 도로 길을 받을 구간. [bearing]은 출발할 때 달리던 방향 (모르면 null): 길찾기가 맞은편 차로에서 출발하지 않게 한다.
+ */
+internal data class RoadLeg(val from: LatLng, val to: LatLng, val bearing: Double? = null)
+
+/** 받아 둔 도로 길의 열쇠 (양 끝을 약 10m 단위로 반올림해 같은 구간을 다시 받지 않는다) */
 internal data class LegKey(val fromLat: Int, val fromLon: Int, val toLat: Int, val toLon: Int) {
     companion object {
         fun of(from: LatLng, to: LatLng) = LegKey(
@@ -47,6 +52,9 @@ internal object RoadRoutes {
     const val ATTRIBUTION = "경로 © OSRM"
     private const val ROUTE_URL =
         "https://router.project-osrm.org/route/v1/driving/%.6f,%.6f;%.6f,%.6f?overview=full&geometries=geojson&steps=false&alternatives=false"
+
+    /** 출발 방향을 아는 구간: 그 방향 ±60° 안의 도로에서 출발 */
+    private const val BEARING_PARAM = "&bearings=%d,60;"
     private const val USER_AGENT =
         "DriveMate/0.1 (Hyundai Motor Group in-car app contest; +https://github.com/sjb8032/hmg-app-challenge-2026)"
 
@@ -82,19 +90,19 @@ internal object RoadRoutes {
     fun get(from: LatLng, to: LatLng): List<LatLng>? = loaded[LegKey.of(from, to)]
 
     /** 도로 길을 받아 둔다. 이미 있거나 받는 중이거나 방금 실패했거나 짧은 구간은 건너뛴다 */
-    fun request(legs: List<Pair<LatLng, LatLng>>) {
+    fun request(legs: List<RoadLeg>) {
         if (mode == MapTiles.Mode.OFF) return
-        for ((from, to) in legs) {
+        for ((from, to, bearing) in legs) {
             val key = LegKey.of(from, to)
             if (key in loaded || key in pending || recentlyFailed(key)) continue
             if (Geo.distanceMeters(from, to) < MIN_LEG_METERS) continue
             if (mode == MapTiles.Mode.BLOCKING) {
-                runCatching { load(from, to) }.getOrNull()?.let { put(key, it) }
+                runCatching { load(from, to, bearing) }.getOrNull()?.let { put(key, it) }
                 continue
             }
             pending += key
             executor.execute {
-                val path = runCatching { load(from, to) }.getOrNull()
+                val path = runCatching { load(from, to, bearing) }.getOrNull()
                 main.post {
                     pending -= key
                     if (path != null) {
@@ -118,7 +126,7 @@ internal object RoadRoutes {
             remember(ui) { repeat(3) { request(roadLegsFor(ui)) } }
         } else {
             val legs = roadLegsFor(ui)
-            val keys = legs.map { LegKey.of(it.first, it.second) }
+            val keys = legs.map { LegKey.of(it.from, it.to) }
             LaunchedEffect(keys) { request(legs) }
         }
     }
@@ -136,13 +144,13 @@ internal object RoadRoutes {
     }
 
     /** 기기에 저장한 길이 있으면 그것을, 없으면 서버에 묻고 저장한다 */
-    private fun load(from: LatLng, to: LatLng): List<LatLng>? {
+    private fun load(from: LatLng, to: LatLng, bearing: Double?): List<LatLng>? {
         val key = LegKey.of(from, to)
         val file = dir?.let { File(it, "${key.fromLat}_${key.fromLon}_${key.toLat}_${key.toLon}.txt") }
         if (file != null && file.exists()) {
             decodeFile(file.readText())?.let { return finish(from, to, it) }
         }
-        val points = fetch(from, to) ?: return null
+        val points = fetch(from, to, bearing) ?: return null
         if (file != null) runCatching { file.writeText(points.joinToString(";") { "${it.lat},${it.lon}" }) }
         return finish(from, to, points)
     }
@@ -154,12 +162,14 @@ internal object RoadRoutes {
         return RoadPath.thin(path, minGap)
     }
 
-    private fun fetch(from: LatLng, to: LatLng): List<LatLng>? {
+    private fun fetch(from: LatLng, to: LatLng, bearing: Double?): List<LatLng>? {
         // 1초에 한 번 넘게 묻지 않는다
         val wait = lastAskAt + MIN_GAP_MS - System.currentTimeMillis()
         if (wait > 0) Thread.sleep(wait)
         lastAskAt = System.currentTimeMillis()
-        val url = URL(String.format(Locale.ROOT, ROUTE_URL, from.lon, from.lat, to.lon, to.lat))
+        val base = String.format(Locale.ROOT, ROUTE_URL, from.lon, from.lat, to.lon, to.lat)
+        val heading = bearing?.let { ((it % 360.0 + 360.0) % 360.0).roundToInt() % 360 }
+        val url = URL(if (heading != null) base + String.format(Locale.ROOT, BEARING_PARAM, heading) else base)
         val conn = url.openConnection() as HttpURLConnection
         conn.setRequestProperty("User-Agent", USER_AGENT)
         conn.connectTimeout = 6_000
