@@ -45,6 +45,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -287,6 +288,8 @@ private fun MapPicker(
             Modifier
                 .weight(1f)
                 .fillMaxWidth()
+                // 타일은 화면보다 넓게 그려지므로 칸 밖(제목·버튼 위)으로 번지지 않게 자른다
+                .clip(CardShape)
                 .background(RM.map, CardShape)
                 .border(1.dp, RM.border, CardShape),
         ) {
@@ -424,11 +427,14 @@ private fun PickTimeSheet(ui: UiState, actions: RestMateActions) {
                         tooEarly -> Caption("지금부터 5분 뒤(${DriveText.clock(earliest)})보다 이르게는 정할 수 없어요.", RM.amber)
                         direct != null -> {
                             val late = now + direct - at
-                            val spare = -late - 3 * MINUTE_MS
+                            // 목표 패널과 같은 기준: 남는 시간 = 목표 − 지금 − 바로 가는 시간 − 여유 3분
+                            val spare = -late - MARGIN_MINUTES * MINUTE_MS
                             Caption(
                                 when {
                                     late > 30 * SECOND_MS -> "바로 가도 약 ${DriveText.duration(late)} 늦어요."
-                                    spare >= MINUTE_MS -> "바로 가면 ${DriveText.clock(now + direct)} 도착 · 남는 시간 약 ${DriveText.duration(spare)}"
+                                    spare >= MINUTE_MS ->
+                                        "바로 가면 ${DriveText.clock(now + direct)} 도착 · 목표 ${MARGIN_MINUTES}분 전에 닿게 하면" +
+                                            " 남는 시간 약 ${DriveText.duration(spare)}"
                                     else -> "바로 가면 시간에 거의 딱 맞아요."
                                 },
                                 if (late > 30 * SECOND_MS) RM.amber else RM.textDim,
@@ -508,7 +514,8 @@ private fun Segmented(labels: List<String>, selected: Int, onSelect: (Int) -> Un
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun Wheel(count: Int, selected: Int, label: (Int) -> String, onSelect: (Int) -> Unit, modifier: Modifier) {
-    val rowHeight = 64.dp
+    // 달리는 차 안에서도 손가락으로 집기 쉽게 줄을 크게 둔다
+    val rowHeight = 80.dp
     val rowPx = with(LocalDensity.current) { rowHeight.toPx() }
     val state = rememberLazyListState(initialFirstVisibleItemIndex = selected.coerceIn(0, count - 1))
     val fling = rememberSnapFlingBehavior(state)
@@ -550,7 +557,7 @@ private fun Wheel(count: Int, selected: Int, label: (Int) -> String, onSelect: (
                         Text(
                             label(value),
                             color = if (near == 0) RM.text else RM.textFaint,
-                            fontSize = if (near == 0) 34.sp else 26.sp,
+                            fontSize = if (near == 0) 38.sp else 28.sp,
                             fontWeight = if (near == 0) FontWeight.SemiBold else FontWeight.Normal,
                             style = NumStyle,
                         )

@@ -130,6 +130,12 @@ class SmallScreenSnapshots {
 
     @Test
     fun small_pickupArrived() = paparazzi.snapshot { PreviewScreen(PreviewSamples.pickupArrived()) }
+
+    @Test
+    fun small_startSearch() = paparazzi.snapshot { PreviewScreen(PreviewSamples.startSearch()) }
+
+    @Test
+    fun small_timePicker() = paparazzi.snapshot { PreviewScreen(PreviewSamples.timePicker()) }
 }
 
 /** 1px = 1dp인 가로 화면 */

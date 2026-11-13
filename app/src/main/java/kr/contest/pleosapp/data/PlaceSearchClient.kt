@@ -40,17 +40,21 @@ class PlaceSearchClient(kakaoKey: String?) {
     /** 마지막으로 서버에 물은 시각 (묻는 스레드에서만) */
     private var lastAskAt = 0L
 
-    /** 이름·주소로 찾는다. 같은 검색(차가 약 5km 안에 있을 때)은 기억해 둔 답을 바로 준다 */
+    /**
+     * 이름·주소로 찾는다. Nominatim은 같은 검색(차가 약 5km 안에 있을 때)을 기억해 둔 답으로 바로 준다(정책이 권하는 대로).
+     * 카카오 로컬은 받은 결과를 따로 저장해 쓰지 못하게 되어 있어 기억하지 않고 매번 묻는다.
+     */
     fun search(query: String, near: LatLng?, onResult: (OnlinePlaces) -> Unit) {
         val key = query.trim() + (near?.let { "@" + (it.lat * 20).roundToInt() + "," + (it.lon * 20).roundToInt() }.orEmpty())
-        val cached = synchronized(cache) { cache[key] }
+        val caching = kakaoKey == null
+        val cached = if (caching) synchronized(cache) { cache[key] } else null
         if (cached != null) {
             onResult(OnlinePlaces(cached, failed = false))
             return
         }
         executor.execute {
             val hits = runCatching { fetchSearch(query.trim(), near) }.getOrNull()
-            if (hits != null) synchronized(cache) { cache[key] = hits }
+            if (hits != null && caching) synchronized(cache) { cache[key] = hits }
             main.post { onResult(OnlinePlaces(hits.orEmpty(), failed = hits == null)) }
         }
     }

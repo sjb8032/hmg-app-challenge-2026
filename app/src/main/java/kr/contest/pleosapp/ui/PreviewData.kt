@@ -213,6 +213,17 @@ internal object PreviewSamples {
     /** 도착 목표 시각 고르기: 오늘·오후 7시 10분 */
     fun timePicker(): UiState = setup().copy(sheet = InputSheet.PickTime)
 
+    /** 시연 '직접 해 보기'의 출발지 고르기: 검색어 없이 누르는 '바로 찾기'와 지금 차가 있는 곳·즐겨찾기 */
+    fun startSearch(): UiState = home().copy(
+        sheet = InputSheet.FindPlace(
+            purpose = PlacePurpose.DEMO_START,
+            suggestions = listOf(PlaceHit(RestMateController.HERE_NAME, "가상 시계만 지금 시각으로", nonhyeon, PlaceSource.APP)) +
+                places.map { PlaceHit.of(it) },
+            mapCenter = nonhyeon,
+            service = SEARCH_SERVICE,
+        ),
+    )
+
     private val seoulStation = LatLng(37.5547, 126.9707)
 
     /** 직접 해 보기: 서울역에서 출발, 목적지는 아직 없음 (가상 시계는 지금 시각부터) */
@@ -836,6 +847,10 @@ private fun TimePickerPreview() = PreviewScreen(PreviewSamples.timePicker())
 @Preview(name = "F4 직접 해 보기", widthDp = 1696, heightDp = 1180)
 @Composable
 private fun FreeHomePreview() = PreviewScreen(PreviewSamples.freeHome())
+
+@Preview(name = "F5 직접 해 보기 출발지 (작은 화면)", widthDp = 1280, heightDp = 720)
+@Composable
+private fun StartSearchPreview() = PreviewScreen(PreviewSamples.startSearch())
 
 @Preview(name = "2 코스 고르기", widthDp = 1696, heightDp = 1180)
 @Composable
