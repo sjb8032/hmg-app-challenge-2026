@@ -220,20 +220,20 @@ private fun TrackBar(
             }
             // 목표: 깃발
             val tx = x(target)
-            drawLine(Color.White, Offset(tx, cy - 22.dp.toPx()), Offset(tx, cy + 12.dp.toPx()), strokeWidth = 2.5.dp.toPx())
+            drawLine(RM.text, Offset(tx, cy - 22.dp.toPx()), Offset(tx, cy + 12.dp.toPx()), strokeWidth = 2.5.dp.toPx())
             val flag = Path().apply {
                 moveTo(tx, cy - 22.dp.toPx())
                 lineTo(tx + 13.dp.toPx(), cy - 17.dp.toPx())
                 lineTo(tx, cy - 12.dp.toPx())
                 close()
             }
-            drawPath(flag, Color.White)
+            drawPath(flag, RM.text)
             // 지금
-            drawCircle(Color.White, 6.dp.toPx(), Offset(x(now), cy))
+            drawCircle(RM.text, 6.dp.toPx(), Offset(x(now), cy))
             // 도착 예상
             val ex = x(eta)
             drawCircle(etaColor.copy(alpha = 0.25f), 17.dp.toPx(), Offset(ex, cy))
-            drawCircle(Color.White, 10.dp.toPx(), Offset(ex, cy))
+            drawCircle(RM.text, 10.dp.toPx(), Offset(ex, cy))
             drawCircle(etaColor, 7.dp.toPx(), Offset(ex, cy))
         }
         val pins = ArrayList<Pin>()
@@ -350,11 +350,11 @@ private fun SegmentBar(segments: List<Segment>, now: Long, target: Long?) {
             }
             if (target != null) {
                 val tx = x(target)
-                drawLine(Color.White, Offset(tx, cy - 16.dp.toPx()), Offset(tx, cy + 16.dp.toPx()), strokeWidth = 2.5.dp.toPx())
+                drawLine(RM.text, Offset(tx, cy - 16.dp.toPx()), Offset(tx, cy + 16.dp.toPx()), strokeWidth = 2.5.dp.toPx())
             }
             val nx = x(now)
-            drawLine(Color.White.copy(alpha = 0.9f), Offset(nx, cy - 13.dp.toPx()), Offset(nx, cy + 13.dp.toPx()), strokeWidth = 2.dp.toPx())
-            drawCircle(Color.White, 5.dp.toPx(), Offset(nx, cy - 13.dp.toPx()))
+            drawLine(RM.text.copy(alpha = 0.9f), Offset(nx, cy - 13.dp.toPx()), Offset(nx, cy + 13.dp.toPx()), strokeWidth = 2.dp.toPx())
+            drawCircle(RM.text, 5.dp.toPx(), Offset(nx, cy - 13.dp.toPx()))
         }
         val minWidth = with(density) { 56.dp.toPx() }
         val labelY = cy + with(density) { 26.dp.toPx() }

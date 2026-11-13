@@ -209,7 +209,7 @@ private fun DemoCard(ui: UiState, actions: RestMateActions) {
             Switch(
                 checked = ui.demoMode,
                 onCheckedChange = actions::setDemoMode,
-                colors = SwitchDefaults.colors(checkedThumbColor = RM.onAmber, checkedTrackColor = RM.amber),
+                colors = SwitchDefaults.colors(checkedThumbColor = RM.onAccent, checkedTrackColor = RM.amber),
             )
         }
         AutoDemoControls(ui, actions)

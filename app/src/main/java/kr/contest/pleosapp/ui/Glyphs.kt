@@ -32,7 +32,7 @@ internal fun Logo(modifier: Modifier = Modifier) {
             moveTo(w * 0.24f, h * 0.80f)
             cubicTo(w * 0.24f, h * 0.48f, w * 0.76f, h * 0.62f, w * 0.72f, h * 0.34f)
         }
-        drawPath(road, RM.sky, style = Stroke(w * 0.10f, cap = StrokeCap.Round))
+        drawPath(road, RM.skyBlue, style = Stroke(w * 0.10f, cap = StrokeCap.Round))
         drawCircle(Color.White, w * 0.11f, Offset(w * 0.72f, h * 0.25f))
         drawCircle(RM.hyundaiNavy, w * 0.05f, Offset(w * 0.72f, h * 0.25f))
     }
