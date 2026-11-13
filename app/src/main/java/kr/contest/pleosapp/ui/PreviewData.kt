@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import kr.contest.pleosapp.app.AutoChapter
 import kr.contest.pleosapp.app.AutoCue
+import kr.contest.pleosapp.app.AutoDemoScript
 import kr.contest.pleosapp.app.AutoStatus
 import kr.contest.pleosapp.app.ConnectionStatus
 import kr.contest.pleosapp.app.DriveLeg
@@ -60,6 +61,12 @@ import kr.contest.pleosapp.sdk.VehicleExtras
  * 시각은 한국 시간 기준이다.
  */
 internal object PreviewSamples {
+    /** 전체 자동 시연 대본 (캡처의 '몇 번째 장면 / 전체'가 대본과 맞게) */
+    private val autoScenes by lazy { AutoDemoScript.scenes(null) }
+    private val autoSceneCount: Int get() = autoScenes.size
+
+    private fun autoSceneNo(title: String): Int = autoScenes.indexOfFirst { it.title == title } + 1
+
     /** 2026-11-13 오후 6:32 (한국 시간) */
     const val CITY_START = 1_794_562_320_000L
 
@@ -478,8 +485,8 @@ internal object PreviewSamples {
         pickupContact = "아이",
         auto = AutoStatus(
             chapter = AutoChapter.PICKUP,
-            scene = 14,
-            total = 37,
+            scene = autoSceneNo("픽업 알림 켜기"),
+            total = autoSceneCount,
             title = "픽업 알림 켜기",
             text = "도착 소식을 아이에게 문자로 알려요.",
             cue = AutoCue.PICKUP,
@@ -530,8 +537,8 @@ internal object PreviewSamples {
             ),
             auto = AutoStatus(
                 chapter = AutoChapter.PICKUP,
-                scene = 18,
-                total = 37,
+                scene = autoSceneNo("도착 3분 전 · 아이에게 문자"),
+                total = autoSceneCount,
                 title = "도착 3분 전 · 아이에게 문자",
                 text = "아이에게 보낼 문자를 띄웠어요. \"${approach.body}\" 지금 차 위치는 지도 링크로 넣어요.",
             ),
@@ -621,8 +628,8 @@ internal object PreviewSamples {
     fun autoCue(): UiState = home().copy(
         auto = AutoStatus(
             chapter = AutoChapter.ON_TIME,
-            scene = 3,
-            total = 25,
+            scene = autoSceneNo("온타임 모드 켜기"),
+            total = autoSceneCount,
             title = "온타임 모드 켜기",
             text = "약속·픽업 시각에 딱 맞춰 도착하게 길을 짜 주는 모드예요.",
             cue = AutoCue.MODE_ON_TIME,
@@ -634,8 +641,8 @@ internal object PreviewSamples {
     fun autoWatching(): UiState = watchingLate().copy(
         auto = AutoStatus(
             chapter = AutoChapter.ON_TIME,
-            scene = 7,
-            total = 25,
+            scene = autoSceneNo("갑자기 길이 막혔어요"),
+            total = autoSceneCount,
             title = "갑자기 길이 막혔어요",
             text = "도착 예상이 목표보다 늦어졌어요. 잠깐 막힌 것일 수도 있어서 바로 길을 바꾸지 않고, " +
                 "1분 30초 지켜본 뒤에도 늦으면 지금 자리에서 늦지 않는 코스로 바꿔요.",
@@ -647,8 +654,8 @@ internal object PreviewSamples {
     fun autoGuidance(): UiState = guidance().copy(
         auto = AutoStatus(
             chapter = AutoChapter.REST,
-            scene = 19,
-            total = 25,
+            scene = autoSceneNo("졸릴 때는 레스트 모드 한 번"),
+            total = autoSceneCount,
             title = "졸릴 때는 레스트 모드 한 번",
             text = "진행 방향에서 가장 빨리 닿는 문막휴게소(11.4km, 약 7분)로 안내해요. " +
                 "가던 목적지는 그대로 두고 쉼터를 경유지로 넣어요.",
@@ -665,8 +672,8 @@ internal object PreviewSamples {
             core = r.core.copy(now = now, rest = rest.copy(alarmRinging = true, wakeStartedAt = now, wakeMs = 10 * MINUTE_MS)),
             auto = AutoStatus(
                 chapter = AutoChapter.REST,
-                scene = 23,
-                total = 25,
+                scene = autoSceneNo("깬 뒤 몸 깨우기"),
+                total = autoSceneCount,
                 title = "깬 뒤 몸 깨우기",
                 text = "알람을 꺼요.",
                 cue = AutoCue.BOTTOM,

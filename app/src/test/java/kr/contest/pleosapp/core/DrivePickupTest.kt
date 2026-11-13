@@ -363,6 +363,146 @@ class DrivePickupTest {
         assertEquals("아이", e.state.toSavedTrip()?.pickupTo)
     }
 
+    /** '자리 없음'을 누른 엔진 (학원 앞에 도착한 뒤) */
+    private fun circlingAt(at: Long): DriveEngine = active().apply {
+        onLocation(at, dest.position)
+        onTick(at)
+        circleForSpot(at + 5 * SECOND_MS)
+        drainEffects()
+    }
+
+    @Test
+    fun circlingArrivesAgainWithoutTheLoopEvent() {
+        // 다른 골목으로 돌아 내비가 도는 길을 지났다고 알려 주지 않아도, 벗어났다 돌아와 1분 머물면 다시 도착이다.
+        val at = t0 + 20 * MINUTE_MS
+        val e = circlingAt(at)
+        var now = at + 5 * SECOND_MS
+        val loopPos = Geo.destinationPoint(dest.position, 240.0, 400.0)
+        repeat(4) {
+            now += 30 * SECOND_MS
+            e.onLocation(now, loopPos)
+            e.naviAt(now, 2 * MINUTE_MS)
+        }
+        repeat(5) {
+            now += 10 * SECOND_MS
+            e.onLocation(now, nearDest(20.0))
+            e.naviAt(now, 3 * MINUTE_MS)
+        }
+        assertEquals("돌아와서 1분이 안 됐다", DriveStep.ACTIVE, e.state.step)
+        now += 20 * SECOND_MS
+        e.onLocation(now, nearDest(20.0))
+        e.naviAt(now, 3 * MINUTE_MS)
+        assertEquals(DriveStep.ARRIVED, e.state.step)
+        assertEquals("다시 도착했어요.", e.state.message)
+        assertFalse(e.state.circling)
+        // 내비에 남은 도는 길은 뺀다
+        assertTrue(e.drainEffects().filterIsInstance<DriveEffect.Route>().single().via.isEmpty())
+    }
+
+    @Test
+    fun circlingStuckInTheQueueArrivesAfterTheLoopTime() {
+        // 줄에서 빠져나오지 못하고 한 바퀴 시간이 지나도록 학원 앞에 서 있으면 다시 도착으로 본다 (계속 '도는 중'으로 남지 않게).
+        val at = t0 + 20 * MINUTE_MS
+        val e = circlingAt(at)
+        var now = at + 5 * SECOND_MS
+        repeat(30) {
+            now += 10 * SECOND_MS
+            e.onLocation(now, nearDest(30.0))
+            e.naviAt(now, 3 * MINUTE_MS)
+        }
+        assertEquals(DriveStep.ARRIVED, e.state.step)
+        assertFalse(e.state.circling)
+        assertEquals(listOf(PickupNoticeKind.APPROACH, PickupNoticeKind.CIRCLING), e.state.pickupNotices.map { it.kind })
+    }
+
+    /** 학원에서 동쪽으로 350m 떨어진 기다릴 곳으로 가는 코스 ('근처에서 기다리기') */
+    private fun waitCourse(lotMeters: Double = 350.0): Pair<DriveEngine, RestArea> {
+        val lot = RestArea("lot", "학원 근처 공영주차장", RestAreaType.PARKING, Geo.destinationPoint(dest.position, 90.0, lotMeters))
+        val e = DriveEngine(emptyList(), listOf(lot)).apply {
+            onLocation(t0, origin)
+            onNaviDestination(t0, dest, direct)
+            openMode(t0, DriveMode.ON_TIME)
+            setOnTimeStyle(OnTimeStyle.WAIT_NEAR)
+            setTarget(t0, t0 + 50 * MINUTE_MS)
+            setPickup("아이")
+            plan(t0)
+        }
+        e.choose(t0, e.state.options.first { it.kind == CourseKind.REST_STOP })
+        e.drainEffects()
+        return e to lot
+    }
+
+    @Test
+    fun skippingTheWaitLotAndParkingAtTheDoorSendsTheParkedSpot() {
+        val (e, lot) = waitCourse()
+        val now = t0 + 21 * MINUTE_MS
+        // 학원 앞(20m)은 기다릴 곳(350m)보다 학원이 가까우니 기다릴 곳이 아니다. 주차장 안이면 기다릴 곳이다.
+        assertNull(e.restStopHere(nearDest(20.0)))
+        assertEquals(lot, e.restStopHere(lot.position))
+        assertEquals(lot, e.restStopHere(Geo.destinationPoint(lot.position, 270.0, 120.0)))
+
+        e.onLocation(now, nearDest(20.0))
+        e.naviAt(now, 4 * MINUTE_MS)
+        assertTrue(e.onParked(now + 10 * SECOND_MS))
+        assertEquals(DriveStep.ARRIVED, e.state.step)
+        val effects = e.drainEffects()
+        assertEquals(listOf(PickupNoticeKind.PARKED), effects.filterIsInstance<DriveEffect.SendPickup>().map { it.notice.kind })
+        assertTrue("내비에서 기다릴 곳을 뺀다", effects.filterIsInstance<DriveEffect.Route>().single().via.isEmpty())
+    }
+
+    @Test
+    fun standingAtTheDoorInsteadOfTheWaitLotBecomesArrival() {
+        // 기다릴 곳을 건너뛰고 학원 앞에 D단으로 서 있으면 (지나가는 것과 구분해) 1분 뒤 도착으로 본다.
+        val (e, _) = waitCourse()
+        var now = t0 + 21 * MINUTE_MS
+        repeat(7) {
+            e.onLocation(now, nearDest(20.0))
+            e.naviAt(now, 4 * MINUTE_MS)
+            now += 10 * SECOND_MS
+        }
+        assertEquals(DriveStep.ARRIVED, e.state.step)
+    }
+
+    @Test
+    fun parkingWhileRestingAfterArrivalSendsNothing() {
+        // 도착한 뒤 졸려 레스트 모드로 근처(300m 안)에서 쉬다 차를 조금 옮겨도 세운 곳을 보내지 않고 휴식도 끝내지 않는다.
+        val e = active()
+        val at = t0 + 19 * MINUTE_MS
+        e.onLocation(at, nearDest(60.0))
+        e.onTick(at)
+        assertTrue(e.onParked(at + 10 * SECOND_MS))
+        e.drainEffects()
+        val area = RestArea("p", "학원 뒤 주차장", RestAreaType.PARKING, nearDest(250.0))
+        e.onRestPhase(at + MINUTE_MS, Phase.RESTING, RestSession(startedAt = at + MINUTE_MS, plannedMinutes = 15, alarmAt = at + 16 * MINUTE_MS, area = area, kind = RestKind.NAP))
+        e.onLocation(at + 2 * MINUTE_MS, nearDest(210.0))
+        assertFalse(e.onParked(at + 2 * MINUTE_MS))
+        assertTrue(e.sent().isEmpty())
+        assertEquals(1, e.state.pickupNotices.count { it.kind == PickupNoticeKind.PARKED })
+    }
+
+    @Test
+    fun naviArrivalDoesNotRestartGuidance() {
+        // 내비가 도착을 알렸으면 (도는 길을 건너뛰고 바로 옴) 경로를 끝낸 것이라 다시 경로를 요청하지 않는다.
+        val at = t0 + 20 * MINUTE_MS
+        val e = circlingAt(at)
+        e.onLocation(at + MINUTE_MS, nearDest(20.0))
+        e.onDestinationArrived(at + MINUTE_MS)
+        assertEquals(DriveStep.ARRIVED, e.state.step)
+        assertTrue(e.drainEffects().none { it is DriveEffect.Route })
+    }
+
+    @Test
+    fun savedPickupUsesTheContactOfThisCar() {
+        val trip = SavedTrip(DriveMode.ON_TIME, dest, minuteOfDay = 16 * 60 + 50, pickupTo = "아이")
+        val e = DriveEngine(emptyList(), emptyList())
+        e.onLocation(t0, origin)
+        e.onNaviDestination(t0, dest, direct)
+        e.applySaved(t0, trip, pickupContact = "동승자")
+        assertEquals("동승자", e.state.pickupTo)
+        e.applySaved(t0, trip.copy(pickupTo = null), pickupContact = "동승자")
+        assertNull(e.state.pickupTo)
+    }
+
     @Test
     fun pickupTextHasLinkAndShortBody() {
         val p = LatLng(37.4946, 127.0576)

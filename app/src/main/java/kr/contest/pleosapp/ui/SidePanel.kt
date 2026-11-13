@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -257,17 +258,21 @@ private fun AutoDemoControls(ui: UiState, actions: RestMateActions) {
 @Composable
 private fun DemoControls(ui: UiState, actions: RestMateActions) {
     val trip = ui.demoTrip
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        for (t in DemoTrips.ALL) {
-            ActionButton(
-                t.title.substringBefore(" ·"),
-                { actions.selectDemoTrip(t.id) },
-                Modifier.weight(1f),
-                if (trip?.id == t.id) Tone.AMBER else Tone.NEUTRAL,
-                minHeight = 50.dp,
-                textSize = 17.sp,
-                sub = t.title.substringAfter("· ", ""),
-            )
+    // 출발 상황 셋: 두 줄로 (옆 칸이 좁아 한 줄에 셋이면 아랫줄 글자가 꺾인다)
+    for (row in DemoTrips.ALL.chunked(2)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            for (t in row) {
+                ActionButton(
+                    t.title.substringBefore(" ·"),
+                    { actions.selectDemoTrip(t.id) },
+                    Modifier.weight(1f),
+                    if (trip?.id == t.id) Tone.AMBER else Tone.NEUTRAL,
+                    minHeight = 50.dp,
+                    textSize = 17.sp,
+                    sub = t.title.substringAfter("· ", ""),
+                )
+            }
+            if (row.size == 1) Spacer(Modifier.weight(1f))
         }
     }
     val scale = trip?.timeScale?.roundToInt() ?: 1

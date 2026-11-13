@@ -687,7 +687,7 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
             saveSaved(list)
             _ui.update { it.copy(saved = list) }
         }
-        act { drive.applySaved(it, trip) }
+        act { drive.applySaved(it, trip, pickupContact()) }
     }
 
     override fun removeSavedTrip(trip: SavedTrip) {

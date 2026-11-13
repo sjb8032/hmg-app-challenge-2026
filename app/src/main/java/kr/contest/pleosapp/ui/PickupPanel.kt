@@ -29,7 +29,7 @@ import kr.contest.pleosapp.core.PickupNoticeKind
 /*
  * 온타임 모드 '픽업 알림': 도착 3분 전·P단으로 세운 곳·자리 없음을 픽업할 사람에게 문자로 알린다.
  * Pleos SDK에 문자 기능이 없고 에뮬레이터는 휴대폰과 연결할 수 없어, 지금은 보낼 문자를 화면에 보여 주는 시연 기능이다.
- * 그래서 카드에 늘 '시연 · 실제로 보내지 않음'을 함께 둔다.
+ * 그래서 설정 버튼과 카드에 늘 '실제로 보내지 않음'을 함께 둔다 (시연 모드가 아니어도).
  */
 
 /** 달리는 중·도착 화면에서 미니맵 아래 픽업 알림 카드가 차지하는 높이 (미니맵을 이만큼 줄인다) */
@@ -44,10 +44,11 @@ internal fun PickupToggle(ui: UiState, actions: RestMateActions, tone: Tone) {
     val d = ui.drive
     val on = d.pickupOn()
     val name = d.pickupTo ?: ui.pickupContact
-    Label("픽업 알림 문자 · 시연에서는 보낼 문자를 화면에만 보여 줘요")
+    // 아직 실제로 보내는 수단이 없어 시연이든 아니든 보낼 문자를 화면에 띄우기만 한다.
+    Label("픽업 알림 문자 · 보낼 문자를 화면에 띄워요 (실제로 보내지는 않아요)")
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         ActionButton(
-            "보내지 않기",
+            "알림 끄기",
             { actions.setPickup(false) },
             Modifier.weight(1f),
             if (!on) tone else Tone.NEUTRAL,
@@ -55,13 +56,13 @@ internal fun PickupToggle(ui: UiState, actions: RestMateActions, tone: Tone) {
             textSize = 20.sp,
         )
         ActionButton(
-            "${name}에게 보내기",
+            "알림 켜기",
             { actions.setPickup(true) },
             Modifier.weight(1f).cueRing(ui.cueing(AutoCue.PICKUP)),
             if (on) tone else Tone.NEUTRAL,
             minHeight = 64.dp,
             textSize = 20.sp,
-            sub = "도착 3분 전 · 세운 곳 · 자리 없음",
+            sub = "$name · 도착 3분 전 · 세운 곳 · 자리 없음",
         )
     }
 }
@@ -79,7 +80,7 @@ internal fun PickupPanel(ui: UiState) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             MessageGlyph(RM.sky, Modifier.size(22.dp))
             Label("픽업 알림 · 받는 사람 $to", modifier = Modifier.weight(1f))
-            Chip("시연 · 실제로 보내지 않음", RM.textDim, fontSize = 13.sp)
+            Chip(if (ui.demoMode) "시연 · 실제로 보내지 않음" else "실제로 보내지 않음", RM.textDim, fontSize = 13.sp)
         }
         val last = notices.lastOrNull()
         if (last == null) {
