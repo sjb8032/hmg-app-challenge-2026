@@ -108,6 +108,9 @@ data class UiState(
     val console: ConsoleStatus = ConsoleStatus(),
     /** 자동 시연 중이면 지금 장면과 해설 */
     val auto: AutoStatus? = null,
+    /** 시연: 모의 차가 지금 달리는 구간과 지나온 구간 (미니맵이 도로 모양을 따라 그린다). 실제 주행에서는 비어 있다 */
+    val leg: DriveLeg? = null,
+    val legs: List<DriveLeg> = emptyList(),
 )
 
 /** 화면에서 부르는 동작. */
@@ -234,6 +237,9 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
     /** 안내 기록 (최근 것이 앞) */
     private val log = ArrayDeque<LogEntry>()
 
+    /** 시연: 모의 차가 달리는 구간 (미니맵) */
+    private val legs = LegTracker()
+
     /** 시연: 모의 내비와 가상 시계 (실제 1초에 trip.timeScale초가 흐른다) */
     private class DemoSession(val trip: DemoTrip) {
         val navi = DemoNavi(trip)
@@ -334,7 +340,10 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
         for (effect in drive.drainEffects()) handleDrive(t, effect)
         trackDriveStart(t)
         val d = demo
-        if (d != null) console.update(engine.state.gear, d.navi.speedKmh)
+        if (d != null) {
+            console.update(engine.state.gear, d.navi.speedKmh)
+            legs.update(d.navi.legStart, d.navi.target?.position, d.navi.position)
+        }
         val route = if (d != null) d.navi.destination?.let { RouteView(it, d.navi.via) } else requestedRoute
         _ui.update {
             it.copy(
@@ -352,6 +361,8 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
                 origin = d?.trip?.start ?: trail.firstOrNull(),
                 route = route,
                 driveStartedAt = driveStartedAt,
+                leg = legs.current,
+                legs = legs.done.toList(),
             )
         }
     }
@@ -817,6 +828,7 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
         lastPhase = Phase.DRIVING
         trail.clear()
         log.clear()
+        legs.clear()
         requestedRoute = null
         driveStartedAt = null
         lastDriveStep = DriveStep.HOME
