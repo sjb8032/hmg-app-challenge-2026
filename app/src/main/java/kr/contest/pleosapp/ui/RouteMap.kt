@@ -95,8 +95,8 @@ internal data class MapScene(
 
 /** 코스 후보 번호별 색 (지도의 선·번호와 코스 카드의 번호가 같은 색) */
 internal fun candidateColor(index: Int): Color = when (index % 4) {
-    0 -> RM.teal
-    1 -> RM.violet
+    0 -> RM.sky
+    1 -> RM.sand
     2 -> RM.blue
     else -> RM.amber
 }
@@ -203,7 +203,7 @@ internal fun mapSceneFor(ui: UiState): MapScene {
                         marks += if (isStop) {
                             MapMark(p.position, MarkKind.STOP, p.name, RM.amber, badge = "P")
                         } else {
-                            MapMark(p.position, MarkKind.SCENIC, p.name, RM.violet)
+                            MapMark(p.position, MarkKind.SCENIC, p.name, RM.sand)
                         }
                     }
                     marks += destinationMark(dest)
@@ -225,7 +225,7 @@ internal fun mapSceneFor(ui: UiState): MapScene {
 /** 쉼터로 갈 때 화면에 담는 지나온 길 끝부분 (점 개수) */
 private const val FOCUS_TRAIL = 4
 
-private fun destinationMark(p: Place) = MapMark(p.position, MarkKind.DESTINATION, p.name, RM.teal)
+private fun destinationMark(p: Place) = MapMark(p.position, MarkKind.DESTINATION, p.name, RM.sky)
 
 private fun samePlace(a: LatLng, b: LatLng): Boolean = Geo.distanceMeters(a, b) < SAME_PLACE_METERS
 
@@ -243,7 +243,7 @@ internal fun MapPanel(ui: UiState, height: Dp = LocalScreenSize.current.mapHeigh
 
 @Composable
 internal fun RouteMap(scene: MapScene, modifier: Modifier = Modifier, emptyText: String = "위치를 기다리는 중이에요") {
-    val shape = RoundedCornerShape(18.dp)
+    val shape = CardShape
     BoxWithConstraints(
         modifier
             .clip(shape)
@@ -377,12 +377,12 @@ private fun DrawScope.drawCar(p: Offset, heading: Double?, color: Color) {
 
 @Composable
 private fun MapLabel(text: String, color: Color, strong: Boolean) {
-    val shape = RoundedCornerShape(8.dp)
+    val shape = RoundedCornerShape(4.dp)
     Text(
         text,
         color = RM.text,
         fontSize = if (strong) 15.sp else 14.sp,
-        fontWeight = if (strong) FontWeight.Bold else FontWeight.SemiBold,
+        fontWeight = if (strong) FontWeight.SemiBold else FontWeight.SemiBold,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         modifier = Modifier
@@ -429,7 +429,7 @@ private fun NorthArrow(modifier: Modifier) {
             }
             drawPath(path, RM.textDim)
         }
-        Text("N", color = RM.textDim, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        Text("N", color = RM.textDim, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -440,11 +440,11 @@ private fun MapLegend(scene: MapScene) {
     if (scene.trail.size >= 2) items += "지나온 길" to RM.trail
     val solid = scene.lines.firstOrNull { !it.dashed && scene.marks.none { m -> m.kind == MarkKind.CANDIDATE } }
     if (solid != null) items += "갈 길" to solid.color
-    if (scene.marks.any { it.kind == MarkKind.CANDIDATE }) items += "코스 후보 (번호)" to RM.violet
-    if (scene.marks.any { it.kind == MarkKind.SCENIC }) items += "경유지" to RM.violet
+    if (scene.marks.any { it.kind == MarkKind.CANDIDATE }) items += "코스 후보 (번호)" to RM.sand
+    if (scene.marks.any { it.kind == MarkKind.SCENIC }) items += "경유지" to RM.sand
     if (scene.marks.any { it.kind == MarkKind.STOP || it.kind == MarkKind.REST_TARGET }) items += "쉼터" to RM.amber
     if (scene.marks.any { it.kind == MarkKind.REST_AHEAD }) items += "앞쪽 쉼터" to RM.textFaint
-    if (scene.marks.any { it.kind == MarkKind.DESTINATION }) items += "목적지" to RM.teal
+    if (scene.marks.any { it.kind == MarkKind.DESTINATION }) items += "목적지" to RM.sky
     if (items.isEmpty()) return
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         for ((name, color) in items.take(5)) {
