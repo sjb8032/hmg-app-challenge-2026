@@ -232,9 +232,12 @@ private fun AutoDemoControls(ui: UiState, actions: RestMateActions) {
             textSize = 20.sp,
             sub = "온타임 → 픽업 → 롱웨이 → 레스트 · 약 4분 40초",
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            for (chapter in AutoChapter.entries) {
-                SmallButton(chapter.label, { actions.startAutoDemo(chapter) }, Modifier.weight(1f))
+        // 이야기 넷: 두 줄로 (옆 칸이 좁아 한 줄에 넷이면 글자가 꺾인다)
+        for (row in AutoChapter.entries.chunked(2)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (chapter in row) {
+                    SmallButton(chapter.label, { actions.startAutoDemo(chapter) }, Modifier.weight(1f))
+                }
             }
         }
         return

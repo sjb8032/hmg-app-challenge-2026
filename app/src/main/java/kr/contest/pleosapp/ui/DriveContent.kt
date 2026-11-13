@@ -247,6 +247,8 @@ private fun DriveSetup(ui: UiState, actions: RestMateActions) {
             // 아래 요약이 함께 보이게 미니맵을 조금 낮춘다
             MapPanel(ui, (LocalScreenSize.current.mapHeight - 200.dp).coerceAtLeast(260.dp))
             SetupSummary(ui)
+            // 픽업 알림은 오른쪽에 둔다 (왼쪽의 '코스 찾기'가 자동 시연 해설이 떠 있어도 화면 안에 보이게)
+            if (mode == DriveMode.ON_TIME) Panel { PickupToggle(ui, actions, tone) }
         },
     )
 }
@@ -423,7 +425,6 @@ private fun TargetPanel(ui: UiState, actions: RestMateActions, tone: Tone) {
                 )
             }
         }
-        PickupToggle(ui, actions, tone)
     }
 }
 

@@ -121,6 +121,10 @@ private fun Explain(ui: UiState) {
     }
     val (text, color) = when {
         d.paused -> "쉬었다 가는 동안 시간 맞추기를 잠시 멈췄어요. 다시 출발하면 이어서 맞춰요." to RM.amber
+        // '자리 없음'으로 한 바퀴 도는 중: 늦어도 길을 줄이지 않는다 (세울 곳이 없어 도는 것이라)
+        d.circling && gap > 30 * SECOND_MS ->
+            "세울 곳이 없어 한 바퀴 돌고 ${DriveText.clock(eta)}쯤 다시 와요 · 목표보다 약 ${DriveText.duration(gap)} 늦어요." to RM.amber
+        d.circling -> "세울 곳이 없어 한 바퀴 돌고 ${DriveText.clock(eta)}쯤 다시 와요." to RM.textDim
         d.mode != DriveMode.LONGER && d.status == FitStatus.LATE ->
             "바로 가도 약 ${DriveText.duration(gap)} 늦어요. 서두르지 말고 안전하게 가세요." to RM.amber
         d.extendOffered && extend != null -> {
