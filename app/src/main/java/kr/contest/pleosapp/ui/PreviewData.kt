@@ -514,10 +514,10 @@ internal object PreviewActions : RestMateActions {
     override fun nextAutoScene() = Unit
 }
 
-/** 미리보기 한 장 */
+/** 미리보기 한 장. [dark]면 차가 야간 모드일 때의 화면 */
 @Composable
-internal fun PreviewScreen(ui: UiState) {
-    RestMateTheme {
+internal fun PreviewScreen(ui: UiState, dark: Boolean = false) {
+    RestMateTheme(dark = dark) {
         RestMateScreen(ui, PreviewActions)
     }
 }
@@ -555,6 +555,10 @@ private fun AutoWatchingPreview() = PreviewScreen(PreviewSamples.autoWatching())
 @Preview(name = "8 자동 시연 짚기", widthDp = 1696, heightDp = 1180)
 @Composable
 private fun AutoCuePreview() = PreviewScreen(PreviewSamples.autoCue())
+
+@Preview(name = "9 밤 화면 · 달리는 중", widthDp = 1696, heightDp = 1180)
+@Composable
+private fun NightActivePreview() = PreviewScreen(PreviewSamples.active(), dark = true)
 
 @Preview(name = "작은 화면", widthDp = 1280, heightDp = 720)
 @Composable
