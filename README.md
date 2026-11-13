@@ -54,6 +54,8 @@
 | ![달리는 중](docs/screens/3-active.png) | ![늦음 지켜보는 중](docs/screens/4-watching-late.png) |
 | **레스트 모드**: 가장 빨리 닿는 쉼터로 안내 | **휴식**: 오후 3시 체크인에 맞춘 알람·출발 |
 | ![쉼터 안내](docs/screens/5-rest-guidance.png) | ![휴식](docs/screens/6-resting.png) |
+| **자동 시연**: 화면 위 해설과 장면 번호 | **자동 시연**: 누르기 전에 버튼을 짚어 보여 줌 |
+| ![자동 시연 해설](docs/screens/7-auto-narration.png) | ![버튼 짚기](docs/screens/8-auto-cue.png) |
 
 ## 쓰는 SDK
 
