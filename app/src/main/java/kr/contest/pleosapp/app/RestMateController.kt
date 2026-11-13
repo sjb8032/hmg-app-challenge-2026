@@ -27,6 +27,7 @@ import kr.contest.pleosapp.core.DriveStep
 import kr.contest.pleosapp.core.DriveText
 import kr.contest.pleosapp.core.Effect
 import kr.contest.pleosapp.core.Gear
+import kr.contest.pleosapp.core.Geo
 import kr.contest.pleosapp.core.HOUR_MS
 import kr.contest.pleosapp.core.LatLng
 import kr.contest.pleosapp.core.MINUTE_MS
@@ -46,12 +47,15 @@ import kr.contest.pleosapp.core.RestMateState
 import kr.contest.pleosapp.core.SECOND_MS
 import kr.contest.pleosapp.core.SavedTrip
 import kr.contest.pleosapp.core.VehicleEvent
+import kr.contest.pleosapp.core.VirtualClock
 import kr.contest.pleosapp.data.CityRestPlaces
 import kr.contest.pleosapp.data.CourseCatalog
 import kr.contest.pleosapp.data.RestAreaRepository
+import kr.contest.pleosapp.sdk.ConsoleStatus
 import kr.contest.pleosapp.sdk.NaviSignals
 import kr.contest.pleosapp.sdk.VehicleExtras
 import kr.contest.pleosapp.sdk.VehicleSignals
+import kr.contest.pleosapp.sdk.VirtualConsoleLink
 import java.util.Calendar
 
 data class ConnectionStatus(
@@ -84,6 +88,24 @@ data class UiState(
     val config: RestMateConfig = RestMateConfig(),
     /** 자주 쓰는 설정 (처음 화면 칩, 최대 4개) */
     val saved: List<SavedTrip> = emptyList(),
+    /** 화면 표시용 실제 경과 시각 (SystemClock.elapsedRealtime). 자막을 몇 초 띄울지 정할 때 쓴다 */
+    val realNow: Long = 0L,
+    /** [lastMessage]를 말한 실제 경과 시각 */
+    val lastMessageAt: Long = 0L,
+    /** 안내 기록 (최근 것이 앞) */
+    val log: List<LogEntry> = emptyList(),
+    /** 지나온 길 (미니맵) */
+    val trail: List<LatLng> = emptyList(),
+    /** 이번 주행을 시작한 곳 (미니맵의 '출발') */
+    val origin: LatLng? = null,
+    /** 내비가 지금 따라가는 경로 */
+    val route: RouteView? = null,
+    /** 시간 모드로 달리기 시작한 시각 (시간 막대의 시작) */
+    val driveStartedAt: Long? = null,
+    /** 시연: 출발 전이라 가상 시계를 멈춘 중 */
+    val demoClockHeld: Boolean = false,
+    /** 시연: Virtual Console(계기판·3D 주행 화면) 연동 상태 */
+    val console: ConsoleStatus = ConsoleStatus(),
 )
 
 /** 화면에서 부르는 동작. */
@@ -193,17 +215,32 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
 
     private var demo: DemoSession? = null
 
+    /** 시연: 계기판·Virtual Console을 모의 차량에 맞춘다 */
+    private val console = VirtualConsoleLink(onStatus = { status -> _ui.update { it.copy(console = status) } })
+
+    /** 미니맵: 지나온 길, 실제 내비에 요청한 경로, 주행을 시작한 시각 */
+    private val trail = ArrayList<LatLng>()
+    private var requestedRoute: RouteView? = null
+    private var driveStartedAt: Long? = null
+    private var lastDriveStep = DriveStep.HOME
+
+    /** 안내 기록 (최근 것이 앞) */
+    private val log = ArrayDeque<LogEntry>()
+
     /** 시연: 모의 내비와 가상 시계 (실제 1초에 trip.timeScale초가 흐른다) */
     private class DemoSession(val trip: DemoTrip) {
         val navi = DemoNavi(trip)
-        private val realBase = SystemClock.elapsedRealtime()
-        private var virtualBase = trip.startTimeOfDayMs?.let { todayAt(it) } ?: System.currentTimeMillis()
+        val clock = VirtualClock(
+            start = trip.startTimeOfDayMs?.let { todayAt(it) } ?: System.currentTimeMillis(),
+            scale = trip.timeScale,
+            realNow = { SystemClock.elapsedRealtime() },
+        )
         var lastStepAt = now()
 
-        fun now(): Long = virtualBase + ((SystemClock.elapsedRealtime() - realBase) * trip.timeScale).toLong()
+        fun now(): Long = clock.now()
 
         fun shift(ms: Long) {
-            virtualBase += ms
+            clock.shift(ms)
         }
 
         private fun todayAt(timeOfDayMs: Long): Long {
@@ -249,6 +286,7 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
     fun stop() {
         main.removeCallbacks(ticker)
         main.removeCallbacks(demoLoop)
+        console.release()
         // 쉬는 중이거나 분위기를 바꿔 둔 채 앱이 꺼지면 실내 환경을 원래대로 돌려 둔다.
         if (engine.state.phase == Phase.RESTING) vehicle.cabin.apply(CabinMode.RESTORE, env)
         vehicle.cabin.applyMood(null)
@@ -268,12 +306,16 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
     }
 
     private fun publish() {
+        updateDemoClock()
         val t = now()
         shareDeadline()
         for (effect in engine.drainEffects()) handle(effect)
         syncRest(t)
         for (effect in drive.drainEffects()) handleDrive(t, effect)
+        trackDriveStart(t)
         val d = demo
+        if (d != null) console.update(engine.state.gear, d.navi.speedKmh)
+        val route = if (d != null) d.navi.destination?.let { RouteView(it, d.navi.via) } else requestedRoute
         _ui.update {
             it.copy(
                 now = t,
@@ -283,8 +325,51 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
                 config = engine.config,
                 demoDriving = d?.navi?.moving == true,
                 demoJammed = d?.navi?.jammed == true,
+                demoClockHeld = d?.clock?.held == true,
+                realNow = SystemClock.elapsedRealtime(),
+                log = log.toList(),
+                trail = trail.toList(),
+                origin = d?.trip?.start ?: trail.firstOrNull(),
+                route = route,
+                driveStartedAt = driveStartedAt,
             )
         }
+    }
+
+    /**
+     * 시연: 출발 전 D단으로 서 있는 동안에는 가상 시계를 멈춘다.
+     * 코스를 읽고 고르는 사이에 남는 시간이 줄거나 후보가 바뀌지 않고, '출발 · 주행'을 누르면 그때부터 흐른다.
+     */
+    private fun updateDemoClock() {
+        val d = demo ?: return
+        val standing = !d.navi.moving && engine.state.gear == Gear.DRIVE && engine.state.phase == Phase.DRIVING
+        d.clock.hold(standing)
+    }
+
+    /** 시간 모드로 달리기 시작한 시각 (시간 막대의 왼쪽 끝) */
+    private fun trackDriveStart(t: Long) {
+        val step = drive.state.step
+        if (step == DriveStep.ACTIVE && lastDriveStep != DriveStep.ACTIVE) driveStartedAt = t
+        if (step == DriveStep.HOME || step == DriveStep.SETUP) driveStartedAt = null
+        lastDriveStep = step
+    }
+
+    private fun addTrail(p: LatLng) {
+        val last = trail.lastOrNull()
+        if (last != null && Geo.distanceMeters(last, p) < TRAIL_STEP_METERS) return
+        trail += p
+        // 오래 달리면 앞쪽을 성기게 줄여 개수를 묶어 둔다.
+        if (trail.size > TRAIL_MAX) {
+            val thinned = trail.filterIndexed { i, _ -> i % 2 == 0 || i >= trail.size - TRAIL_MAX / 2 }
+            trail.clear()
+            trail.addAll(thinned)
+        }
+    }
+
+    private fun addLog(text: String, kind: LogKind) {
+        if (log.firstOrNull()?.text == text) return
+        log.addFirst(LogEntry(now(), text, kind))
+        while (log.size > LOG_MAX) log.removeLast()
     }
 
     /**
@@ -360,16 +445,19 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
 
     private fun say(text: String) {
         speaker.say(text)
-        _ui.update { it.copy(lastMessage = text) }
+        addLog(text, LogKind.VOICE)
+        _ui.update { it.copy(lastMessage = text, lastMessageAt = SystemClock.elapsedRealtime(), log = log.toList()) }
     }
 
-    private fun note(text: String) {
-        _ui.update { it.copy(naviNote = text) }
+    private fun note(text: String, kind: LogKind = LogKind.NAVI) {
+        addLog(text, kind)
+        _ui.update { it.copy(naviNote = text, log = log.toList()) }
     }
 
     // ---- 내비 경로 (실제 내비 또는 시연용 모의 내비) ----
 
     private fun routeNavi(destination: Place, via: List<Place>): Boolean {
+        requestedRoute = RouteView(destination, via)
         val d = demo
         if (d != null) {
             d.navi.routeTo(destination, via)
@@ -379,6 +467,7 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
     }
 
     private fun cancelNavi() {
+        requestedRoute = null
         val d = demo
         if (d != null) d.navi.cancel() else navi.cancelRoute()
     }
@@ -588,7 +677,7 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
     override fun demoTraffic() {
         val d = demo ?: return
         d.navi.jam(DEMO_JAM_MS)
-        note("모의 정체: 앞길이 막혀 도착이 약 ${DEMO_JAM_MS / MINUTE_MS}분 늦어져요.")
+        note("모의 정체: 앞길이 막혀 도착이 약 ${DEMO_JAM_MS / MINUTE_MS}분 늦어져요.", LogKind.DEMO)
         stepDemo()
         publish()
     }
@@ -596,6 +685,7 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
     /** 가상 시계를 minutes분 앞으로 돌린다. 차와 엔진은 30초씩 나눠서 따라간다. */
     override fun demoSkip(minutes: Int) {
         val d = demo ?: return
+        addLog("시연: 가상 시계를 ${minutes}분 앞으로 돌렸어요.", LogKind.DEMO)
         repeat(minutes * 2) {
             d.shift(30 * SECOND_MS)
             stepDemo()
@@ -625,6 +715,7 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
         resetEngines()
         val session = DemoSession(trip)
         demo = session
+        console.start()
         val t = now()
         engine = RestMateEngine(finder, RestMateConfig.forDemo(trip.timeScale))
         engine.setOnExpressway(trip.expressway)
@@ -642,6 +733,7 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
         main.removeCallbacks(demoLoop)
         resetEngines()
         demo = null
+        console.stop()
         engine = RestMateEngine(finder)
         replayRealSignals()
         _ui.update { it.copy(demoMode = false, demoTrip = null, lastMessage = null, naviNote = null) }
@@ -667,6 +759,11 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
         tripDestination = null
         restAsDestination = false
         lastPhase = Phase.DRIVING
+        trail.clear()
+        log.clear()
+        requestedRoute = null
+        driveStartedAt = null
+        lastDriveStep = DriveStep.HOME
     }
 
     private fun replayRealSignals() {
@@ -721,6 +818,7 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
 
     private fun feedDemo(t: Long) {
         val n = demo?.navi ?: return
+        addTrail(n.position)
         engine.onSpeed(t, n.speedKmh)
         engine.onLocation(t, n.position, n.headingDeg)
         drive.onLocation(t, n.position)
@@ -770,7 +868,8 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
     }
 
     override fun onCabinNote(message: String) {
-        _ui.update { it.copy(cabinNote = message) }
+        addLog(message, LogKind.VEHICLE)
+        _ui.update { it.copy(cabinNote = message, log = log.toList()) }
     }
 
     // ---- 내비 신호 ----
@@ -781,6 +880,7 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
 
     override fun onNaviLocation(position: LatLng, headingDeg: Double?, speedKmh: Double?) {
         if (demo != null) return
+        addTrail(position)
         val t = now()
         engine.onSpeed(t, speedKmh)
         engine.onLocation(t, position, headingDeg)
@@ -809,6 +909,7 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
 
     override fun onNaviWaypointArrived(name: String?) {
         if (demo != null) return
+        requestedRoute = requestedRoute?.let { it.copy(via = it.via.drop(1)) }
         drive.onWaypointArrived(now())
         note("경유지 도착: ${name ?: "경유지"}")
         publish()
@@ -876,5 +977,8 @@ class RestMateController(context: Context) : RestMateActions, VehicleSignals.Sin
         private const val HOLD_SPEECH_METERS = 300.0
         private const val DEMO_STEP_MS = 200L
         private const val DEMO_JAM_MS = 6 * MINUTE_MS
+        private const val TRAIL_STEP_METERS = 25.0
+        private const val TRAIL_MAX = 600
+        private const val LOG_MAX = 8
     }
 }
