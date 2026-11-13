@@ -41,6 +41,48 @@ class MapFrameTest {
     }
 
     @Test
+    fun worldCoordinatesMatchOsmTileNumbers() {
+        // 서울시청은 줌 12에서 OSM 타일 3492/1586 안에 있다
+        val cityHall = LatLng(37.5665, 126.9780)
+        assertEquals(3492, (MapFrame.worldX(cityHall.lon) * 4096).toInt())
+        assertEquals(1586, (MapFrame.worldY(cityHall.lat) * 4096).toInt())
+        assertEquals(37.5665, MapFrame.latOf(MapFrame.worldY(37.5665)), 1e-9)
+    }
+
+    @Test
+    fun tilesCoverTheWholeFrameAtAboutTileSize() {
+        val frame = MapFrame.fit(listOf(nonhyeon, gwanghwamun), aspect = 1.4f)!!
+        val widthDp = 840f
+        val cover = frame.tiles(widthDp)!!
+        // 타일 한 장이 256dp의 0.7~1.42배로 그려진다
+        val tileDp = (cover.tiles[0].right - cover.tiles[0].left) * widthDp
+        assertTrue("tile=$tileDp", tileDp in 180f..364f)
+        assertTrue(cover.tiles.minOf { it.left } <= 0f && cover.tiles.maxOf { it.right } >= 1f)
+        assertTrue(cover.tiles.minOf { it.top } <= 0f && cover.tiles.maxOf { it.bottom } >= 1f)
+        // 지점은 그 지점이 든 타일 안에 그려진다
+        val n = 1 shl cover.zoom
+        for (p in listOf(nonhyeon, gwanghwamun)) {
+            val tile = cover.tiles.single {
+                it.x == (MapFrame.worldX(p.lon) * n).toInt() && it.y == (MapFrame.worldY(p.lat) * n).toInt()
+            }
+            val m = frame.project(p)
+            assertTrue(m.x in tile.left..tile.right && m.y in tile.top..tile.bottom)
+        }
+        // 이웃 타일은 틈 없이 붙는다
+        val first = cover.tiles.first()
+        val right = cover.tiles.first { it.x == first.x + 1 && it.y == first.y }
+        assertEquals(first.right, right.left, 1e-6f)
+    }
+
+    @Test
+    fun tooManyTilesLowersTheZoom() {
+        val frame = MapFrame.fit(listOf(nonhyeon, gwanghwamun), aspect = 1.4f)!!
+        val cover = frame.tiles(4_000f, maxTiles = 12)!!
+        assertTrue(cover.tiles.size <= 12)
+        assertTrue(cover.zoom < frame.tiles(4_000f)!!.zoom)
+    }
+
+    @Test
     fun singlePointGetsMinimumSpanAndSitsInTheMiddle() {
         val frame = MapFrame.fit(listOf(nonhyeon), aspect = 1.5f, padding = 0f, minSpanMeters = 1_500.0)!!
         assertEquals(1_500.0, frame.widthMeters, 1e-6)
