@@ -17,12 +17,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
@@ -32,10 +35,13 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kr.contest.pleosapp.app.UiState
@@ -45,13 +51,15 @@ import kr.contest.pleosapp.core.LatLng
 import kr.contest.pleosapp.core.MapFrame
 import kr.contest.pleosapp.core.Phase
 import kr.contest.pleosapp.core.Place
+import kr.contest.pleosapp.core.TileCover
 import kotlin.math.max
 import kotlin.math.roundToInt
 
 /*
- * 위에서 내려다본 경로 미니맵. 지도 타일 없이 위치 관계만 그린다:
+ * 위에서 내려다본 경로 미니맵. 바탕에 OpenStreetMap 지도 타일을 깔고 그 위에 그린다:
  * 지나온 길(회색) · 갈 길(모드 색) · 코스 후보(번호) · 경유지 · 쉼터(P) · 목적지 · 진행 방향을 가리키는 차.
- * 내비 SDK로는 경로 모양을 받을 수 없어 경유지 사이를 곧은 선으로 잇는다 (화면에 '도식'이라고 적는다).
+ * 내비 SDK로는 경로 모양을 받을 수 없어 경유지 사이를 곧은 선으로 잇는다.
+ * 인터넷이 안 되어 타일을 못 받으면 격자 바탕의 도식 지도로 보인다 (오른쪽 아래에 '도식 지도').
  */
 
 /** 미니맵에 찍는 곳 */
@@ -268,7 +276,20 @@ internal fun RouteMap(scene: MapScene, modifier: Modifier = Modifier, emptyText:
                 val m = frame.project(p)
                 Offset(m.x * widthPx, m.y * heightPx)
             }
+            // 바탕 지도 타일: 미리보기(인터넷 없음)에서는 받지 않는다. 화면 캡처 시험은 BLOCKING으로 그 자리에서 받는다.
+            val inspection = LocalInspectionMode.current
+            val tilesOn = MapTiles.mode == MapTiles.Mode.BLOCKING || (!inspection && MapTiles.mode == MapTiles.Mode.ASYNC)
+            val density = LocalDensity.current
+            val cover = if (tilesOn) frame.tiles(with(density) { widthPx.toDp().value }) else null
+            val keys = cover?.let { c -> c.tiles.map { TileKey(c.zoom, it.x, it.y) } }.orEmpty()
+            if (MapTiles.mode == MapTiles.Mode.BLOCKING) {
+                remember(keys) { MapTiles.request(keys) }
+            } else {
+                LaunchedEffect(keys) { MapTiles.request(keys) }
+            }
+            val tilesShown = keys.any { MapTiles.get(it) != null }
             Canvas(Modifier.fillMaxSize()) {
+                if (cover != null) drawTiles(cover)
                 if (scene.trail.size >= 2) {
                     drawPolyline(scene.trail.map(at), RM.trail, 5.dp.toPx(), dashed = false, casing = false)
                 }
@@ -300,11 +321,16 @@ internal fun RouteMap(scene: MapScene, modifier: Modifier = Modifier, emptyText:
             PinLayer(pins, Modifier.fillMaxSize())
             ScaleBar(frame.widthMeters / widthPx, Modifier.align(Alignment.BottomStart).padding(12.dp))
             NorthArrow(Modifier.align(Alignment.TopEnd).padding(12.dp))
+            // 출처: 지도 타일을 그렸으면 OpenStreetMap (이용 조건), 아니면 '도식 지도'
             Text(
-                "도식 지도",
-                color = RM.textFaint,
+                if (tilesShown) MapTiles.ATTRIBUTION else "도식 지도",
+                color = if (tilesShown) RM.textDim else RM.textFaint,
                 fontSize = 12.sp,
-                modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(8.dp)
+                    .background(if (tilesShown) RM.mapLabel else Color.Transparent, RoundedCornerShape(4.dp))
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
             )
         }
     }
@@ -328,11 +354,35 @@ private fun MapGrid(modifier: Modifier) {
     }
 }
 
+/** 받아 둔 지도 타일을 제자리에 그린다 (이웃 타일 사이에 틈이 없게 모서리를 같은 방식으로 반올림) */
+private fun DrawScope.drawTiles(cover: TileCover) {
+    val w = size.width
+    val h = size.height
+    val filter = if (RM.dark) MapTiles.nightFilter else MapTiles.dayFilter
+    for (t in cover.tiles) {
+        val image = MapTiles.get(TileKey(cover.zoom, t.x, t.y)) ?: continue
+        val left = (t.left * w).roundToInt()
+        val top = (t.top * h).roundToInt()
+        val right = (t.right * w).roundToInt()
+        val bottom = (t.bottom * h).roundToInt()
+        if (right <= left || bottom <= top) continue
+        drawImage(
+            image,
+            srcOffset = IntOffset.Zero,
+            srcSize = IntSize(image.width, image.height),
+            dstOffset = IntOffset(left, top),
+            dstSize = IntSize(right - left, bottom - top),
+            colorFilter = filter,
+            filterQuality = FilterQuality.Medium,
+        )
+    }
+}
+
 private fun DrawScope.drawPolyline(points: List<Offset>, color: Color, width: Float, dashed: Boolean, casing: Boolean) {
     val path = Path()
     points.forEachIndexed { i, p -> if (i == 0) path.moveTo(p.x, p.y) else path.lineTo(p.x, p.y) }
     if (casing) {
-        drawPath(path, Color.Black.copy(alpha = 0.45f), style = Stroke(width + 5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+        drawPath(path, RM.casing, style = Stroke(width + 5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
     }
     val effect = if (dashed) PathEffect.dashPathEffect(floatArrayOf(12.dp.toPx(), 9.dp.toPx())) else null
     drawPath(path, color, style = Stroke(width, cap = StrokeCap.Round, join = StrokeJoin.Round, pathEffect = effect))

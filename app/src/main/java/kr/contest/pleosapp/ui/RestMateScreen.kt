@@ -720,7 +720,7 @@ private fun RestEnvironmentPanel(ui: UiState, actions: RestMateActions) {
             Switch(
                 checked = env.enabled,
                 onCheckedChange = { actions.setRestEnvironment(env.copy(enabled = it)) },
-                colors = SwitchDefaults.colors(checkedThumbColor = RM.onSky, checkedTrackColor = RM.sky),
+                colors = SwitchDefaults.colors(checkedThumbColor = RM.onAccent, checkedTrackColor = RM.sky),
             )
         }
         if (env.enabled) {

@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import kr.contest.pleosapp.app.RestMateController
+import kr.contest.pleosapp.ui.MapTiles
 import kr.contest.pleosapp.ui.RestMateScreen
 import kr.contest.pleosapp.ui.RestMateTheme
 
@@ -23,6 +24,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        // 미니맵 지도 타일을 기기에 저장해 두는 곳
+        MapTiles.init(this)
 
         controller = RestMateController(this)
         controller.start()

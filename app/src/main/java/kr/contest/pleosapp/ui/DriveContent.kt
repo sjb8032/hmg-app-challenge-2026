@@ -175,7 +175,8 @@ private fun SavedTripsPanel(saved: List<SavedTrip>, actions: RestMateActions) {
  */
 @Composable
 private fun ModeCard(mode: DriveMode, examples: String, modifier: Modifier, onClick: () -> Unit) {
-    val accent = modeColor(mode)
+    // 남색 카드라 낮 화면에서도 밝은 브랜드 색을 쓴다
+    val accent = if (mode == DriveMode.ON_TIME) RM.skyBlue else RM.sandBrand
     val shape = CardShape
     Row(
         modifier
@@ -201,13 +202,16 @@ private fun ModeCard(mode: DriveMode, examples: String, modifier: Modifier, onCl
             }
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(mode.title, color = RM.text, fontSize = 34.sp, fontWeight = FontWeight.Medium, letterSpacing = (-0.5).sp)
+            Text(mode.title, color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Medium, letterSpacing = (-0.5).sp)
             Text(mode.subtitle, color = accent, fontSize = 20.sp, fontWeight = FontWeight.Medium)
-            Text(examples, color = RM.textDim, fontSize = 16.sp)
+            Text(examples, color = HERO_DIM, fontSize = 16.sp)
         }
         Text("›", color = accent, fontSize = 44.sp, fontWeight = FontWeight.Light)
     }
 }
+
+/** 남색 모드 카드의 옅은 글자 */
+private val HERO_DIM = Color(0xFFB5C3D6)
 
 // ---------------------------------------------------------------- 설정
 
