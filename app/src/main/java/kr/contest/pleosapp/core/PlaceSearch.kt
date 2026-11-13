@@ -25,13 +25,20 @@ data class PlaceHit(
     val source: PlaceSource,
     /** 종류 (역·공원·음식점 등). 모르면 null */
     val category: String? = null,
+    /** 앱·내비에 있던 곳이면 그 장소 그대로 (내비 즐겨찾기의 POI 번호·종류를 잃지 않게) */
+    val place: Place? = null,
 ) {
-    /** 내비·시간 모드에 넘길 장소 */
-    fun toPlace(kind: PlaceKind = PlaceKind.SEARCH): Place = Place(name, position, kind, address = address)
+    /**
+     * 내비·시간 모드에 넘길 장소. 앱·내비에 있던 곳은 그 장소를 그대로 쓰고(POI 번호로 경로 요청, 즐겨찾기면 '근처에서 기다리기'가 기본),
+     * [kind]를 주면 종류만 바꾼다. 검색 서비스에서 찾은 곳은 '검색한 곳'.
+     */
+    fun toPlace(kind: PlaceKind? = null): Place =
+        place?.let { p -> kind?.let { p.copy(kind = it) } ?: p }
+            ?: Place(name, position, kind ?: PlaceKind.SEARCH, address = address)
 
     companion object {
         fun of(place: Place, source: PlaceSource = PlaceSource.APP): PlaceHit =
-            PlaceHit(place.name, place.address, place.position, source, place.kind.label.takeIf { it != place.name })
+            PlaceHit(place.name, place.address, place.position, source, place.kind.label.takeIf { it != place.name }, place)
     }
 }
 
@@ -47,11 +54,17 @@ data class PlaceHit(
 object PlaceSearch {
     const val MAX_RESULTS = 12
 
-    /** 이름이 같고 이만큼 가까우면 같은 곳 (역 출입구·건물 윤곽처럼 한 곳이 여러 번 나올 때) */
-    private const val SAME_NAME_METERS = 300.0
+    /** 이름이 같고 이만큼 가까우면 같은 곳 (건물 윤곽과 점처럼 한 곳이 두 번 나올 때). 체인점 다른 지점은 더 떨어져 있다 */
+    private const val SAME_NAME_METERS = 80.0
 
-    /** 이름이 달라도 이만큼 가까우면 같은 곳 */
+    /** 역·공항·터미널은 출입구·승강장이 넓게 흩어져 있어, 이름이 같으면 이만큼까지 같은 곳 */
+    private const val SAME_STATION_METERS = 300.0
+
+    /** 이름이 한쪽에 들어 있고(광화문 · 광화문 약속 장소) 이만큼 가까우면 같은 곳 */
     private const val SAME_SPOT_METERS = 25.0
+
+    /** 넓게 흩어진 곳으로 보는 종류 */
+    private val STATION_WORDS = listOf("역", "공항", "터미널", "철도")
 
     /** 검색 서비스가 지금 차 둘레를 먼저 찾게 하는 범위 (위도·경도 ±) */
     private const val NEAR_SPAN_DEG = 0.45
@@ -96,13 +109,25 @@ object PlaceSearch {
     private fun dedupe(hits: List<PlaceHit>): List<PlaceHit> {
         val out = ArrayList<PlaceHit>()
         for (h in hits) {
-            val dup = out.any { o ->
-                val d = Geo.distanceMeters(o.position, h.position)
-                d <= SAME_SPOT_METERS || (d <= SAME_NAME_METERS && normalize(o.name) == normalize(h.name))
-            }
-            if (!dup) out += h
+            if (out.none { sameSpot(it, h) }) out += h
         }
         return out
+    }
+
+    /**
+     * 두 결과가 같은 곳인지. 이름이 같아도 떨어져 있으면 다른 곳으로 둔다 (스타벅스·공영주차장처럼 지점 이름이 안 붙는 곳).
+     * 이름이 전혀 다르면 붙어 있어도 다른 곳 (앱의 대략 좌표가 실제 다른 곳을 가리지 않게).
+     */
+    private fun sameSpot(a: PlaceHit, b: PlaceHit): Boolean {
+        val d = Geo.distanceMeters(a.position, b.position)
+        val na = normalize(a.name)
+        val nb = normalize(b.name)
+        if (na.isEmpty() || nb.isEmpty()) return d <= SAME_SPOT_METERS
+        if (na == nb) {
+            val station = listOf(a.category, b.category).any { c -> c != null && STATION_WORDS.any { c.contains(it) } }
+            return d <= if (station) SAME_STATION_METERS else SAME_NAME_METERS
+        }
+        return d <= SAME_SPOT_METERS && (na.contains(nb) || nb.contains(na))
     }
 
     /** 거리 표시: 950m, 1.2km, 15km */
@@ -130,8 +155,9 @@ object PlaceSearch {
     fun nominatimReverseUrl(at: LatLng): String =
         "$NOMINATIM/reverse?format=jsonv2&addressdetails=1&accept-language=ko&zoom=18&lat=${fmt(at.lat)}&lon=${fmt(at.lon)}"
 
-    fun parseNominatim(json: String): List<PlaceHit> {
-        val items = MiniJson.parse(json) as? List<*> ?: return emptyList()
+    /** 검색 결과. 응답이 결과 목록이 아니면(오류 화면·잘린 응답) null: '찾은 곳 없음'과 구별한다 */
+    fun parseNominatim(json: String): List<PlaceHit>? {
+        val items = MiniJson.parse(json) as? List<*> ?: return null
         return items.mapNotNull { (it as? Map<*, *>)?.let(::nominatimHit) }
     }
 
@@ -218,9 +244,10 @@ object PlaceSearch {
     /** 지도에서 고른 곳의 주소 */
     fun kakaoReverseUrl(at: LatLng): String = "$KAKAO/geo/coord2address.json?x=${fmt(at.lon)}&y=${fmt(at.lat)}"
 
-    fun parseKakaoKeyword(json: String): List<PlaceHit> {
-        val root = MiniJson.parse(json) as? Map<*, *> ?: return emptyList()
-        val docs = root.list("documents") ?: return emptyList()
+    /** 키워드 검색 결과. 응답에 결과 목록이 없으면(오류 응답) null */
+    fun parseKakaoKeyword(json: String): List<PlaceHit>? {
+        val root = MiniJson.parse(json) as? Map<*, *> ?: return null
+        val docs = root.list("documents") ?: return null
         return docs.mapNotNull { d ->
             val doc = d as? Map<*, *> ?: return@mapNotNull null
             val lon = doc.num("x") ?: return@mapNotNull null

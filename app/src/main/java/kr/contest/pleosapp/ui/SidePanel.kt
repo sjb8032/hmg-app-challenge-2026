@@ -320,7 +320,9 @@ private fun DemoControls(ui: UiState, actions: RestMateActions) {
         }
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        SmallButton("출발 · 주행", actions::demoDrive, Modifier.weight(1f))
+        // 직접 해 보기는 목적지를 정해야 달린다 (목적지 없이 달리면 모의 차가 한쪽으로 끝없이 간다)
+        val needsDestination = trip?.autoProfile == true && ui.route == null
+        SmallButton("출발 · 주행", actions::demoDrive, Modifier.weight(1f), enabled = !needsDestination)
         SmallButton("P단 주차", actions::demoPark, Modifier.weight(1f))
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

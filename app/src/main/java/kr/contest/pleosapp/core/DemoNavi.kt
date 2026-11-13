@@ -65,11 +65,29 @@ class DemoNavi(val trip: DemoTrip) {
 
     val jammed: Boolean get() = jamLeftMs > 0
 
-    /** 지금 경로의 평균 속도와 우회 계수 (직접 해 보기는 경로 길이에 따라 시내·고속도로) */
+    /**
+     * 지금 경로의 평균 속도와 우회 계수. 직접 해 보기는 목적지를 정할 때 그곳까지의 거리로 한 번 정하고,
+     * 같은 목적지로 경로를 다시 받을 때(경유지 넣고 빼기, 쉼터 안내, 쉬고 나서)는 그대로 둔다.
+     * 그래야 남은 시간이 갑자기 뛰지 않고, 코스를 고를 때 계산한 시간과 내비 남은 시간이 맞는다.
+     */
     private var profile = Profile(trip.speedKmh, trip.detourFactor)
 
-    /** 고속도로 속도로 달리는 중인지 (직접 해 보기에서 먼 곳으로 갈 때) */
-    val onHighway: Boolean get() = profile.speedKmh >= HIGHWAY.speedKmh
+    /** 직접 해 보기: 지금 목적지를 정한 자리와 그때 목적지까지 곧은 거리 (고속도로 구간을 가린다) */
+    private var profileFrom: LatLng = trip.start
+    private var profileMeters = 0.0
+
+    /**
+     * 고속도로를 달리는 중인지 (직접 해 보기에서 레스트 모드가 휴게소·졸음쉼터를 찾게).
+     * 먼 길이라도 출발한 곳과 목적지 둘레 [CITY_EDGE_METERS]는 시내로 본다. 정해진 출발 상황은 그 상황대로.
+     */
+    val onHighway: Boolean
+        get() {
+            if (!trip.autoProfile) return trip.expressway
+            val dest = destination ?: return false
+            if (profileMeters <= 2 * CITY_EDGE_METERS) return false
+            return Geo.distanceMeters(profileFrom, position) > CITY_EDGE_METERS &&
+                Geo.distanceMeters(position, dest.position) > CITY_EDGE_METERS
+        }
 
     /** 화면에 보여 줄 속도 */
     val speedKmh: Double
@@ -80,12 +98,21 @@ class DemoNavi(val trip: DemoTrip) {
         }
 
     fun routeTo(dest: Place, via: List<Place>) {
+        val sameDestination = isDestination(dest)
         destination = dest
         this.via = via.take(2)
         legStart = position
         nextTarget()?.let { headingDeg = Geo.bearingDegrees(position, it.position) }
-        profile = profileFor(routeMeters())
+        if (!sameDestination) {
+            profileFrom = position
+            profileMeters = Geo.distanceMeters(position, dest.position)
+            profile = profileFor(profileMeters)
+        }
     }
+
+    /** 지금 목적지와 같은 곳인지 */
+    private fun isDestination(place: Place): Boolean =
+        destination?.let { Geo.distanceMeters(it.position, place.position) <= SAME_DESTINATION_METERS } == true
 
     /** 지금 위치에서 경유지를 거쳐 목적지까지 곧은 거리 */
     private fun routeMeters(): Double {
@@ -99,11 +126,21 @@ class DemoNavi(val trip: DemoTrip) {
         return meters
     }
 
-    /** 이만큼 가는 길의 속도: 정해진 출발 상황은 그 값, 직접 해 보기는 40km부터 고속도로 */
-    private fun profileFor(meters: Double): Profile = when {
-        !trip.autoProfile -> Profile(trip.speedKmh, trip.detourFactor)
-        meters >= HIGHWAY_FROM_METERS -> HIGHWAY
-        else -> CITY
+    /**
+     * 곧은 거리 [meters]를 가는 길의 평균 속도와 우회 계수. 정해진 출발 상황은 그 값.
+     * 직접 해 보기는 양 끝 [CITY_EDGE_METERS]씩은 시내(32km/h, 1.35배), 그 사이는 고속도로(95km/h, 1.2배)로 보고
+     * 둘을 합친 평균을 쓴다. 멀수록 걸리는 시간이 끊김 없이 늘어난다 (어느 거리에서 갑자기 빨라지지 않게).
+     */
+    private fun profileFor(meters: Double): Profile {
+        if (!trip.autoProfile) return Profile(trip.speedKmh, trip.detourFactor)
+        val cityMeters = minOf(meters, 2 * CITY_EDGE_METERS)
+        val highwayMeters = meters - cityMeters
+        if (highwayMeters <= 0.0) return CITY
+        val cityRoad = cityMeters * CITY.detourFactor
+        val highwayRoad = highwayMeters * HIGHWAY.detourFactor
+        val hours = cityRoad / 1000.0 / CITY.speedKmh + highwayRoad / 1000.0 / HIGHWAY.speedKmh
+        val road = cityRoad + highwayRoad
+        return Profile(road / 1000.0 / hours, road / meters)
     }
 
     fun cancel() {
@@ -118,10 +155,10 @@ class DemoNavi(val trip: DemoTrip) {
         return travelMs(routeMeters(), profile) + jamExtraMs()
     }
 
-    /** 지금 위치에서 그곳까지 바로 가면 걸리는 시간 */
+    /** 지금 위치에서 그곳까지 바로 가면 걸리는 시간 (지금 목적지면 지금 경로의 속도로, 남은 시간과 맞게) */
     fun tripTimeMs(place: Place): Long {
         val meters = Geo.distanceMeters(position, place.position)
-        return travelMs(meters, profileFor(meters))
+        return travelMs(meters, if (isDestination(place)) profile else profileFor(meters))
     }
 
     /** 시연: 서 있는 차를 다른 곳으로 옮긴다 (직접 해 보기의 출발지). 경로는 지운다 */
@@ -192,8 +229,11 @@ class DemoNavi(val trip: DemoTrip) {
         /** 정체 중 속도 비율 */
         const val JAM_FACTOR = 0.25
 
-        /** 직접 해 보기: 이만큼 먼 길부터 고속도로 속도 */
-        private const val HIGHWAY_FROM_METERS = 40_000.0
+        /** 직접 해 보기: 출발한 곳과 목적지 둘레 이만큼(곧은 거리)은 시내 길로 본다 */
+        const val CITY_EDGE_METERS = 10_000.0
+
+        /** 이만큼 가까우면 같은 목적지 (경로만 다시 받은 것) */
+        private const val SAME_DESTINATION_METERS = 30.0
         private val CITY = Profile(32.0, 1.35)
         private val HIGHWAY = Profile(95.0, 1.2)
     }
@@ -259,7 +299,7 @@ object DemoTrips {
 
     /**
      * 직접 해 보기: 고른 곳에서 출발하고, 목적지는 검색해서 정한다. 가상 시계는 지금 시각부터 12배로 흐르고,
-     * 경로 길이에 따라 시내(32km/h)·고속도로(95km/h) 속도로 달린다.
+     * 목적지까지 거리로 정한 평균 속도로 달린다 (양 끝 10km는 시내 32km/h, 그 사이는 고속도로 95km/h로 보고 섞음).
      */
     fun free(start: LatLng, startName: String): DemoTrip = DemoTrip(
         id = FREE_ID,

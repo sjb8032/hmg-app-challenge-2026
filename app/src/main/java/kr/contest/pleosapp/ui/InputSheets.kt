@@ -62,11 +62,12 @@ import kotlinx.coroutines.launch
 import kr.contest.pleosapp.app.InputSheet
 import kr.contest.pleosapp.app.PlacePurpose
 import kr.contest.pleosapp.app.RestMateActions
+import kr.contest.pleosapp.app.RestMateController
 import kr.contest.pleosapp.app.UiState
+import kr.contest.pleosapp.core.ClockPick
 import kr.contest.pleosapp.core.DriveEngine
 import kr.contest.pleosapp.core.DriveText
 import kr.contest.pleosapp.core.Geo
-import kr.contest.pleosapp.core.HOUR_MS
 import kr.contest.pleosapp.core.LatLng
 import kr.contest.pleosapp.core.MINUTE_MS
 import kr.contest.pleosapp.core.MapCamera
@@ -74,7 +75,6 @@ import kr.contest.pleosapp.core.MapFrame
 import kr.contest.pleosapp.core.PlaceHit
 import kr.contest.pleosapp.core.PlaceSearch
 import kr.contest.pleosapp.core.SECOND_MS
-import java.util.Calendar
 import kotlin.math.abs
 import kotlin.math.log2
 import kotlin.math.pow
@@ -174,7 +174,7 @@ private fun FindPlaceSheet(sheet: InputSheet.FindPlace, ui: UiState, actions: Re
                 start = sheet.mapCenter ?: car ?: DEFAULT_CENTER,
                 car = car,
                 destination = ui.drive.destination?.position ?: ui.drive.naviDestination?.position,
-                busy = sheet.searching,
+                busy = sheet.locating,
                 confirm = sheet.purpose.confirm,
                 onPick = actions::pickPlaceOnMap,
                 modifier = Modifier.weight(1f).fillMaxWidth(),
@@ -251,7 +251,8 @@ private fun PlaceRow(hit: PlaceHit, car: LatLng?, confirm: String, onClick: () -
                 Text(hit.address, color = RM.textDim, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
-        if (car != null) {
+        // '지금 차가 있는 곳'은 거리를 붙이지 않는다 (늘 0m)
+        if (car != null && hit.name != RestMateController.HERE_NAME) {
             Text(
                 PlaceSearch.distanceLabel(Geo.distanceMeters(car, hit.position)),
                 color = RM.textDim,
@@ -403,12 +404,14 @@ private fun PickTimeSheet(ui: UiState, actions: RestMateActions) {
     val d = ui.drive
     val direct = d.directMs
     val initial = d.targetAt ?: DriveEngine.targetChoices(now, direct ?: 20 * MINUTE_MS).first()
-    val start = remember { TimeParts.of(now, initial) }
+    // '오늘'은 창을 연 날 (열어 둔 채 자정을 넘겨도 고른 날짜가 밀리지 않게)
+    val baseDay = remember { ClockPick.dayStart(now) }
+    val start = remember { ClockPick.of(baseDay, initial) }
     var day by remember { mutableIntStateOf(start.day) }
     var pm by remember { mutableStateOf(start.pm) }
     var hour12 by remember { mutableIntStateOf(start.hour12) }
     var minute by remember { mutableIntStateOf(start.minute) }
-    val at = TimeParts(day, pm, hour12, minute).at(now)
+    val at = ClockPick(day, pm, hour12, minute).at(baseDay)
     val earliest = DriveEngine.roundUp(now + 5 * MINUTE_MS, 5 * MINUTE_MS)
     val tooEarly = at < earliest
     Column(Modifier.fillMaxSize().padding(4.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -463,29 +466,6 @@ private fun PickTimeSheet(ui: UiState, actions: RestMateActions) {
                 textSize = 24.sp,
                 enabled = !tooEarly,
             )
-        }
-    }
-}
-
-/** 시각을 날짜(오늘 0·내일 1)·오전오후·시(1~12)·분으로 나눈 것 */
-private data class TimeParts(val day: Int, val pm: Boolean, val hour12: Int, val minute: Int) {
-    /** [now]의 날짜 기준 시각 */
-    fun at(now: Long): Long {
-        val hour24 = (hour12 % 12) + if (pm) 12 else 0
-        return DriveText.todayAt(now, hour24 * 60 + minute) + day * DAY_MS
-    }
-
-    companion object {
-        private const val DAY_MS = 24 * HOUR_MS
-
-        fun of(now: Long, at: Long): TimeParts {
-            val c = Calendar.getInstance().apply { timeInMillis = at }
-            val hour = c.get(Calendar.HOUR_OF_DAY)
-            val minute = c.get(Calendar.MINUTE)
-            val sameDay = DriveText.todayAt(now, hour * 60 + minute)
-            val day = ((at - sameDay + DAY_MS / 2) / DAY_MS).toInt().coerceIn(0, 1)
-            val h12 = (hour % 12).let { if (it == 0) 12 else it }
-            return TimeParts(day, hour >= 12, h12, minute)
         }
     }
 }

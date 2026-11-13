@@ -1,6 +1,9 @@
 package kr.contest.pleosapp.app
 
+import kr.contest.pleosapp.core.DriveMode
+import kr.contest.pleosapp.core.DriveStep
 import kr.contest.pleosapp.core.LatLng
+import kr.contest.pleosapp.core.Phase
 import kr.contest.pleosapp.core.Place
 import kr.contest.pleosapp.core.PlaceHit
 
@@ -54,8 +57,10 @@ sealed interface InputSheet {
         val query: String = "",
         val results: List<PlaceHit> = emptyList(),
         val searching: Boolean = false,
-        /** 결과 아래 한 줄 (찾은 곳이 없음, 인터넷이 안 됨, 주소를 찾는 중 등) */
+        /** 결과 아래 한 줄 (찾은 곳이 없음, 인터넷이 안 됨 등) */
         val note: String? = null,
+        /** 지도에서 고른 곳의 주소를 찾는 중 (목록 검색과 따로: 목록 검색 중에도 지도로 고를 수 있게) */
+        val locating: Boolean = false,
         /** 지도에서 고르는 중 */
         val onMap: Boolean = false,
         /** 지도에서 고르기를 처음 보여 줄 가운데 (차 위치) */
@@ -68,4 +73,26 @@ sealed interface InputSheet {
 
     /** 도착 목표 시각 고르기 (온타임 설정) */
     data object PickTime : InputSheet
+
+    /**
+     * 이 창이 지금 상황에 맞는지. 맞지 않으면 닫는다: 쉼터 안내·휴식이 시작되거나(창이 그 화면과 '레스트 모드' 버튼을 덮지 않게),
+     * 자동 시연이 돌거나, 창을 연 화면 단계를 벗어나면 (처음 화면의 목적지 검색을 달리는 중에 고르면 코스 경로를 덮어쓰게 된다).
+     * 시연 출발지 고르기는 시연을 처음부터 다시 시작하는 것이라 시연 중이면 언제든 맞다.
+     */
+    fun fitsNow(phase: Phase, step: DriveStep, mode: DriveMode?, demoMode: Boolean, autoRunning: Boolean): Boolean {
+        if (autoRunning) return false
+        if (this is FindPlace && purpose == PlacePurpose.DEMO_START) return demoMode
+        if (phase != Phase.DRIVING) return false
+        return when (this) {
+            is FindPlace -> when (purpose) {
+                PlacePurpose.NAVI_DESTINATION -> step == DriveStep.HOME
+                PlacePurpose.END_PLACE -> step == DriveStep.SETUP
+                PlacePurpose.DEMO_START -> demoMode
+            }
+            PickTime -> step == DriveStep.SETUP && mode == DriveMode.ON_TIME
+        }
+    }
 }
+
+/** 직접 해 보기에서 목적지 없이 '출발 · 주행'을 누르면 (모의 차가 한쪽으로 끝없이 달리지 않게) */
+const val FREE_TRIP_NEEDS_DESTINATION = "직접 해 보기: 먼저 처음 화면의 '목적지 검색'으로 갈 곳을 정해 주세요."

@@ -31,7 +31,7 @@ class PlaceSearchTest {
 
     @Test
     fun readsNominatimResults() {
-        val hits = PlaceSearch.parseNominatim(nominatim)
+        val hits = PlaceSearch.parseNominatim(nominatim)!!
         assertEquals(4, hits.size)
         val gate = hits[0]
         assertEquals("광화문", gate.name)
@@ -57,8 +57,11 @@ class PlaceSearchTest {
         assertEquals("세종대로 110", hit.name)
         assertEquals("서울특별시 중구", hit.address)
         assertNull(PlaceSearch.parseNominatimReverse("""{"error":"Unable to geocode"}"""))
-        assertTrue(PlaceSearch.parseNominatim("<html>Bandwidth limit exceeded</html>").isEmpty())
-        assertTrue(PlaceSearch.parseNominatim("[]").isEmpty())
+        // 오류 화면·잘린 응답은 '찾은 곳 없음'([])과 구별한다 (기억해 두지 않고 '검색 서비스가 답하지 않음'으로)
+        assertNull(PlaceSearch.parseNominatim("<html>Bandwidth limit exceeded</html>"))
+        assertNull(PlaceSearch.parseNominatim("""{"error":"Too many requests"}"""))
+        assertNull(PlaceSearch.parseNominatim("""[{"lat":"37.5","""))
+        assertTrue(PlaceSearch.parseNominatim("[]")!!.isEmpty())
     }
 
     @Test
@@ -74,7 +77,7 @@ class PlaceSearchTest {
                "road_address_name":"","x":"126.976545","y":"37.571591"}
             ],"meta":{"is_end":true,"pageable_count":2,"total_count":2}}
         """.trimIndent()
-        val hits = PlaceSearch.parseKakaoKeyword(json)
+        val hits = PlaceSearch.parseKakaoKeyword(json)!!
         assertEquals(listOf("광화문", "광화문역 5호선"), hits.map { it.name })
         assertEquals("서울 종로구 사직로 161", hits[0].address)
         assertEquals("궁", hits[0].category)
@@ -95,6 +98,9 @@ class PlaceSearchTest {
         assertEquals(at, reverse.position)
         assertEquals(PlaceSource.MAP, reverse.source)
         assertNull(PlaceSearch.parseKakaoReverse("""{"documents":[],"meta":{"total_count":0}}""", at))
+        // 키가 틀렸을 때의 오류 응답은 결과 없음과 다르다
+        assertNull(PlaceSearch.parseKakaoKeyword("""{"errorType":"AccessDeniedError","message":"cannot find app"}"""))
+        assertTrue(PlaceSearch.parseKakaoKeyword("""{"documents":[],"meta":{"total_count":0}}""")!!.isEmpty())
     }
 
     @Test
@@ -117,11 +123,45 @@ class PlaceSearchTest {
     @Test
     fun mergeKeepsAppPlacesFirstAndDropsDuplicates() {
         val local = listOf(PlaceHit("광화문 약속 장소", "", gwanghwamun, PlaceSource.APP))
-        val online = PlaceSearch.parseNominatim(nominatim)
+        val online = PlaceSearch.parseNominatim(nominatim)!!
         val merged = PlaceSearch.merge(local, online)
-        // 앱에 있는 곳과 같은 자리(25m 안)의 '광화문'은 빼고, 같은 이름의 역 출입구도 하나로
+        // 앱에 있는 곳과 같은 자리(25m 안)이고 이름이 겹치는 '광화문'은 빼고, 같은 이름의 역 출입구도 하나로
         assertEquals(listOf("광화문 약속 장소", "광화문역", "\"따옴표\" 거리 \\ 이름"), merged.map { it.name })
         assertEquals(2, PlaceSearch.merge(local, online, limit = 2).size)
+    }
+
+    @Test
+    fun mergeKeepsDifferentPlacesThatShareANameOrASpot() {
+        val gangnam = LatLng(37.4979, 127.0276)
+        // 지점 이름이 안 붙는 체인점: 250m 떨어진 두 '스타벅스'는 다른 곳
+        val a = PlaceHit("스타벅스", "서울특별시 강남구 강남대로 390", gangnam, PlaceSource.OSM, "음식점")
+        val b = PlaceHit("스타벅스", "서울특별시 서초구 서초대로77길 54", Geo.destinationPoint(gangnam, 200.0, 250.0), PlaceSource.OSM, "음식점")
+        assertEquals(2, PlaceSearch.merge(emptyList(), listOf(a, b)).size)
+        // 건물 윤곽과 점처럼 같은 이름이 바로 옆(80m 안)이면 하나
+        val a2 = a.copy(position = Geo.destinationPoint(gangnam, 90.0, 40.0))
+        assertEquals(1, PlaceSearch.merge(emptyList(), listOf(a, a2)).size)
+        // 역·공항은 출입구가 넓게 흩어져 있어 300m 안의 같은 이름은 하나
+        val station = PlaceHit("서울역", "", LatLng(37.5547, 126.9707), PlaceSource.OSM, "역")
+        val exit = station.copy(position = Geo.destinationPoint(station.position, 0.0, 250.0), category = "철도")
+        assertEquals(1, PlaceSearch.merge(emptyList(), listOf(station, exit)).size)
+        // 이름이 전혀 다르면 붙어 있어도 다른 곳 (앱의 대략 좌표가 실제 다른 곳을 가리지 않게)
+        val app = PlaceHit("낙산공원", "", LatLng(37.5806, 127.0076), PlaceSource.APP, "경치 지점")
+        val cafe = PlaceHit("이화동 카페", "", Geo.destinationPoint(app.position, 45.0, 15.0), PlaceSource.OSM, "음식점")
+        assertEquals(2, PlaceSearch.merge(listOf(app), listOf(cafe)).size)
+    }
+
+    @Test
+    fun hitFromTheNaviKeepsItsPlace() {
+        // 내비 즐겨찾기를 검색 창에서 고르면 POI 번호·종류를 그대로 넘긴다 (실제 내비 경로 요청, 즐겨찾기의 기본 기다리기)
+        val academy = Place("아이 학원", LatLng(37.4946, 127.0576), PlaceKind.BOOKMARK, poiId = "123", poiSubId = "0", address = "대치동")
+        val hit = PlaceHit.of(academy)
+        assertEquals(academy, hit.toPlace())
+        assertEquals(academy.copy(kind = PlaceKind.CURRENT), hit.toPlace(PlaceKind.CURRENT))
+        assertEquals("즐겨찾기", hit.category)
+        // 검색 서비스에서 찾은 곳은 '검색한 곳'
+        val found = PlaceHit("롯데월드타워", "서울특별시 송파구 올림픽로 300", LatLng(37.5126, 127.1025), PlaceSource.OSM)
+        assertEquals(Place("롯데월드타워", found.position, PlaceKind.SEARCH, address = found.address), found.toPlace())
+        assertEquals(PlaceKind.CURRENT, found.toPlace(PlaceKind.CURRENT).kind)
     }
 
     @Test
