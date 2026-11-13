@@ -22,6 +22,7 @@ class ScreenSnapshots {
     fun setUp() {
         TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"))
         MapTiles.mode = MapTiles.Mode.BLOCKING
+        RoadRoutes.mode = MapTiles.Mode.BLOCKING
     }
 
     @Test
@@ -84,6 +85,7 @@ class SmallScreenSnapshots {
     fun setUp() {
         TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"))
         MapTiles.mode = MapTiles.Mode.BLOCKING
+        RoadRoutes.mode = MapTiles.Mode.BLOCKING
     }
 
     @Test

@@ -41,6 +41,16 @@ class DemoNavi(val trip: DemoTrip) {
     var via: List<Place> = emptyList()
         private set
 
+    /**
+     * 지금 곧게 달리는 구간의 시작점: 경로를 받은 곳, 또는 방금 지난 경유지.
+     * 화면에서는 이 구간을 진행한 비율만큼 도로 모양을 따라간 자리에 차를 그린다.
+     */
+    var legStart: LatLng = trip.start
+        private set
+
+    /** 지금 향하는 곳 (다음 경유지, 없으면 목적지) */
+    val target: Place? get() = nextTarget()
+
     /** D단으로 달리는 중인지 (앱이 정한다) */
     var moving = false
 
@@ -60,12 +70,14 @@ class DemoNavi(val trip: DemoTrip) {
     fun routeTo(dest: Place, via: List<Place>) {
         destination = dest
         this.via = via.take(2)
+        legStart = position
         nextTarget()?.let { headingDeg = Geo.bearingDegrees(position, it.position) }
     }
 
     fun cancel() {
         destination = null
         via = emptyList()
+        legStart = position
     }
 
     /** 목적지까지 남은 시간 (경유지 포함). 목적지가 없으면 null */
@@ -110,6 +122,7 @@ class DemoNavi(val trip: DemoTrip) {
             }
             meters -= d
             position = target.position
+            legStart = position
             if (via.isNotEmpty()) {
                 via = via.drop(1)
                 events += DemoNaviEvent.WaypointArrived(target)

@@ -86,6 +86,18 @@ class MapFrame private constructor(
         }
     }
 
+    /** 이 틀을 [widthPx]×[heightPx] 화면에 북쪽이 위로 그리는 카메라 */
+    fun camera(widthPx: Float, heightPx: Float): MapCamera = MapCamera(
+        centerX = x0 + worldWidth / 2.0,
+        centerY = y0 + worldHeight / 2.0,
+        pxPerWorld = widthPx / worldWidth,
+        rotation = 0.0,
+        anchorX = widthPx / 2f,
+        anchorY = heightPx / 2f,
+        width = widthPx,
+        height = heightPx,
+    )
+
     private fun tileRange(start: Double, span: Double, n: Int): IntRange {
         val first = floor(start * n).toInt().coerceIn(0, n - 1)
         val last = floor((start + span) * n).toInt().coerceIn(0, n - 1)

@@ -6,6 +6,7 @@ import kr.contest.pleosapp.app.AutoChapter
 import kr.contest.pleosapp.app.AutoCue
 import kr.contest.pleosapp.app.AutoStatus
 import kr.contest.pleosapp.app.ConnectionStatus
+import kr.contest.pleosapp.app.DriveLeg
 import kr.contest.pleosapp.app.LogEntry
 import kr.contest.pleosapp.app.LogKind
 import kr.contest.pleosapp.app.RestMateActions
@@ -189,6 +190,7 @@ internal object PreviewSamples {
         driveStartedAt = CITY_START,
         trail = trail(nonhyeon, car, 1.0),
         route = RouteView(appointment, listOf(naksan)),
+        leg = DriveLeg(nonhyeon, naksan.position, 0.45f),
         lastMessage = "낙산공원을 거쳐 가요. 7시 10분에 맞춰 도착하도록 안내할게요.",
         log = listOf(
             LogEntry(CITY_START + 30 * SECOND_MS, "낙산공원을 거쳐 가요. 7시 10분에 맞춰 도착하도록 안내할게요.", LogKind.VOICE),
@@ -215,6 +217,7 @@ internal object PreviewSamples {
             ),
             demoJammed = true,
             trail = trail(nonhyeon, jammedCar, 1.0),
+            leg = DriveLeg(nonhyeon, naksan.position, 0.62f),
             lastMessage = null,
             log = listOf(LogEntry(now - 40 * SECOND_MS, "모의 정체: 앞길이 막혀 도착이 약 6분 늦어져요.", LogKind.DEMO)) + a.log,
             console = ConsoleStatus(ConsoleLinkState.ON, Gear.DRIVE, 8, browserActive = true),
@@ -242,6 +245,8 @@ internal object PreviewSamples {
             demoDriving = false,
             trail = path,
             route = null,
+            leg = null,
+            legs = listOf(DriveLeg(nonhyeon, naksan.position, 1f), DriveLeg(naksan.position, appointment.position, 1f)),
             lastMessage = null,
             log = listOf(
                 LogEntry(now, "딱 맞춰 도착했어요. 3분 여유가 있어요.", LogKind.VOICE),
@@ -292,6 +297,7 @@ internal object PreviewSamples {
             driveStartedAt = CITY_START,
             trail = trail(nonhyeon, at, 1.0),
             route = RouteView(home, listOf(eungbong)),
+            leg = DriveLeg(nonhyeon, eungbong.position, 0.6f),
             cabinNote = "분위기: 데이트 · 무드등 35% · 22°C",
             log = listOf(
                 LogEntry(CITY_START + MINUTE_MS, "분위기: 데이트 · 무드등 35% · 22°C", LogKind.VEHICLE),
@@ -350,6 +356,9 @@ internal object PreviewSamples {
             driveStartedAt = HIGHWAY_START,
             trail = trail(highway.start, car, 1.0),
             route = RouteView(highway.destination, listOf(Place(munmakArea.name, munmakArea.position, PlaceKind.WAYPOINT))),
+            // 강릉 숙소 쪽으로 달리다(36%) 레스트 모드를 눌러 휴게소로 꺾은 참
+            legs = listOf(DriveLeg(highway.start, highway.destination.position, 0.36f)),
+            leg = DriveLeg(car, munmakArea.position, 0f),
             lastMessage = "졸릴 땐 쉬어 가요. 가장 빨리 닿는 문막휴게소로 안내할게요.",
             log = listOf(
                 LogEntry(now, "졸릴 땐 쉬어 가요. 가장 빨리 닿는 문막휴게소로 안내할게요.", LogKind.VOICE),
