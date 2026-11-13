@@ -273,7 +273,7 @@ private fun DemoControls(ui: UiState, actions: RestMateActions) {
     val scale = trip?.timeScale?.roundToInt() ?: 1
     StatusLine(
         "가상 시계",
-        if (ui.demoClockHeld) "×$scale · 출발 전이라 멈춤" else "×$scale · 1초에 ${scale}초씩",
+        if (ui.demoClockHeld) "×$scale · D단으로 서 있어 멈춤" else "×$scale · 1초에 ${scale}초씩",
         if (ui.demoClockHeld) RM.textDim else RM.amber,
     )
     val speed = ui.core.speedKmh?.roundToInt() ?: 0

@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kr.contest.pleosapp.app.AutoCue
 import kr.contest.pleosapp.app.RestMateActions
+import kr.contest.pleosapp.app.RestMateController
 import kr.contest.pleosapp.app.UiState
 import kr.contest.pleosapp.core.CourseFlavor
 import kr.contest.pleosapp.core.CourseKind
@@ -685,7 +686,13 @@ private fun DriveActive(ui: UiState, actions: RestMateActions) {
                         minHeight = 58.dp,
                         textSize = 19.sp,
                     )
-                    Caption("${d.mood.label} 분위기로 무드등·공조를 맞췄어요. 도착하거나 끝내면 원래대로 돌려요.", modifier = Modifier.weight(1f))
+                    // 실내 분위기는 차량이 연결돼 실제로 바꿀 때만 '맞췄어요'라고 쓴다
+                    val cabin = if (ui.connection.vehicle == RestMateController.CONNECTED) {
+                        "${d.mood.label} 분위기로 무드등·공조를 맞췄어요. 도착하거나 끝내면 원래대로 돌려요."
+                    } else {
+                        "차량이 연결되면 ${d.mood.label} 분위기로 무드등·공조를 맞춰요."
+                    }
+                    Caption(cabin, modifier = Modifier.weight(1f))
                 } else {
                     ActionButton("+5분", { actions.addDriveTime(5) }, Modifier.width(120.dp), minHeight = 58.dp, textSize = 19.sp)
                     ActionButton("+10분", { actions.addDriveTime(10) }, Modifier.width(120.dp), minHeight = 58.dp, textSize = 19.sp)

@@ -418,19 +418,23 @@ internal object PreviewSamples {
         )
     }
 
-    // ---------------------------------------------------------------- 학원 픽업 알림 (온타임 모드)
+    // ---------------------------------------------------------------- 학원 픽업 알림 (온타임 모드, 시연 '학원 픽업')
 
-    private val academy = places[2]
+    /** 2026-11-13 오후 4:32 (한국 시간): 학원 픽업 시연은 4시 30분에 시작한다 */
+    const val PICKUP_START = CITY_START - 2 * HOUR_MS
 
-    /** 픽업 목표 오후 6:50 (바로 가면 6:43쯤 닿는다) */
-    private val pickupTarget = CITY_START + 18 * MINUTE_MS
-    private const val ACADEMY_DIRECT_MS = 11 * MINUTE_MS
+    /** 내비에 걸린 학원 (시연 '학원 픽업'의 목적지) */
+    private val academy = DemoTrips.PICKUP.destination
+
+    /** 픽업 목표 오후 4:50 (바로 가면 4:41쯤 닿는다) */
+    private val pickupTarget = PICKUP_START + 18 * MINUTE_MS
+    private const val ACADEMY_DIRECT_MS = 9 * MINUTE_MS
 
     /** 학원 근처에 들를 만한 경치 지점이 없어 계산으로 잡은 돌아가는 지점 */
     private val detourPoint = Place("돌아가는 지점", LatLng(37.5085, 127.0505), PlaceKind.WAYPOINT)
     private val detour = CourseOption(
-        "detour", CourseKind.DETOUR, "주변으로 돌아서 가기", "근처에 들를 만한 지점이 없어 약 6분 돌아가요",
-        listOf(detourPoint), 6 * MINUTE_MS,
+        "detour", CourseKind.DETOUR, "주변으로 돌아서 가기", "근처에 들를 만한 지점이 없어 약 5분 돌아가요",
+        listOf(detourPoint), 5 * MINUTE_MS,
     )
 
     /** '자리 없음'으로 한 바퀴 돌 지점: 학원으로 오던 방향에서 오른쪽 앞 (엔진과 같은 계산) */
@@ -444,20 +448,33 @@ internal object PreviewSamples {
     private fun notice(at: Long, kind: PickupNoticeKind, text: String, position: LatLng?) =
         PickupNotice(at, kind, "아이", text, position)
 
-    /** 설정: 끝낼 곳 '아이 학원', 6:50, 돌면서 맞추기. 자동 시연이 픽업 알림 켜기를 짚는 중 */
-    fun pickupSetup(): UiState = home().copy(
+    /** 설정: 끝낼 곳은 내비에 걸린 '아이 학원', 4:50, 돌면서 맞추기. 자동 시연이 픽업 알림 켜기를 짚는 중 */
+    fun pickupSetup(): UiState = base(PICKUP_START).copy(
+        demoTrip = DemoTrips.PICKUP,
+        core = RestMateState(
+            now = PICKUP_START,
+            continuousDrivingMs = 12 * MINUTE_MS,
+            gear = Gear.DRIVE,
+            speedKmh = 0.0,
+            position = nonhyeon,
+            headingDeg = Geo.bearingDegrees(nonhyeon, academy.position),
+            onExpressway = false,
+        ),
         drive = DriveState(
-            now = CITY_START,
+            now = PICKUP_START,
             step = DriveStep.SETUP,
             mode = DriveMode.ON_TIME,
-            naviDestination = appointment,
-            naviRemainingMs = DIRECT_MS,
+            naviDestination = academy,
+            naviRemainingMs = ACADEMY_DIRECT_MS,
             places = places,
             destination = academy,
             targetAt = pickupTarget,
             directMs = ACADEMY_DIRECT_MS,
             onTimeStyle = OnTimeStyle.LOOP,
         ),
+        route = RouteView(academy, emptyList()),
+        demoClockHeld = true,
+        console = ConsoleStatus(ConsoleLinkState.ON, Gear.DRIVE, 0, browserActive = true),
         pickupContact = "아이",
         auto = AutoStatus(
             chapter = AutoChapter.PICKUP,
@@ -470,16 +487,17 @@ internal object PreviewSamples {
         ),
     )
 
-    /** 달리는 중: 돌아가는 지점을 지나 학원까지 3분 남아 '도착 3분 전' 문자를 보냄 */
+    /** 달리는 중: 돌아가는 지점을 지나 학원까지 3분 남아 '곧 도착' 문자를 띄움 */
     fun pickupActive(): UiState {
-        val now = CITY_START + 13 * MINUTE_MS
+        val now = PICKUP_START + 13 * MINUTE_MS
         val car = lerp(detourPoint.position, academy.position, 0.55)
         val eta = now + 3 * MINUTE_MS
         val approach = notice(now, PickupNoticeKind.APPROACH, PickupText.approach(academy.name, DriveText.clock(eta), car), car)
         val a = active()
         return a.copy(
             now = now,
-            core = a.core.copy(now = now, position = car, headingDeg = Geo.bearingDegrees(car, academy.position)),
+            demoTrip = DemoTrips.PICKUP,
+            core = a.core.copy(now = now, continuousDrivingMs = 25 * MINUTE_MS, position = car, headingDeg = Geo.bearingDegrees(car, academy.position)),
             drive = DriveState(
                 now = now,
                 step = DriveStep.ACTIVE,
@@ -498,31 +516,32 @@ internal object PreviewSamples {
                 pickupNotices = listOf(approach),
             ),
             pickupContact = "아이",
+            driveStartedAt = PICKUP_START,
             trail = trail(nonhyeon, detourPoint.position, 1.0, 20) + trail(detourPoint.position, car, 1.0, 10),
             route = RouteView(academy, emptyList()),
             leg = DriveLeg(detourPoint.position, academy.position, 0.55f),
             legs = listOf(DriveLeg(nonhyeon, detourPoint.position, 1f)),
-            lastMessage = "아이에게 곧 도착한다고 알렸어요.",
+            lastMessage = "아이에게 보낼 도착 문자를 띄웠어요.",
             lastMessageAt = 0L,
             log = listOf(
-                LogEntry(now, "아이에게 곧 도착한다고 알렸어요.", LogKind.VOICE),
-                LogEntry(now, "문자(시연) → 아이 · 도착 3분 전", LogKind.MESSAGE),
-                LogEntry(CITY_START + 7 * MINUTE_MS, "모의: 경유지 돌아가는 지점에 도착했어요.", LogKind.NAVI),
+                LogEntry(now, "아이에게 보낼 도착 문자를 띄웠어요.", LogKind.VOICE),
+                LogEntry(now, "문자(시연) → 아이 · 곧 도착", LogKind.MESSAGE),
+                LogEntry(PICKUP_START + 7 * MINUTE_MS, "모의: 경유지 돌아가는 지점에 도착했어요.", LogKind.NAVI),
             ),
             auto = AutoStatus(
                 chapter = AutoChapter.PICKUP,
                 scene = 18,
                 total = 37,
                 title = "도착 3분 전 · 아이에게 문자",
-                text = "아이에게 \"${approach.body}\" 문자를 보냈어요. 지금 차 위치도 지도 링크로 함께 보내요.",
+                text = "아이에게 보낼 문자를 띄웠어요. \"${approach.body}\" 지금 차 위치는 지도 링크로 넣어요.",
             ),
         )
     }
 
-    /** 학원 앞에 세울 곳이 없어 '자리 없음' → 한 바퀴 도는 중 (6:52쯤 다시 도착) */
+    /** 학원 앞에 세울 곳이 없어 '자리 없음' → 한 바퀴 도는 중 (4:52쯤 다시 도착) */
     fun pickupCircling(): UiState {
         val p = pickupActive()
-        val pressed = CITY_START + 16 * MINUTE_MS + 30 * SECOND_MS
+        val pressed = PICKUP_START + 16 * MINUTE_MS + 30 * SECOND_MS
         val now = pressed + MINUTE_MS
         val loop = circlePlace()
         val back = pressed + 3 * MINUTE_MS
@@ -552,17 +571,17 @@ internal object PreviewSamples {
             lastMessage = null,
             log = listOf(
                 LogEntry(pressed, "문자(시연) → 아이 · 자리 없음", LogKind.MESSAGE),
-                LogEntry(pressed, "한 바퀴 돌고 6시 52분쯤 다시 올게요. 아이에게도 알렸어요.", LogKind.VOICE),
+                LogEntry(pressed, "한 바퀴 돌고 4시 52분쯤 다시 올게요. 아이에게 보낼 문자도 띄웠어요.", LogKind.VOICE),
                 LogEntry(pressed, "내비에 한 바퀴 도는 길 경유 경로를 요청했어요.", LogKind.NAVI),
             ) + p.log,
             auto = null,
         )
     }
 
-    /** 한 바퀴 돌고 다시 와서 학원 바로 앞에 P단: 세운 곳을 다시 보냄 */
+    /** 한 바퀴 돌고 다시 와서 학원 바로 앞에 P단: 세운 곳 문자를 다시 띄움 */
     fun pickupArrived(): UiState {
         val c = pickupCircling()
-        val arrived = CITY_START + 19 * MINUTE_MS + 40 * SECOND_MS
+        val arrived = PICKUP_START + 19 * MINUTE_MS + 40 * SECOND_MS
         val now = arrived + 20 * SECOND_MS
         val parked = notice(now, PickupNoticeKind.PARKED, PickupText.parked(academy.name, 0.0, academy.position), academy.position)
         val loop = circlePlace()
@@ -588,7 +607,7 @@ internal object PreviewSamples {
             leg = null,
             legs = c.legs + DriveLeg(academy.position, loop.position, 1f) + DriveLeg(loop.position, academy.position, 1f),
             log = listOf(
-                LogEntry(now, "아이에게 차 세운 곳을 보냈어요.", LogKind.VOICE),
+                LogEntry(now, "아이에게 보낼 세운 곳 문자를 띄웠어요.", LogKind.VOICE),
                 LogEntry(now, "문자(시연) → 아이 · 세운 곳", LogKind.MESSAGE),
                 LogEntry(arrived, "다시 도착했어요.", LogKind.VOICE),
             ) + c.log,

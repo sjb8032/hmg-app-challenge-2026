@@ -10,7 +10,6 @@ import kr.contest.pleosapp.core.DriveStep
 import kr.contest.pleosapp.core.DriveText
 import kr.contest.pleosapp.core.MINUTE_MS
 import kr.contest.pleosapp.core.Mood
-import kr.contest.pleosapp.core.OnTimeStyle
 import kr.contest.pleosapp.core.Phase
 import kr.contest.pleosapp.core.PickupNoticeKind
 import kr.contest.pleosapp.core.Place
@@ -60,7 +59,6 @@ interface AutoDemoHost {
     fun planCourses()
     fun chooseCourse(option: CourseOption)
     fun addDriveTime(minutes: Int)
-    fun setOnTimeStyle(style: OnTimeStyle)
     fun setPickup(on: Boolean)
     fun circleForSpot()
     fun demoPark()
@@ -460,9 +458,9 @@ object AutoDemoScript {
         AutoScene(
             chapter = AutoChapter.PICKUP,
             title = "학원으로 아이를 데리러",
-            act = { it.selectDemoTrip("city") },
+            act = { it.selectDemoTrip("pickup") },
             text = { v ->
-                "다시 저녁 ${spoken(v.now)}, 논현역이에요. 이번엔 대치동 학원으로 아이를 데리러 가요. " +
+                "오후 ${spoken(v.now)}, 논현역이에요. 매일 4시 50분에 대치동 학원에서 아이를 태워요. " +
                     "하원 시간의 학원 앞은 차가 몰려 세울 곳을 찾기 어려워요."
             },
             readMs = 7_000L,
@@ -474,16 +472,14 @@ object AutoDemoScript {
             cueLabel = "'온타임 모드' 누르기",
             lead = "픽업 시각에 맞춰 가요.",
             act = { h ->
+                // 끝낼 곳은 내비에 걸린 학원, 남는 시간은 돌면서 맞추기(기본)
                 h.openMode(DriveMode.ON_TIME)
-                academy(h.view())?.let(h::setDriveDestination)
-                // 기획서 시나리오처럼 남는 시간은 돌면서 맞춘다 (즐겨찾기의 기본은 근처에서 기다리기)
-                h.setOnTimeStyle(OnTimeStyle.LOOP)
                 pickupTarget(h.view())?.let(h::setTarget)
             },
             text = { v ->
                 val d = v.drive
                 buildString {
-                    append("끝낼 곳은 즐겨찾기 ${d.destination?.name ?: "아이 학원"}")
+                    append("끝낼 곳은 내비에 걸린 ${d.destination?.name ?: "아이 학원"}")
                     d.targetAt?.let { append(", 픽업은 ${spoken(it)}") }
                     append(". ")
                     val direct = d.directMs
@@ -505,8 +501,8 @@ object AutoDemoScript {
             act = { it.setPickup(true) },
             text = { v ->
                 val to = v.drive.pickupTo ?: "아이"
-                "도착 3분 전에는 도착 시각과 만날 곳을, P단으로 세우면 세운 곳을, 세울 곳이 없으면 다시 오는 시각을 ${to}에게 문자로 보내요. " +
-                    "시연에서는 실제로 보내지 않고 보낼 문자를 화면에 보여 줘요."
+                "도착 3분 전에는 도착 시각과 만날 곳을, P단으로 세우면 세운 곳을, 세울 곳이 없으면 다시 오는 시각을 ${to}에게 문자로 알려요. " +
+                    "시연에서는 실제로 보내지 않고 보낼 문자를 화면에 띄워요."
             },
             readMs = 8_500L,
         ),
@@ -563,9 +559,9 @@ object AutoDemoScript {
             text = { v ->
                 val n = v.drive.pickupNotices.lastOrNull { it.kind == PickupNoticeKind.APPROACH }
                 if (n == null) {
-                    "도착 3분 전에 아이에게 문자를 보내요."
+                    "도착 3분 전에 아이에게 보낼 문자를 띄워요."
                 } else {
-                    "${n.to}에게 \"${n.body}\" 문자를 보냈어요. 지금 차 위치도 지도 링크로 함께 보내요."
+                    "${n.to}에게 보낼 문자를 띄웠어요. \"${n.body}\" 지금 차 위치는 지도 링크로 넣어요."
                 }
             },
             readMs = 8_500L,
@@ -593,7 +589,7 @@ object AutoDemoScript {
                 buildString {
                     append("주변을 한 바퀴 돌아 다시 오는 길로 바꿨어요")
                     d.arrivalEstimate?.let { append(" (${spoken(it)}쯤 다시 도착)") }
-                    append(". ${d.pickupTo ?: "아이"}에게도 다시 오는 시각을 보냈어요. 도는 동안은 늦어도 길을 줄이지 않아요.")
+                    append(". ${d.pickupTo ?: "아이"}에게 다시 오는 시각을 알리는 문자도 띄웠어요. 도는 동안은 늦어도 길을 줄이지 않아요.")
                 }
             },
             readMs = 8_500L,
@@ -619,8 +615,8 @@ object AutoDemoScript {
                 val n = v.drive.pickupNotices.lastOrNull { it.kind == PickupNoticeKind.PARKED }
                 buildString {
                     append("이번엔 빈 곳에 P단으로 세웠어요. ")
-                    if (n != null) append("세운 곳을 ${n.to}에게 지도 링크로 보냈어요. ")
-                    append("아이는 헤매지 않고 차로 와요.")
+                    if (n != null) append("실제로 세운 곳을 지도 링크로 담아 ${n.to}에게 보낼 문자를 띄웠어요. ")
+                    append("아이가 헤매지 않고 차로 올 수 있어요.")
                 }
             },
             readMs = 8_000L,
@@ -859,11 +855,7 @@ object AutoDemoScript {
         return DriveEngine.targetChoices(v.now, direct).getOrNull(1)
     }
 
-    /** 픽업 시연의 끝낼 곳: 내비 즐겨찾기의 '아이 학원' */
-    private fun academy(v: AutoView): Place? =
-        v.drive.places.firstOrNull { it.kind == PlaceKind.BOOKMARK }
-
-    /** 픽업 시연의 목표: 시각 칩 첫 번째 (바로 가면 10분쯤 일찍 닿는 시각) */
+    /** 픽업 시연의 목표: 시각 칩 첫 번째 (학원 픽업은 오후 4시 30분 출발이라 4:50, 바로 가면 10분쯤 일찍 닿는다) */
     private fun pickupTarget(v: AutoView): Long? {
         val direct = v.drive.directMs ?: return null
         return DriveEngine.targetChoices(v.now, direct).firstOrNull()

@@ -259,7 +259,7 @@ class DemoRig(highwayAreas: List<RestArea> = loadHighwayAreas()) : AutoDemoHost 
     override fun planCourses() = act { drive.plan(it) }
     override fun chooseCourse(option: CourseOption) = act { drive.choose(it, option) }
     override fun addDriveTime(minutes: Int) = act { drive.addTime(it, minutes) }
-    override fun setOnTimeStyle(style: OnTimeStyle) = act { drive.setOnTimeStyle(style) }
+    fun setOnTimeStyle(style: OnTimeStyle) = act { drive.setOnTimeStyle(style) }
     override fun setPickup(on: Boolean) = act { drive.setPickup(if (on) demo?.trip?.pickupContact else null) }
 
     override fun circleForSpot() {

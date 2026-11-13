@@ -102,10 +102,33 @@ class AutoDemoScriptTest {
         assertTrue(rig.sent.last().text, "아이 학원 바로 앞에 차를 세웠어요" in rig.sent.last().text)
         assertEquals(Gear.PARK, rig.view().core.gear)
         assertTrue(rig.said.any { it.startsWith("한 바퀴 돌고") })
-        assertTrue(rig.said.any { it == "아이에게 곧 도착한다고 알렸어요." })
+        assertTrue(rig.said.any { it == "아이에게 보낼 도착 문자를 띄웠어요." })
         // 학원 앞에 세운 것은 도착이라 '주차하셨네요'를 묻지 않는다
         assertNull(rig.view().core.prompt)
         assertTrue(runner.transcript.any { it.startsWith("도착 3분 전") && "아이 학원 앞에 도착해요" in it })
+        // 기획서 시나리오 2처럼 오후 4시 50분 픽업 (바로 가면 10분 남짓 일찍)
+        assertEquals("pickup", rig.view().tripId)
+        assertTrue(runner.transcript.joinToString("\n"), runner.transcript.any { "픽업은 4시 50분" in it && "분 일찍 닿아" in it })
+    }
+
+    @Test
+    fun parkingRightAfterTheArrivalScreenDoesNotAskToRest() {
+        // 발표 중 도착 화면이 뜨자마자(모의 차가 아직 학원 점까지 굴러가는 중) 'P단 주차'를 눌러도 '주차하셨네요'를 묻지 않는다
+        val rig = DemoRig()
+        rig.selectDemoTrip("pickup")
+        rig.openMode(DriveMode.ON_TIME)
+        rig.setPickup(true)
+        rig.planCourses()
+        rig.chooseCourse(rig.view().drive.options.first())
+        rig.demoDrive()
+        var guard = 0
+        while (rig.drive.state.step != DriveStep.ARRIVED && guard++ < 20_000) rig.advance(200)
+        assertTrue("아직 굴러가는 중", rig.view().driving)
+        rig.advance(600)
+        rig.demoPark()
+        assertEquals(PickupNoticeKind.PARKED, rig.sent.last().kind)
+        rig.advance(3_000)
+        assertNull(rig.engine.state.prompt)
     }
 
     @Test

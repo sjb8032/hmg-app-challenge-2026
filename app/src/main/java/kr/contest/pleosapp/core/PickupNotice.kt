@@ -5,8 +5,8 @@ import kotlin.math.roundToInt
 
 /** 픽업 알림 문자의 종류 */
 enum class PickupNoticeKind(val label: String) {
-    /** 도착 3분 전: 도착 예정 시각·만날 곳·지금 차 위치 */
-    APPROACH("도착 3분 전"),
+    /** 곧 도착 (마지막 구간에서 도착 3분 전, 그보다 짧으면 도착할 때): 도착 예정 시각·만날 곳·지금 차 위치 */
+    APPROACH("곧 도착"),
 
     /** P단으로 세운 곳 */
     PARKED("세운 곳"),

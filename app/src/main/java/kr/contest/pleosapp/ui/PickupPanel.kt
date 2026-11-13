@@ -90,7 +90,7 @@ internal fun PickupPanel(ui: UiState) {
         val earlier = notices.dropLast(1)
         if (earlier.isNotEmpty()) {
             Caption(
-                "앞서 보냄: " + earlier.joinToString(" · ") { "${DriveText.clockNow(it.at)} ${it.kind.label}" },
+                "앞서 띄운 문자: " + earlier.joinToString(" · ") { "${DriveText.clockNow(it.at)} ${it.kind.label}" },
                 RM.textFaint,
             )
         }
@@ -98,16 +98,16 @@ internal fun PickupPanel(ui: UiState) {
     }
 }
 
-/** 다음에 무엇을 보내는지 (지금 단계에 맞춰 한 줄) */
+/** 다음에 어떤 문자를 띄우는지 (지금 단계에 맞춰 한 줄) */
 private fun pickupHint(d: DriveState): String {
     val kinds = d.pickupNotices.map { it.kind }
     return when {
-        d.circling -> "한 바퀴 돌고 와서 P단으로 세우면 세운 곳을 보내요."
+        d.circling -> "한 바퀴 돌고 와서 P단으로 세우면 세운 곳을 문자로 띄워요."
         d.step == DriveStep.ARRIVED && kinds.lastOrNull() == PickupNoticeKind.PARKED ->
-            "다른 곳으로 옮겨 세우면 새 자리를 다시 보내요."
-        d.step == DriveStep.ARRIVED -> "P단으로 세우면 세운 곳을 보내요. 세울 곳이 없으면 '자리 없음'."
-        PickupNoticeKind.APPROACH !in kinds -> "도착 3분 전에 도착 시각·만날 곳·지금 차 위치를 보내요."
-        else -> "도착해서 P단으로 세우면 세운 곳을 보내요."
+            "다른 곳으로 옮겨 세우면 새 자리를 다시 띄워요."
+        d.step == DriveStep.ARRIVED -> "P단으로 세우면 세운 곳을 문자로 띄워요. 세울 곳이 없으면 '자리 없음'."
+        PickupNoticeKind.APPROACH !in kinds -> "도착 3분 전에 도착 시각·만날 곳·지금 차 위치를 문자로 띄워요."
+        else -> "도착해서 P단으로 세우면 세운 곳을 문자로 띄워요."
     }
 }
 
