@@ -3,7 +3,9 @@ package kr.contest.pleosapp.app
 import kr.contest.pleosapp.core.DriveMode
 import kr.contest.pleosapp.core.DriveStep
 import kr.contest.pleosapp.core.FitStatus
+import kr.contest.pleosapp.core.Gear
 import kr.contest.pleosapp.core.Phase
+import kr.contest.pleosapp.core.PickupNoticeKind
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -54,6 +56,7 @@ class AutoDemoScriptTest {
         val left = LinkedHashMap<String, AutoView>()
         val (rig, runner) = play(null) { status, view -> left[status.title + "#" + status.scene] = view }
         println(runner.transcript.joinToString("\n"))
+        println("자동 시연 길이: ${rig.real / 1000}초")
         assertEquals("시간이 다 되어 넘어간 장면: ${runner.timedOut}", emptyList<String>(), runner.timedOut)
         assertNull(runner.status)
         // 다 돌고 나면 고속도로에서 다시 출발해 강릉 숙소로 가는 중
@@ -79,6 +82,53 @@ class AutoDemoScriptTest {
         assertTrue(rig.said.any { it.startsWith("늦지 않게") })
         // 해설에 7시 10분 목표가 나온다
         assertTrue(runner.transcript.any { "7시 10분" in it })
+    }
+
+    @Test
+    fun pickupStorySendsArrivalNotices() {
+        val (rig, runner) = play(AutoChapter.PICKUP)
+        assertEquals(emptyList<String>(), runner.timedOut)
+        val d = rig.view().drive
+        assertEquals(DriveStep.ARRIVED, d.step)
+        assertEquals(DriveMode.ON_TIME, d.mode)
+        assertEquals("아이 학원", d.destination?.name)
+        assertEquals("아이", d.pickupTo)
+        // 도착 3분 전 → 자리 없음 → 다시 와서 P단 (시연: 실제로 보내지 않고 남기기만)
+        assertEquals(
+            listOf(PickupNoticeKind.APPROACH, PickupNoticeKind.CIRCLING, PickupNoticeKind.PARKED),
+            rig.sent.map { it.kind },
+        )
+        assertEquals(rig.sent.toList(), d.pickupNotices)
+        assertTrue(rig.sent.last().text, "아이 학원 바로 앞에 차를 세웠어요" in rig.sent.last().text)
+        assertEquals(Gear.PARK, rig.view().core.gear)
+        assertTrue(rig.said.any { it.startsWith("한 바퀴 돌고") })
+        assertTrue(rig.said.any { it == "아이에게 보낼 도착 문자를 띄웠어요." })
+        // 학원 앞에 세운 것은 도착이라 '주차하셨네요'를 묻지 않는다
+        assertNull(rig.view().core.prompt)
+        assertTrue(runner.transcript.any { it.startsWith("도착 3분 전") && "아이 학원 앞에 도착해요" in it })
+        // 기획서 시나리오 2처럼 오후 4시 50분 픽업 (바로 가면 10분 남짓 일찍)
+        assertEquals("pickup", rig.view().tripId)
+        assertTrue(runner.transcript.joinToString("\n"), runner.transcript.any { "픽업은 4시 50분" in it && "분 일찍 닿아" in it })
+    }
+
+    @Test
+    fun parkingRightAfterTheArrivalScreenDoesNotAskToRest() {
+        // 발표 중 도착 화면이 뜨자마자(모의 차가 아직 학원 점까지 굴러가는 중) 'P단 주차'를 눌러도 '주차하셨네요'를 묻지 않는다
+        val rig = DemoRig()
+        rig.selectDemoTrip("pickup")
+        rig.openMode(DriveMode.ON_TIME)
+        rig.setPickup(true)
+        rig.planCourses()
+        rig.chooseCourse(rig.view().drive.options.first())
+        rig.demoDrive()
+        var guard = 0
+        while (rig.drive.state.step != DriveStep.ARRIVED && guard++ < 20_000) rig.advance(200)
+        assertTrue("아직 굴러가는 중", rig.view().driving)
+        rig.advance(600)
+        rig.demoPark()
+        assertEquals(PickupNoticeKind.PARKED, rig.sent.last().kind)
+        rig.advance(3_000)
+        assertNull(rig.engine.state.prompt)
     }
 
     @Test

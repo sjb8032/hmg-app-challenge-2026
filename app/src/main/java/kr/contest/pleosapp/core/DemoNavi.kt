@@ -18,6 +18,8 @@ data class DemoTrip(
     val timeScale: Double,
     /** 가상 시계 시작 시각 (그날 자정부터 ms). null이면 지금 시각 */
     val startTimeOfDayMs: Long? = null,
+    /** 픽업 알림을 받을 표본 연락처 (실제로는 연결한 휴대폰의 연락처에서 고른다) */
+    val pickupContact: String = "아이",
 )
 
 sealed interface DemoNaviEvent {
@@ -175,6 +177,23 @@ object DemoTrips {
         startTimeOfDayMs = 18 * HOUR_MS + 30 * MINUTE_MS,
     )
 
+    /**
+     * 학원 픽업: 논현역에서 대치동 학원으로 (기획서 시나리오 2, 매일 오후 4시 50분 픽업). 내비에는 학원이 걸려 있고,
+     * 가상 시계를 오후 4시 30분에 시작해 바로 가면 10분쯤 일찍 닿는다.
+     */
+    val PICKUP = DemoTrip(
+        id = "pickup",
+        title = "학원 픽업 · 논현역 → 대치동",
+        start = CITY.start,
+        destination = ACADEMY.copy(kind = PlaceKind.CURRENT),
+        places = PLACES,
+        speedKmh = CITY.speedKmh,
+        detourFactor = CITY.detourFactor,
+        expressway = false,
+        timeScale = CITY.timeScale,
+        startTimeOfDayMs = 16 * HOUR_MS + 30 * MINUTE_MS,
+    )
+
     /** 고속도로: 영동고속도로로 강릉 숙소까지 (체크인 15시 이야기, 가상 시계 오전 11시 40분 시작) */
     val HIGHWAY = DemoTrip(
         id = "highway",
@@ -189,5 +208,5 @@ object DemoTrips {
         startTimeOfDayMs = 11 * HOUR_MS + 40 * MINUTE_MS,
     )
 
-    val ALL = listOf(CITY, HIGHWAY)
+    val ALL = listOf(CITY, PICKUP, HIGHWAY)
 }

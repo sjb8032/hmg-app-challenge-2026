@@ -11,6 +11,7 @@ import kr.contest.pleosapp.core.DriveText
 import kr.contest.pleosapp.core.MINUTE_MS
 import kr.contest.pleosapp.core.Mood
 import kr.contest.pleosapp.core.Phase
+import kr.contest.pleosapp.core.PickupNoticeKind
 import kr.contest.pleosapp.core.Place
 import kr.contest.pleosapp.core.PlaceKind
 import kr.contest.pleosapp.core.Prompt
@@ -58,15 +59,19 @@ interface AutoDemoHost {
     fun planCourses()
     fun chooseCourse(option: CourseOption)
     fun addDriveTime(minutes: Int)
+    fun setPickup(on: Boolean)
+    fun circleForSpot()
+    fun demoPark()
     fun pressDrowsy()
     fun answerCheckIn(answer: CheckInAnswer)
     fun stopAlarm()
     fun departNow()
 }
 
-/** 자동 시연의 이야기 하나 (모드 하나) */
+/** 자동 시연의 이야기 하나 (기획서의 네 사용 시나리오와 같은 차례) */
 enum class AutoChapter(val label: String, val title: String) {
     ON_TIME("온타임", "온타임 모드 · 저녁 약속에 맞춰"),
+    PICKUP("픽업", "온타임 모드 · 학원 픽업 알림"),
     LONGER("롱웨이", "롱웨이 모드 · 퇴근길 조금 더"),
     REST("레스트", "레스트 모드 · 졸릴 때 쉬어 가기"),
 }
@@ -87,6 +92,12 @@ enum class AutoCue {
 
     /** 달리는 중 '+15분 더' */
     ADD_TIME,
+
+    /** 설정 화면의 픽업 알림 켜기 */
+    PICKUP,
+
+    /** 도착 화면의 '자리 없음' */
+    NO_SPOT,
 
     /** 화면 아래 큰 버튼 (레스트 모드·알람 끄기·출발할게요) */
     BOTTOM,
@@ -263,8 +274,9 @@ object AutoDemoScript {
     private const val HIGHWAY_DRIVEN_MS = 50 * MINUTE_MS
 
     fun scenes(chapter: AutoChapter?): List<AutoScene> = when (chapter) {
-        null -> listOf(intro) + onTime + longer + rest + listOf(outro)
+        null -> listOf(intro) + onTime + pickup + longer + rest + listOf(outro)
         AutoChapter.ON_TIME -> onTime + listOf(outro)
+        AutoChapter.PICKUP -> pickup + listOf(outro)
         AutoChapter.LONGER -> longer + listOf(outro)
         AutoChapter.REST -> rest + listOf(outro)
     }
@@ -273,8 +285,8 @@ object AutoDemoScript {
         chapter = null,
         title = "드라이브메이트 자동 시연",
         text = {
-            "약속 시각에 맞춰 가는 온타임, 조금 더 달리는 롱웨이, 졸릴 때 쉬어 가는 레스트. " +
-                "세 모드를 차례로 보여 드려요. 위치·속도·시각은 시연용 모의 값이에요."
+            "약속 시각에 맞춰 가는 온타임(학원 픽업 알림까지), 조금 더 달리는 롱웨이, 졸릴 때 쉬어 가는 레스트를 " +
+                "차례로 보여 드려요. 위치·속도·시각은 시연용 모의 값이에요."
         },
         readMs = 7_500L,
     )
@@ -437,6 +449,177 @@ object AutoDemoScript {
                 }
             },
             readMs = 7_500L,
+        ),
+    )
+
+    // ---------------------------------------------------------------- 온타임 모드: 학원 픽업 알림
+
+    private val pickup = listOf(
+        AutoScene(
+            chapter = AutoChapter.PICKUP,
+            title = "학원으로 아이를 데리러",
+            act = { it.selectDemoTrip("pickup") },
+            text = { v ->
+                "오후 ${spoken(v.now)}, 논현역이에요. 매일 4시 50분에 대치동 학원에서 아이를 태워요. " +
+                    "하원 시간의 학원 앞은 차가 몰려 세울 곳을 찾기 어려워요."
+            },
+            readMs = 7_000L,
+        ),
+        AutoScene(
+            chapter = AutoChapter.PICKUP,
+            title = "온타임 모드로 픽업 시각 맞추기",
+            cue = AutoCue.MODE_ON_TIME,
+            cueLabel = "'온타임 모드' 누르기",
+            lead = "픽업 시각에 맞춰 가요.",
+            act = { h ->
+                // 끝낼 곳은 내비에 걸린 학원, 남는 시간은 돌면서 맞추기(기본)
+                h.openMode(DriveMode.ON_TIME)
+                pickupTarget(h.view())?.let(h::setTarget)
+            },
+            text = { v ->
+                val d = v.drive
+                buildString {
+                    append("끝낼 곳은 내비에 걸린 ${d.destination?.name ?: "아이 학원"}")
+                    d.targetAt?.let { append(", 픽업은 ${spoken(it)}") }
+                    append(". ")
+                    val direct = d.directMs
+                    val target = d.targetAt
+                    if (direct != null && target != null) {
+                        val early = target - v.now - direct
+                        if (early > MINUTE_MS) append("바로 가면 ${DriveText.duration(early)} 일찍 닿아 학원 앞에서 기다려야 해요.")
+                    }
+                }
+            },
+            readMs = 7_500L,
+        ),
+        AutoScene(
+            chapter = AutoChapter.PICKUP,
+            title = "픽업 알림 켜기",
+            cue = AutoCue.PICKUP,
+            cueLabel = "픽업 알림 켜기",
+            lead = "도착 소식을 아이에게 문자로 알려요.",
+            act = { it.setPickup(true) },
+            text = { v ->
+                val to = v.drive.pickupTo ?: "아이"
+                "도착 3분 전에는 도착 시각과 만날 곳을, P단으로 세우면 세운 곳을, 세울 곳이 없으면 다시 오는 시각을 ${to}에게 문자로 알려요. " +
+                    "시연에서는 실제로 보내지 않고 보낼 문자를 화면에 띄워요."
+            },
+            readMs = 8_500L,
+        ),
+        AutoScene(
+            chapter = AutoChapter.PICKUP,
+            title = "남는 시간을 채울 코스 찾기",
+            cue = AutoCue.PLAN,
+            cueLabel = "'코스 찾기' 누르기",
+            lead = "남는 시간만큼 돌아가는 길을 찾아요.",
+            act = { it.planCourses() },
+            text = { v ->
+                val first = v.drive.options.firstOrNull()
+                buildString {
+                    append("코스 후보 ${v.drive.options.size}개를 찾았어요. ")
+                    if (first != null) append("1번은 ${first.title}. ")
+                    append("픽업 시각보다 3분쯤 일찍 닿게 맞춰요.")
+                }
+            },
+            readMs = 6_500L,
+            until = { _, v -> v.drive.step == DriveStep.CHOOSE },
+        ),
+        AutoScene(
+            chapter = AutoChapter.PICKUP,
+            title = "코스 고르기",
+            cue = AutoCue.FIRST_COURSE,
+            cueLabel = "1번 코스 고르기",
+            lead = "1번 코스로 갈게요.",
+            act = { h -> h.view().drive.options.firstOrNull()?.let(h::chooseCourse) },
+            text = { v ->
+                buildString {
+                    append("내비 경로에 경유지가 들어갔어요. ")
+                    v.drive.arrivalEstimate?.let { append("도착 예상 ${spoken(it)}. ") }
+                    append("달리는 화면의 미니맵 아래에 픽업 알림 카드가 생겨요.")
+                }
+            },
+            readMs = 6_500L,
+            until = { _, v -> v.drive.step == DriveStep.ACTIVE },
+        ),
+        AutoScene(
+            chapter = AutoChapter.PICKUP,
+            title = "학원 가까이까지",
+            tag = "시연 조작 · 출발 · 시간 건너뛰기",
+            act = { it.demoDrive() },
+            text = { "출발했어요. 학원 가까이까지 빨리 감아 볼게요." },
+            readMs = 3_500L,
+            until = { _, v -> v.drive.pickupNotices.any { it.kind == PickupNoticeKind.APPROACH } },
+            timeoutMs = 30_000L,
+            everyMs = 800L,
+            repeat = { it.demoSkip(1) },
+        ),
+        AutoScene(
+            chapter = AutoChapter.PICKUP,
+            title = "도착 3분 전 · 아이에게 문자",
+            text = { v ->
+                val n = v.drive.pickupNotices.lastOrNull { it.kind == PickupNoticeKind.APPROACH }
+                if (n == null) {
+                    "도착 3분 전에 아이에게 보낼 문자를 띄워요."
+                } else {
+                    "${n.to}에게 보낼 문자를 띄웠어요. \"${n.body}\" 지금 차 위치는 지도 링크로 넣어요."
+                }
+            },
+            readMs = 8_500L,
+        ),
+        AutoScene(
+            chapter = AutoChapter.PICKUP,
+            title = "학원 앞 도착",
+            tag = "시연 조작 · 시간 건너뛰기",
+            text = { "학원 앞까지 가 볼게요." },
+            readMs = 3_000L,
+            until = { _, v -> v.drive.step == DriveStep.ARRIVED && !v.driving },
+            timeoutMs = 25_000L,
+            everyMs = 800L,
+            repeat = { it.demoSkip(1) },
+        ),
+        AutoScene(
+            chapter = AutoChapter.PICKUP,
+            title = "세울 곳이 없을 때",
+            cue = AutoCue.NO_SPOT,
+            cueLabel = "'자리 없음' 누르기",
+            lead = "학원 앞이 하원 차로 꽉 찼어요.",
+            act = { it.circleForSpot() },
+            text = { v ->
+                val d = v.drive
+                buildString {
+                    append("주변을 한 바퀴 돌아 다시 오는 길로 바꿨어요")
+                    d.arrivalEstimate?.let { append(" (${spoken(it)}쯤 다시 도착)") }
+                    append(". ${d.pickupTo ?: "아이"}에게 다시 오는 시각을 알리는 문자도 띄웠어요. 도는 동안은 늦어도 길을 줄이지 않아요.")
+                }
+            },
+            readMs = 8_500L,
+            until = { _, v -> v.drive.circling },
+        ),
+        AutoScene(
+            chapter = AutoChapter.PICKUP,
+            title = "한 바퀴 돌고 다시 학원으로",
+            tag = "시연 조작 · 시간 건너뛰기",
+            text = { "한 바퀴 도는 길은 빨리 감아 볼게요." },
+            readMs = 3_000L,
+            until = { _, v -> v.drive.step == DriveStep.ARRIVED && !v.driving },
+            timeoutMs = 30_000L,
+            everyMs = 800L,
+            repeat = { it.demoSkip(1) },
+        ),
+        AutoScene(
+            chapter = AutoChapter.PICKUP,
+            title = "빈 곳에 세우면 세운 곳을 다시",
+            tag = "시연 조작 · P단 주차",
+            act = { it.demoPark() },
+            text = { v ->
+                val n = v.drive.pickupNotices.lastOrNull { it.kind == PickupNoticeKind.PARKED }
+                buildString {
+                    append("이번엔 빈 곳에 P단으로 세웠어요. ")
+                    if (n != null) append("실제로 세운 곳을 지도 링크로 담아 ${n.to}에게 보낼 문자를 띄웠어요. ")
+                    append("아이가 헤매지 않고 차로 올 수 있어요.")
+                }
+            },
+            readMs = 8_000L,
         ),
     )
 
@@ -670,6 +853,12 @@ object AutoDemoScript {
     private fun onTimeTarget(v: AutoView): Long? {
         val direct = v.drive.directMs ?: v.drive.naviRemainingMs ?: return null
         return DriveEngine.targetChoices(v.now, direct).getOrNull(1)
+    }
+
+    /** 픽업 시연의 목표: 시각 칩 첫 번째 (학원 픽업은 오후 4시 30분 출발이라 4:50, 바로 가면 10분쯤 일찍 닿는다) */
+    private fun pickupTarget(v: AutoView): Long? {
+        val direct = v.drive.directMs ?: return null
+        return DriveEngine.targetChoices(v.now, direct).firstOrNull()
     }
 
     /** 경유지를 바꾸거나 뺐는지 */

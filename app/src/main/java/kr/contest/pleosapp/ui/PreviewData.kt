@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import kr.contest.pleosapp.app.AutoChapter
 import kr.contest.pleosapp.app.AutoCue
+import kr.contest.pleosapp.app.AutoDemoScript
 import kr.contest.pleosapp.app.AutoStatus
 import kr.contest.pleosapp.app.ConnectionStatus
 import kr.contest.pleosapp.app.DriveLeg
@@ -19,9 +20,12 @@ import kr.contest.pleosapp.core.CourseKind
 import kr.contest.pleosapp.core.CourseOption
 import kr.contest.pleosapp.core.CourseTag
 import kr.contest.pleosapp.core.DemoTrips
+import kr.contest.pleosapp.core.DriveConfig
+import kr.contest.pleosapp.core.DriveEngine
 import kr.contest.pleosapp.core.DriveMode
 import kr.contest.pleosapp.core.DriveState
 import kr.contest.pleosapp.core.DriveStep
+import kr.contest.pleosapp.core.DriveText
 import kr.contest.pleosapp.core.FitStatus
 import kr.contest.pleosapp.core.Gear
 import kr.contest.pleosapp.core.Geo
@@ -31,6 +35,9 @@ import kr.contest.pleosapp.core.MINUTE_MS
 import kr.contest.pleosapp.core.Mood
 import kr.contest.pleosapp.core.OnTimeStyle
 import kr.contest.pleosapp.core.Phase
+import kr.contest.pleosapp.core.PickupNotice
+import kr.contest.pleosapp.core.PickupNoticeKind
+import kr.contest.pleosapp.core.PickupText
 import kr.contest.pleosapp.core.Place
 import kr.contest.pleosapp.core.PlaceKind
 import kr.contest.pleosapp.core.RestArea
@@ -42,6 +49,7 @@ import kr.contest.pleosapp.core.RestMateState
 import kr.contest.pleosapp.core.RestSession
 import kr.contest.pleosapp.core.SECOND_MS
 import kr.contest.pleosapp.core.SavedTrip
+import kr.contest.pleosapp.core.TimeFitPlanner
 import kr.contest.pleosapp.sdk.ConsoleLinkState
 import kr.contest.pleosapp.sdk.ConsoleStatus
 import kr.contest.pleosapp.sdk.VehicleExtras
@@ -53,6 +61,12 @@ import kr.contest.pleosapp.sdk.VehicleExtras
  * 시각은 한국 시간 기준이다.
  */
 internal object PreviewSamples {
+    /** 전체 자동 시연 대본 (캡처의 '몇 번째 장면 / 전체'가 대본과 맞게) */
+    private val autoScenes by lazy { AutoDemoScript.scenes(null) }
+    private val autoSceneCount: Int get() = autoScenes.size
+
+    private fun autoSceneNo(title: String): Int = autoScenes.indexOfFirst { it.title == title } + 1
+
     /** 2026-11-13 오후 6:32 (한국 시간) */
     const val CITY_START = 1_794_562_320_000L
 
@@ -411,14 +425,211 @@ internal object PreviewSamples {
         )
     }
 
+    // ---------------------------------------------------------------- 학원 픽업 알림 (온타임 모드, 시연 '학원 픽업')
+
+    /** 2026-11-13 오후 4:32 (한국 시간): 학원 픽업 시연은 4시 30분에 시작한다 */
+    const val PICKUP_START = CITY_START - 2 * HOUR_MS
+
+    /** 내비에 걸린 학원 (시연 '학원 픽업'의 목적지) */
+    private val academy = DemoTrips.PICKUP.destination
+
+    /** 픽업 목표 오후 4:50 (바로 가면 4:41쯤 닿는다) */
+    private val pickupTarget = PICKUP_START + 18 * MINUTE_MS
+    private const val ACADEMY_DIRECT_MS = 9 * MINUTE_MS
+
+    /** 학원 근처에 들를 만한 경치 지점이 없어 계산으로 잡은 돌아가는 지점 */
+    private val detourPoint = Place("돌아가는 지점", LatLng(37.5085, 127.0505), PlaceKind.WAYPOINT)
+    private val detour = CourseOption(
+        "detour", CourseKind.DETOUR, "주변으로 돌아서 가기", "근처에 들를 만한 지점이 없어 약 5분 돌아가요",
+        listOf(detourPoint), 5 * MINUTE_MS,
+    )
+
+    /** '자리 없음'으로 한 바퀴 돌 지점: 학원으로 오던 방향에서 오른쪽 앞 (엔진과 같은 계산) */
+    private fun circlePlace(): Place {
+        val heading = Geo.bearingDegrees(detourPoint.position, academy.position)
+        val speed = DriveConfig().fallbackSpeedKmh / 3.6
+        val at = TimeFitPlanner.circlePoint(academy.position, heading, 3 * MINUTE_MS, speed, DriveConfig())
+        return Place(DriveEngine.CIRCLE_VIA_NAME, at, PlaceKind.WAYPOINT)
+    }
+
+    private fun notice(at: Long, kind: PickupNoticeKind, text: String, position: LatLng?) =
+        PickupNotice(at, kind, "아이", text, position)
+
+    /** 설정: 끝낼 곳은 내비에 걸린 '아이 학원', 4:50, 돌면서 맞추기. 자동 시연이 픽업 알림 켜기를 짚는 중 */
+    fun pickupSetup(): UiState = base(PICKUP_START).copy(
+        demoTrip = DemoTrips.PICKUP,
+        core = RestMateState(
+            now = PICKUP_START,
+            continuousDrivingMs = 12 * MINUTE_MS,
+            gear = Gear.DRIVE,
+            speedKmh = 0.0,
+            position = nonhyeon,
+            headingDeg = Geo.bearingDegrees(nonhyeon, academy.position),
+            onExpressway = false,
+        ),
+        drive = DriveState(
+            now = PICKUP_START,
+            step = DriveStep.SETUP,
+            mode = DriveMode.ON_TIME,
+            naviDestination = academy,
+            naviRemainingMs = ACADEMY_DIRECT_MS,
+            places = places,
+            destination = academy,
+            targetAt = pickupTarget,
+            directMs = ACADEMY_DIRECT_MS,
+            onTimeStyle = OnTimeStyle.LOOP,
+        ),
+        route = RouteView(academy, emptyList()),
+        demoClockHeld = true,
+        console = ConsoleStatus(ConsoleLinkState.ON, Gear.DRIVE, 0, browserActive = true),
+        pickupContact = "아이",
+        auto = AutoStatus(
+            chapter = AutoChapter.PICKUP,
+            scene = autoSceneNo("픽업 알림 켜기"),
+            total = autoSceneCount,
+            title = "픽업 알림 켜기",
+            text = "도착 소식을 아이에게 문자로 알려요.",
+            cue = AutoCue.PICKUP,
+            cueLabel = "픽업 알림 켜기",
+        ),
+    )
+
+    /** 달리는 중: 돌아가는 지점을 지나 학원까지 3분 남아 '곧 도착' 문자를 띄움 */
+    fun pickupActive(): UiState {
+        val now = PICKUP_START + 13 * MINUTE_MS
+        val car = lerp(detourPoint.position, academy.position, 0.55)
+        val eta = now + 3 * MINUTE_MS
+        val approach = notice(now, PickupNoticeKind.APPROACH, PickupText.approach(academy.name, DriveText.clock(eta), car), car)
+        val a = active()
+        return a.copy(
+            now = now,
+            demoTrip = DemoTrips.PICKUP,
+            core = a.core.copy(now = now, continuousDrivingMs = 25 * MINUTE_MS, position = car, headingDeg = Geo.bearingDegrees(car, academy.position)),
+            drive = DriveState(
+                now = now,
+                step = DriveStep.ACTIVE,
+                mode = DriveMode.ON_TIME,
+                position = car,
+                places = places,
+                destination = academy,
+                targetAt = pickupTarget,
+                directMs = ACADEMY_DIRECT_MS,
+                chosen = detour,
+                viaCleared = true,
+                arrivalEstimate = eta,
+                diffMs = eta - pickupTarget,
+                status = FitStatus.ON_TIME,
+                pickupTo = "아이",
+                pickupNotices = listOf(approach),
+            ),
+            pickupContact = "아이",
+            driveStartedAt = PICKUP_START,
+            trail = trail(nonhyeon, detourPoint.position, 1.0, 20) + trail(detourPoint.position, car, 1.0, 10),
+            route = RouteView(academy, emptyList()),
+            leg = DriveLeg(detourPoint.position, academy.position, 0.55f),
+            legs = listOf(DriveLeg(nonhyeon, detourPoint.position, 1f)),
+            lastMessage = "아이에게 보낼 도착 문자를 띄웠어요.",
+            lastMessageAt = 0L,
+            log = listOf(
+                LogEntry(now, "아이에게 보낼 도착 문자를 띄웠어요.", LogKind.VOICE),
+                LogEntry(now, "문자(시연) → 아이 · 곧 도착", LogKind.MESSAGE),
+                LogEntry(PICKUP_START + 7 * MINUTE_MS, "모의: 경유지 돌아가는 지점에 도착했어요.", LogKind.NAVI),
+            ),
+            auto = AutoStatus(
+                chapter = AutoChapter.PICKUP,
+                scene = autoSceneNo("도착 3분 전 · 아이에게 문자"),
+                total = autoSceneCount,
+                title = "도착 3분 전 · 아이에게 문자",
+                text = "아이에게 보낼 문자를 띄웠어요. \"${approach.body}\" 지금 차 위치는 지도 링크로 넣어요.",
+            ),
+        )
+    }
+
+    /** 학원 앞에 세울 곳이 없어 '자리 없음' → 한 바퀴 도는 중 (4:52쯤 다시 도착) */
+    fun pickupCircling(): UiState {
+        val p = pickupActive()
+        val pressed = PICKUP_START + 16 * MINUTE_MS + 30 * SECOND_MS
+        val now = pressed + MINUTE_MS
+        val loop = circlePlace()
+        val back = pressed + 3 * MINUTE_MS
+        val car = lerp(academy.position, loop.position, 0.7)
+        val circle = CourseOption("circle", CourseKind.DETOUR, "한 바퀴 돌고 다시 오기", "세울 곳이 없어 주변을 약 3분 돌아요", listOf(loop), 3 * MINUTE_MS)
+        val circling = notice(pressed, PickupNoticeKind.CIRCLING, PickupText.circling(academy.name, DriveText.clock(back)), null)
+        return p.copy(
+            now = now,
+            core = p.core.copy(now = now, position = car, headingDeg = Geo.bearingDegrees(car, loop.position)),
+            drive = p.drive.copy(
+                now = now,
+                position = car,
+                chosen = circle,
+                viaCleared = false,
+                circling = true,
+                arrivalEstimate = back,
+                diffMs = back - pickupTarget,
+                status = FitStatus.LATE,
+                message = "세울 곳이 없어 한 바퀴 돌고 ${DriveText.clock(back)}쯤 다시 와요.",
+                messageAt = pressed,
+                pickupNotices = p.drive.pickupNotices + circling,
+            ),
+            trail = p.trail + trail(p.drive.position ?: academy.position, academy.position, 1.0, 6) + trail(academy.position, car, 1.0, 6),
+            route = RouteView(academy, listOf(loop)),
+            leg = DriveLeg(academy.position, loop.position, 0.7f),
+            legs = p.legs + DriveLeg(detourPoint.position, academy.position, 1f),
+            lastMessage = null,
+            log = listOf(
+                LogEntry(pressed, "문자(시연) → 아이 · 자리 없음", LogKind.MESSAGE),
+                LogEntry(pressed, "한 바퀴 돌고 4시 52분쯤 다시 올게요. 아이에게 보낼 문자도 띄웠어요.", LogKind.VOICE),
+                LogEntry(pressed, "내비에 한 바퀴 도는 길 경유 경로를 요청했어요.", LogKind.NAVI),
+            ) + p.log,
+            auto = null,
+        )
+    }
+
+    /** 한 바퀴 돌고 다시 와서 학원 바로 앞에 P단: 세운 곳 문자를 다시 띄움 */
+    fun pickupArrived(): UiState {
+        val c = pickupCircling()
+        val arrived = PICKUP_START + 19 * MINUTE_MS + 40 * SECOND_MS
+        val now = arrived + 20 * SECOND_MS
+        val parked = notice(now, PickupNoticeKind.PARKED, PickupText.parked(academy.name, 0.0, academy.position), academy.position)
+        val loop = circlePlace()
+        return c.copy(
+            now = now,
+            core = c.core.copy(now = now, gear = Gear.PARK, speedKmh = 0.0, position = academy.position),
+            drive = c.drive.copy(
+                now = now,
+                step = DriveStep.ARRIVED,
+                position = academy.position,
+                viaCleared = true,
+                circling = false,
+                arrivedAt = arrived,
+                diffMs = arrived - pickupTarget,
+                status = FitStatus.LATE,
+                message = "다시 도착했어요.",
+                messageAt = arrived,
+                pickupNotices = c.drive.pickupNotices + parked,
+            ),
+            demoDriving = false,
+            trail = c.trail + trail(c.drive.position ?: loop.position, loop.position, 1.0, 4) + trail(loop.position, academy.position, 1.0, 8),
+            route = null,
+            leg = null,
+            legs = c.legs + DriveLeg(academy.position, loop.position, 1f) + DriveLeg(loop.position, academy.position, 1f),
+            log = listOf(
+                LogEntry(now, "아이에게 보낼 세운 곳 문자를 띄웠어요.", LogKind.VOICE),
+                LogEntry(now, "문자(시연) → 아이 · 세운 곳", LogKind.MESSAGE),
+                LogEntry(arrived, "다시 도착했어요.", LogKind.VOICE),
+            ) + c.log,
+            console = ConsoleStatus(ConsoleLinkState.ON, Gear.PARK, 0, browserActive = true),
+        )
+    }
+
     // ---------------------------------------------------------------- 자동 시연
 
     /** 자동 시연: 온타임 모드 카드를 짚는 중 (곧 누름) */
     fun autoCue(): UiState = home().copy(
         auto = AutoStatus(
             chapter = AutoChapter.ON_TIME,
-            scene = 3,
-            total = 25,
+            scene = autoSceneNo("온타임 모드 켜기"),
+            total = autoSceneCount,
             title = "온타임 모드 켜기",
             text = "약속·픽업 시각에 딱 맞춰 도착하게 길을 짜 주는 모드예요.",
             cue = AutoCue.MODE_ON_TIME,
@@ -430,8 +641,8 @@ internal object PreviewSamples {
     fun autoWatching(): UiState = watchingLate().copy(
         auto = AutoStatus(
             chapter = AutoChapter.ON_TIME,
-            scene = 7,
-            total = 25,
+            scene = autoSceneNo("갑자기 길이 막혔어요"),
+            total = autoSceneCount,
             title = "갑자기 길이 막혔어요",
             text = "도착 예상이 목표보다 늦어졌어요. 잠깐 막힌 것일 수도 있어서 바로 길을 바꾸지 않고, " +
                 "1분 30초 지켜본 뒤에도 늦으면 지금 자리에서 늦지 않는 코스로 바꿔요.",
@@ -443,8 +654,8 @@ internal object PreviewSamples {
     fun autoGuidance(): UiState = guidance().copy(
         auto = AutoStatus(
             chapter = AutoChapter.REST,
-            scene = 19,
-            total = 25,
+            scene = autoSceneNo("졸릴 때는 레스트 모드 한 번"),
+            total = autoSceneCount,
             title = "졸릴 때는 레스트 모드 한 번",
             text = "진행 방향에서 가장 빨리 닿는 문막휴게소(11.4km, 약 7분)로 안내해요. " +
                 "가던 목적지는 그대로 두고 쉼터를 경유지로 넣어요.",
@@ -461,8 +672,8 @@ internal object PreviewSamples {
             core = r.core.copy(now = now, rest = rest.copy(alarmRinging = true, wakeStartedAt = now, wakeMs = 10 * MINUTE_MS)),
             auto = AutoStatus(
                 chapter = AutoChapter.REST,
-                scene = 23,
-                total = 25,
+                scene = autoSceneNo("깬 뒤 몸 깨우기"),
+                total = autoSceneCount,
                 title = "깬 뒤 몸 깨우기",
                 text = "알람을 꺼요.",
                 cue = AutoCue.BOTTOM,
@@ -508,6 +719,8 @@ internal object PreviewActions : RestMateActions {
     override fun saveTrip() = Unit
     override fun applySavedTrip(trip: SavedTrip) = Unit
     override fun removeSavedTrip(trip: SavedTrip) = Unit
+    override fun setPickup(on: Boolean) = Unit
+    override fun circleForSpot() = Unit
     override fun setDemoMode(on: Boolean) = Unit
     override fun selectDemoTrip(id: String) = Unit
     override fun demoDrive() = Unit
@@ -568,6 +781,14 @@ private fun AutoCuePreview() = PreviewScreen(PreviewSamples.autoCue())
 @Preview(name = "9 밤 화면 · 달리는 중", widthDp = 1696, heightDp = 1180)
 @Composable
 private fun NightActivePreview() = PreviewScreen(PreviewSamples.active(), dark = true)
+
+@Preview(name = "10 픽업 알림 · 도착 3분 전", widthDp = 1696, heightDp = 1180)
+@Composable
+private fun PickupActivePreview() = PreviewScreen(PreviewSamples.pickupActive())
+
+@Preview(name = "11 픽업 알림 · 다시 와서 세움", widthDp = 1696, heightDp = 1180)
+@Composable
+private fun PickupArrivedPreview() = PreviewScreen(PreviewSamples.pickupArrived())
 
 @Preview(name = "작은 화면", widthDp = 1280, heightDp = 720)
 @Composable

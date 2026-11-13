@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import kr.contest.pleosapp.app.UiState
 import kr.contest.pleosapp.core.DriveMode
 import kr.contest.pleosapp.core.DriveStep
+import kr.contest.pleosapp.core.Gear
 import kr.contest.pleosapp.core.Phase
 import kr.contest.pleosapp.core.RestKind
 
@@ -169,11 +170,16 @@ internal fun demoHint(ui: UiState): String? {
             DriveStep.CHOOSE -> "코스를 고르면 내비 경로에 경유지가 들어가요."
             DriveStep.ACTIVE -> when {
                 !driving -> "'출발 · 주행'을 누르면 가상 시계가 흐르고 차가 움직여요."
+                d.circling -> "한 바퀴 도는 중이에요. '10분 건너뛰기'로 다시 픽업할 곳까지 빨리 갈 수 있어요."
                 d.lateSince != null -> "늦음을 지켜보는 중이에요. 이어지면 더 짧은 길로 바꿔요."
                 d.viaActive && !ui.demoJammed -> "'막힘 +6분'으로 정체를 넣으면 도착 시각을 다시 맞춰요."
                 else -> "'10분 건너뛰기'로 도착까지 빨리 갈 수 있어요."
             }
-            DriveStep.ARRIVED -> "'처음으로'를 누르면 다른 모드를 이어서 보여 줄 수 있어요."
+            DriveStep.ARRIVED -> when {
+                d.pickupTo != null && s.gear != Gear.PARK ->
+                    "세울 곳이 있으면 'P단 주차'(세운 곳 문자), 없으면 '자리 없음'(한 바퀴 돌고 다시 와요)."
+                else -> "'처음으로'를 누르면 다른 모드를 이어서 보여 줄 수 있어요."
+            }
         }
     }
 }

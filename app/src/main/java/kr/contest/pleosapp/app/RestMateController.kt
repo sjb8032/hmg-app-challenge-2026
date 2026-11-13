@@ -34,6 +34,7 @@ import kr.contest.pleosapp.core.MINUTE_MS
 import kr.contest.pleosapp.core.Mood
 import kr.contest.pleosapp.core.OnTimeStyle
 import kr.contest.pleosapp.core.Phase
+import kr.contest.pleosapp.core.PickupNotice
 import kr.contest.pleosapp.core.Place
 import kr.contest.pleosapp.core.PlaceKind
 import kr.contest.pleosapp.core.RestArea
@@ -111,6 +112,8 @@ data class UiState(
     /** 시연: 모의 차가 지금 달리는 구간과 지나온 구간 (미니맵이 도로 모양을 따라 그린다). 실제 주행에서는 비어 있다 */
     val leg: DriveLeg? = null,
     val legs: List<DriveLeg> = emptyList(),
+    /** 픽업 알림을 켜면 받을 사람 (시연: 표본 연락처 '아이', 실제: 휴대폰 연동 전이라 '동승자') */
+    val pickupContact: String = RestMateController.DEFAULT_PICKUP_CONTACT,
 )
 
 /** 화면에서 부르는 동작. */
@@ -156,6 +159,10 @@ interface RestMateActions {
     fun saveTrip()
     fun applySavedTrip(trip: SavedTrip)
     fun removeSavedTrip(trip: SavedTrip)
+    /** 온타임 모드 픽업 알림 켜기·끄기 (도착 3분 전·세운 곳·자리 없음을 문자로. 시연: 화면에만) */
+    fun setPickup(on: Boolean)
+    /** '자리 없음': 픽업할 곳에 세울 곳이 없으면 한 바퀴 돌고 다시 오기 */
+    fun circleForSpot()
 
     // ---- 시연 ----
     fun setDemoMode(on: Boolean)
@@ -363,9 +370,13 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
                 driveStartedAt = driveStartedAt,
                 leg = legs.current,
                 legs = legs.done.toList(),
+                pickupContact = pickupContact(),
             )
         }
     }
+
+    /** 픽업 알림을 받을 사람: 시연은 표본 연락처, 실제 차량은 휴대폰 연락처를 받기 전이라 '동승자' */
+    private fun pickupContact(): String = demo?.trip?.pickupContact ?: DEFAULT_PICKUP_CONTACT
 
     /**
      * 시연: 출발 전 D단으로 서 있는 동안에는 가상 시계를 멈춘다.
@@ -377,10 +388,10 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
         d.clock.hold(standing)
     }
 
-    /** 시간 모드로 달리기 시작한 시각 (시간 막대의 왼쪽 끝) */
+    /** 시간 모드로 달리기 시작한 시각 (시간 막대의 왼쪽 끝). '자리 없음'으로 도착에서 다시 달려도 처음 출발 시각을 둔다 */
     private fun trackDriveStart(t: Long) {
         val step = drive.state.step
-        if (step == DriveStep.ACTIVE && lastDriveStep != DriveStep.ACTIVE) driveStartedAt = t
+        if (step == DriveStep.ACTIVE && lastDriveStep != DriveStep.ACTIVE && lastDriveStep != DriveStep.ARRIVED) driveStartedAt = t
         if (step == DriveStep.HOME || step == DriveStep.SETUP) driveStartedAt = null
         lastDriveStep = step
     }
@@ -471,7 +482,17 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
             is DriveEffect.Speak -> say(effect.text)
             // 드라이브를 마칠 때는 무드등을 천천히 되돌린다 (데이트 드라이브가 도착하자마자 확 밝아지지 않게).
             is DriveEffect.CabinMood -> vehicle.cabin.applyMood(effect.mood, gently = true)
+            is DriveEffect.SendPickup -> sendPickup(effect.notice)
         }
+    }
+
+    /**
+     * 픽업 알림 문자. Pleos SDK에 문자 기능이 없고 에뮬레이터는 휴대폰과 연결할 수 없어 지금은 실제로 보내지 않는다:
+     * 화면(픽업 알림 카드)과 안내 기록에만 남긴다. 실제 발송(휴대폰 연동 문자나 서버 문자 API)은 여기에 붙인다.
+     */
+    private fun sendPickup(notice: PickupNotice) {
+        addLog("문자(시연) → ${notice.to} · ${notice.kind.label}", LogKind.MESSAGE)
+        _ui.update { it.copy(log = log.toList()) }
     }
 
     private fun say(text: String) {
@@ -666,7 +687,7 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
             saveSaved(list)
             _ui.update { it.copy(saved = list) }
         }
-        act { drive.applySaved(it, trip) }
+        act { drive.applySaved(it, trip, pickupContact()) }
     }
 
     override fun removeSavedTrip(trip: SavedTrip) {
@@ -674,6 +695,21 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
         saveSaved(list)
         _ui.update { it.copy(saved = list) }
         note("자주 쓰는 설정에서 뺐어요: ${trip.place.name} · ${trip.detail}")
+    }
+
+    // ---- 픽업 알림 ----
+
+    override fun setPickup(on: Boolean) = act { drive.setPickup(if (on) pickupContact() else null) }
+
+    override fun circleForSpot() {
+        act { drive.circleForSpot(it) }
+        val d = demo ?: return
+        if (drive.state.circling && !d.navi.moving) {
+            // 시연: 모의 차도 다시 출발한다 (P단으로 세웠으면 D단으로). 경로는 위에서 이미 받았다.
+            if (engine.state.gear != Gear.DRIVE) engine.onGear(now(), Gear.DRIVE)
+            d.navi.moving = true
+            publish()
+        }
     }
 
     // ---- 시연 모드 ----
@@ -862,9 +898,15 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
                     if (isRestTarget(event.place)) parkDemoCar(t)
                 }
                 is DemoNaviEvent.DestinationArrived -> {
-                    note("모의: ${event.place.name}에 도착해 P단으로 주차했어요.")
                     tripArrived(t)
-                    parkDemoCar(t)
+                    if (pickupTrip()) {
+                        // 픽업: 바로 P단으로 세우지 않고 멈춰 선다. 세울 곳이 있으면 'P단 주차'(세운 곳을 보냄), 없으면 '자리 없음'.
+                        engine.onSpeed(t, 0.0)
+                        note("모의: ${event.place.name} 앞에 왔어요. 세울 곳이 있으면 P단 주차, 없으면 '자리 없음'.")
+                    } else {
+                        note("모의: ${event.place.name}에 도착해 P단으로 주차했어요.")
+                        parkDemoCar(t)
+                    }
                     drive.onDestinationArrived(t)
                 }
             }
@@ -877,11 +919,27 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
         return drive.restStopHere(place.position) != null
     }
 
+    /**
+     * 픽업 알림을 켠 온타임 모드로 가는 중인지 (시연: 목적지에서 바로 P단으로 세우지 않는다).
+     * 시간 모드는 목적지 150m 안에서 먼저 도착으로 보므로, 모의 차가 목적지 점에 닿을 때는 이미 '도착'일 수 있다.
+     */
+    private fun pickupTrip(): Boolean {
+        val s = drive.state
+        val going = s.step == DriveStep.ACTIVE || s.step == DriveStep.ARRIVED
+        return going && s.mode == DriveMode.ON_TIME && s.pickupTo != null && engine.state.phase == Phase.DRIVING
+    }
+
     private fun parkDemoCar(t: Long) {
         demo?.navi?.moving = false
         engine.onSpeed(t, 0.0)
         engine.onGear(t, Gear.PARK)
+        parked(t)
         checkRestStopParking(t)
+    }
+
+    /** P단: 픽업할 곳 가까이면 세운 곳을 보낸다. 그 주차로 도착했으면 레스트 모드에도 알려 '주차하셨네요'를 묻지 않게 한다. */
+    private fun parked(t: Long) {
+        if (drive.onParked(t)) tripArrived(t)
     }
 
     private fun feedDemo(t: Long) {
@@ -909,6 +967,7 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
         if (demo != null) return
         val t = now()
         engine.onGear(t, gear)
+        if (gear == Gear.PARK) parked(t)
         checkRestStopParking(t)
         publish()
     }
@@ -1034,6 +1093,8 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
 
     companion object {
         const val CONNECTED = "연결됨"
+        /** 실제 차량에서 픽업 알림 받는 사람 이름 (휴대폰 연락처를 받기 전) */
+        const val DEFAULT_PICKUP_CONTACT = "동승자"
         private const val PREFS = "restmate"
         private const val KEY_ENV_ENABLED = "env_enabled"
         private const val KEY_ENV_TEMP = "env_temp"

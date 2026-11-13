@@ -64,6 +64,20 @@ class ScreenSnapshots {
     @Test
     fun s9d_autoAlarm() = paparazzi.snapshot { PreviewScreen(PreviewSamples.autoAlarm()) }
 
+    // 학원 픽업 알림 (온타임 모드)
+
+    @Test
+    fun p1_pickupSetup() = paparazzi.snapshot { PreviewScreen(PreviewSamples.pickupSetup()) }
+
+    @Test
+    fun p2_pickupActive() = paparazzi.snapshot { PreviewScreen(PreviewSamples.pickupActive()) }
+
+    @Test
+    fun p3_pickupCircling() = paparazzi.snapshot { PreviewScreen(PreviewSamples.pickupCircling()) }
+
+    @Test
+    fun p4_pickupArrived() = paparazzi.snapshot { PreviewScreen(PreviewSamples.pickupArrived()) }
+
     // 밤 화면 (차가 야간 모드)
 
     @Test
@@ -99,6 +113,9 @@ class SmallScreenSnapshots {
 
     @Test
     fun small_autoWatching() = paparazzi.snapshot { PreviewScreen(PreviewSamples.autoWatching()) }
+
+    @Test
+    fun small_pickupArrived() = paparazzi.snapshot { PreviewScreen(PreviewSamples.pickupArrived()) }
 }
 
 /** 1px = 1dp인 가로 화면 */

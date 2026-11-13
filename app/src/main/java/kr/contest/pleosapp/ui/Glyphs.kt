@@ -172,6 +172,29 @@ internal fun TapGlyph(color: Color, modifier: Modifier) {
     }
 }
 
+/** 문자: 꼬리 달린 말풍선 */
+@Composable
+internal fun MessageGlyph(color: Color, modifier: Modifier) {
+    Canvas(modifier) {
+        val w = size.width
+        val h = size.height
+        drawRoundRect(
+            color,
+            topLeft = Offset(w * 0.10f, h * 0.14f),
+            size = Size(w * 0.80f, h * 0.56f),
+            cornerRadius = CornerRadius(w * 0.16f),
+            style = Stroke(w * 0.09f),
+        )
+        val tail = Path().apply {
+            moveTo(w * 0.30f, h * 0.66f)
+            lineTo(w * 0.24f, h * 0.90f)
+            lineTo(w * 0.50f, h * 0.66f)
+            close()
+        }
+        drawPath(tail, color)
+    }
+}
+
 /** 안내 기록 종류별 그림과 색 */
 @Composable
 internal fun LogGlyph(kind: LogKind, modifier: Modifier) {
@@ -181,6 +204,7 @@ internal fun LogGlyph(kind: LogKind, modifier: Modifier) {
         LogKind.NAVI -> PinGlyph(color, modifier)
         LogKind.VEHICLE -> CarGlyph(color, modifier)
         LogKind.DEMO -> PlayGlyph(color, modifier)
+        LogKind.MESSAGE -> MessageGlyph(color, modifier)
     }
 }
 
@@ -189,4 +213,5 @@ internal fun logColor(kind: LogKind): Color = when (kind) {
     LogKind.NAVI -> RM.blue
     LogKind.VEHICLE -> RM.sky
     LogKind.DEMO -> RM.textFaint
+    LogKind.MESSAGE -> RM.text
 }

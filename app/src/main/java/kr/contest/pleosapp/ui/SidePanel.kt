@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -218,7 +219,7 @@ private fun DemoCard(ui: UiState, actions: RestMateActions) {
     }
 }
 
-/** 자동 시연: 세 이야기를 한 번에, 또는 하나씩. 진행 중이면 몇 번째 장면인지와 다음·멈추기 */
+/** 자동 시연: 네 이야기(온타임·픽업·롱웨이·레스트)를 한 번에, 또는 하나씩. 진행 중이면 몇 번째 장면인지와 다음·멈추기 */
 @Composable
 private fun AutoDemoControls(ui: UiState, actions: RestMateActions) {
     val auto = ui.auto
@@ -230,11 +231,14 @@ private fun AutoDemoControls(ui: UiState, actions: RestMateActions) {
             Tone.AMBER,
             minHeight = 60.dp,
             textSize = 20.sp,
-            sub = "온타임 → 롱웨이 → 레스트 · 약 3분 30초",
+            sub = "온타임 → 픽업 → 롱웨이 → 레스트 · 약 4분 40초",
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            for (chapter in AutoChapter.entries) {
-                SmallButton(chapter.label, { actions.startAutoDemo(chapter) }, Modifier.weight(1f))
+        // 이야기 넷: 두 줄로 (옆 칸이 좁아 한 줄에 넷이면 글자가 꺾인다)
+        for (row in AutoChapter.entries.chunked(2)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (chapter in row) {
+                    SmallButton(chapter.label, { actions.startAutoDemo(chapter) }, Modifier.weight(1f))
+                }
             }
         }
         return
@@ -254,23 +258,27 @@ private fun AutoDemoControls(ui: UiState, actions: RestMateActions) {
 @Composable
 private fun DemoControls(ui: UiState, actions: RestMateActions) {
     val trip = ui.demoTrip
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        for (t in DemoTrips.ALL) {
-            ActionButton(
-                t.title.substringBefore(" ·"),
-                { actions.selectDemoTrip(t.id) },
-                Modifier.weight(1f),
-                if (trip?.id == t.id) Tone.AMBER else Tone.NEUTRAL,
-                minHeight = 50.dp,
-                textSize = 17.sp,
-                sub = t.title.substringAfter("· ", ""),
-            )
+    // 출발 상황 셋: 두 줄로 (옆 칸이 좁아 한 줄에 셋이면 아랫줄 글자가 꺾인다)
+    for (row in DemoTrips.ALL.chunked(2)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            for (t in row) {
+                ActionButton(
+                    t.title.substringBefore(" ·"),
+                    { actions.selectDemoTrip(t.id) },
+                    Modifier.weight(1f),
+                    if (trip?.id == t.id) Tone.AMBER else Tone.NEUTRAL,
+                    minHeight = 50.dp,
+                    textSize = 17.sp,
+                    sub = t.title.substringAfter("· ", ""),
+                )
+            }
+            if (row.size == 1) Spacer(Modifier.weight(1f))
         }
     }
     val scale = trip?.timeScale?.roundToInt() ?: 1
     StatusLine(
         "가상 시계",
-        if (ui.demoClockHeld) "×$scale · 출발 전이라 멈춤" else "×$scale · 1초에 ${scale}초씩",
+        if (ui.demoClockHeld) "×$scale · D단으로 서 있어 멈춤" else "×$scale · 1초에 ${scale}초씩",
         if (ui.demoClockHeld) RM.textDim else RM.amber,
     )
     val speed = ui.core.speedKmh?.roundToInt() ?: 0

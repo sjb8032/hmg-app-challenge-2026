@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kr.contest.pleosapp.app.AutoCue
 import kr.contest.pleosapp.app.RestMateActions
+import kr.contest.pleosapp.app.RestMateController
 import kr.contest.pleosapp.app.UiState
 import kr.contest.pleosapp.core.CheckInAnswer
 import kr.contest.pleosapp.core.DriveMode
@@ -141,7 +142,7 @@ private fun Header(ui: UiState) {
             // 출발 전에는 가상 시계가 멈춰 있음을 보여 준다 (시각이 왜 안 가는지 알 수 있게)
             val scale = ui.demoTrip?.timeScale?.roundToInt()
             val text = when {
-                ui.demoClockHeld -> "시연 · 출발 전 시계 멈춤"
+                ui.demoClockHeld -> "시연 · 서 있어 시계 멈춤"
                 scale != null -> "시연 · 시계 ×$scale"
                 else -> "시연 모드"
             }
@@ -704,8 +705,18 @@ private fun WakeUpPanel(wokeAt: Long, rest: RestSession, ui: UiState) {
         }
         val elapsed = if (wake <= 0) 1f else (ui.core.now - wokeAt).toFloat() / wake.toFloat()
         Bar(elapsed, if (ready) RM.sky else RM.amber)
-        for (item in WAKE_CHECKLIST) Body("· $item")
+        for (item in wakeChecklist(ui)) Body("· $item")
     }
+}
+
+/** 깬 뒤 할 일. 실내 환경은 차량이 연결돼 실제로 바꿀 때만 '넣었어요'라고 쓴다 (연결 안 되면 바꾸지 않으므로). */
+private fun wakeChecklist(ui: UiState): List<String> {
+    val cabin = when {
+        !ui.env.enabled -> null
+        ui.connection.vehicle == RestMateController.CONNECTED -> "무드등을 밝히고 시원한 바깥 바람을 넣었어요"
+        else -> "차량이 연결되면 무드등을 밝히고 바깥 바람을 넣어요"
+    }
+    return listOfNotNull(cabin) + WAKE_CHECKLIST
 }
 
 @Composable
@@ -897,7 +908,6 @@ private fun AreaName(area: RestArea) {
 private val REST_OPTIONS = listOf(15, 20, 30)
 
 private val WAKE_CHECKLIST = listOf(
-    "무드등을 밝히고 시원한 바깥 바람을 넣었어요",
     "차에서 내려 2~3분 걷거나 스트레칭해요",
     "물 한 잔 마시고 밝은 곳을 봐요",
 )

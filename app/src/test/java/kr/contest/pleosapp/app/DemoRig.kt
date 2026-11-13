@@ -14,7 +14,9 @@ import kr.contest.pleosapp.core.Effect
 import kr.contest.pleosapp.core.Gear
 import kr.contest.pleosapp.core.LatLng
 import kr.contest.pleosapp.core.Mood
+import kr.contest.pleosapp.core.OnTimeStyle
 import kr.contest.pleosapp.core.Phase
+import kr.contest.pleosapp.core.PickupNotice
 import kr.contest.pleosapp.core.Place
 import kr.contest.pleosapp.core.PlaceKind
 import kr.contest.pleosapp.core.RestArea
@@ -64,6 +66,8 @@ class DemoRig(highwayAreas: List<RestArea> = loadHighwayAreas()) : AutoDemoHost 
     /** 차가 한 말·내비 요청·알람 (시각과 함께) */
     val said = ArrayList<String>()
     val notes = ArrayList<String>()
+    /** 보낸 픽업 알림 (시연: 실제로 보내지 않는다) */
+    val sent = ArrayList<PickupNotice>()
     var alarmOn = false
         private set
     var lastRoute: Pair<Place, List<Place>>? = null
@@ -174,6 +178,10 @@ class DemoRig(highwayAreas: List<RestArea> = loadHighwayAreas()) : AutoDemoHost 
             }
             is DriveEffect.Speak -> said += effect.text
             is DriveEffect.CabinMood -> Unit
+            is DriveEffect.SendPickup -> {
+                sent += effect.notice
+                notes += "문자(시연) → ${effect.notice.to} · ${effect.notice.kind.label}"
+            }
         }
     }
 
@@ -251,6 +259,24 @@ class DemoRig(highwayAreas: List<RestArea> = loadHighwayAreas()) : AutoDemoHost 
     override fun planCourses() = act { drive.plan(it) }
     override fun chooseCourse(option: CourseOption) = act { drive.choose(it, option) }
     override fun addDriveTime(minutes: Int) = act { drive.addTime(it, minutes) }
+    fun setOnTimeStyle(style: OnTimeStyle) = act { drive.setOnTimeStyle(style) }
+    override fun setPickup(on: Boolean) = act { drive.setPickup(if (on) demo?.trip?.pickupContact else null) }
+
+    override fun circleForSpot() {
+        act { drive.circleForSpot(it) }
+        val d = demo ?: return
+        if (drive.state.circling && !d.navi.moving) {
+            if (engine.state.gear != Gear.DRIVE) engine.onGear(now(), Gear.DRIVE)
+            d.navi.moving = true
+            publish()
+        }
+    }
+
+    override fun demoPark() {
+        if (demo == null) return
+        parkDemoCar(now())
+        publish()
+    }
 
     override fun selectDemoTrip(id: String) {
         val trip = DemoTrips.ALL.firstOrNull { it.id == id } ?: return
@@ -333,7 +359,7 @@ class DemoRig(highwayAreas: List<RestArea> = loadHighwayAreas()) : AutoDemoHost 
                 is DemoNaviEvent.DestinationArrived -> {
                     notes += "목적지 도착: ${event.place.name}"
                     tripArrived(t)
-                    parkDemoCar(t)
+                    if (pickupTrip()) engine.onSpeed(t, 0.0) else parkDemoCar(t)
                     drive.onDestinationArrived(t)
                 }
             }
@@ -346,10 +372,17 @@ class DemoRig(highwayAreas: List<RestArea> = loadHighwayAreas()) : AutoDemoHost 
         return drive.restStopHere(place.position) != null
     }
 
+    private fun pickupTrip(): Boolean {
+        val s = drive.state
+        val going = s.step == DriveStep.ACTIVE || s.step == DriveStep.ARRIVED
+        return going && s.mode == DriveMode.ON_TIME && s.pickupTo != null && engine.state.phase == Phase.DRIVING
+    }
+
     private fun parkDemoCar(t: Long) {
         demo?.navi?.moving = false
         engine.onSpeed(t, 0.0)
         engine.onGear(t, Gear.PARK)
+        if (drive.onParked(t)) tripArrived(t)
         checkRestStopParking(t)
     }
 

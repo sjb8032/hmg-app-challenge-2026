@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kr.contest.pleosapp.app.AutoCue
 import kr.contest.pleosapp.app.RestMateActions
+import kr.contest.pleosapp.app.RestMateController
 import kr.contest.pleosapp.app.UiState
 import kr.contest.pleosapp.core.CourseFlavor
 import kr.contest.pleosapp.core.CourseKind
@@ -247,6 +248,8 @@ private fun DriveSetup(ui: UiState, actions: RestMateActions) {
             // 아래 요약이 함께 보이게 미니맵을 조금 낮춘다
             MapPanel(ui, (LocalScreenSize.current.mapHeight - 200.dp).coerceAtLeast(260.dp))
             SetupSummary(ui)
+            // 픽업 알림은 오른쪽에 둔다 (왼쪽의 '코스 찾기'가 자동 시연 해설이 떠 있어도 화면 안에 보이게)
+            if (mode == DriveMode.ON_TIME) Panel { PickupToggle(ui, actions, tone) }
         },
     )
 }
@@ -683,7 +686,13 @@ private fun DriveActive(ui: UiState, actions: RestMateActions) {
                         minHeight = 58.dp,
                         textSize = 19.sp,
                     )
-                    Caption("${d.mood.label} 분위기로 무드등·공조를 맞췄어요. 도착하거나 끝내면 원래대로 돌려요.", modifier = Modifier.weight(1f))
+                    // 실내 분위기는 차량이 연결돼 실제로 바꿀 때만 '맞췄어요'라고 쓴다
+                    val cabin = if (ui.connection.vehicle == RestMateController.CONNECTED) {
+                        "${d.mood.label} 분위기로 무드등·공조를 맞췄어요. 도착하거나 끝내면 원래대로 돌려요."
+                    } else {
+                        "차량이 연결되면 ${d.mood.label} 분위기로 무드등·공조를 맞춰요."
+                    }
+                    Caption(cabin, modifier = Modifier.weight(1f))
                 } else {
                     ActionButton("+5분", { actions.addDriveTime(5) }, Modifier.width(120.dp), minHeight = 58.dp, textSize = 19.sp)
                     ActionButton("+10분", { actions.addDriveTime(10) }, Modifier.width(120.dp), minHeight = 58.dp, textSize = 19.sp)
@@ -692,9 +701,20 @@ private fun DriveActive(ui: UiState, actions: RestMateActions) {
             }
         },
         right = {
-            MapPanel(ui)
+            MapWithPickup(ui)
         },
     )
+}
+
+/** 미니맵. 픽업 알림을 켰으면 미니맵을 조금 줄이고 아래에 픽업 알림 카드를 둔다 (왼쪽 버튼들이 밀리지 않게). */
+@Composable
+private fun MapWithPickup(ui: UiState) {
+    if (!ui.drive.pickupOn()) {
+        MapPanel(ui)
+        return
+    }
+    MapPanel(ui, (LocalScreenSize.current.mapHeight - PICKUP_CARD_HEIGHT).coerceAtLeast(260.dp))
+    PickupPanel(ui)
 }
 
 /** 코스 한 곳: 출발 · 경유지 · 쉼터 · 목적지. [detailColor]는 아랫줄 색 (늦을 것 같으면 호박색) */
@@ -817,19 +837,36 @@ private fun DriveArrived(ui: UiState, actions: RestMateActions) {
                 if (arrived != null && target != null) {
                     // 롱웨이 모드의 시각은 마감이 아니라 예정이다.
                     val gap = DriveText.gapMs(arrived, target)
-                    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                        Stat("도착", DriveText.clock(arrived), color, valueSize = 36.sp)
-                        Stat(if (longer) "예정" else "목표", DriveText.clock(target), RM.text, valueSize = 36.sp)
+                    // 좁은 화면에서는 시각을 조금 줄여 '약 2분 늦어요' 칩이 잘리지 않게 한다
+                    val compact = LocalScreenSize.current.compact
+                    val size = if (compact) 30.sp else 36.sp
+                    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(if (compact) 16.dp else 24.dp)) {
+                        Stat("도착", DriveText.clock(arrived), color, valueSize = size)
+                        Stat(if (longer) "예정" else "목표", DriveText.clock(target), RM.text, valueSize = size)
                         val text = if (longer) DriveText.fitLonger(d.status, gap) else DriveText.fit(d.status, gap, (MARGIN_MINUTES + 2) * MINUTE_MS)
                         Chip(text, color, fontSize = 18.sp)
                     }
                 }
             }
             CourseStops(ui)
-            ActionButton("처음으로", actions::finishDrive, Modifier.fillMaxWidth(), modeTone(d.mode))
+            if (d.pickupOn()) {
+                // 픽업: 세울 곳이 없으면 한 바퀴 돌고 다시 오기 (픽업할 사람에게 다시 오는 시각을 알린다)
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ActionButton(
+                        "자리 없음",
+                        actions::circleForSpot,
+                        Modifier.weight(1f).cueRing(ui.cueing(AutoCue.NO_SPOT)),
+                        modeTone(d.mode),
+                        sub = "한 바퀴 돌고 다시 오기",
+                    )
+                    ActionButton("처음으로", actions::finishDrive, Modifier.weight(1f))
+                }
+            } else {
+                ActionButton("처음으로", actions::finishDrive, Modifier.fillMaxWidth(), modeTone(d.mode))
+            }
         },
         right = {
-            MapPanel(ui)
+            MapWithPickup(ui)
         },
     )
 }
