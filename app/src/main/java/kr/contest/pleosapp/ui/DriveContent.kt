@@ -35,6 +35,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kr.contest.pleosapp.app.AutoCue
 import kr.contest.pleosapp.app.RestMateActions
 import kr.contest.pleosapp.app.UiState
 import kr.contest.pleosapp.core.CourseFlavor
@@ -77,10 +78,18 @@ internal fun DriveContent(ui: UiState, actions: RestMateActions) {
 @Composable
 private fun DriveHome(ui: UiState, actions: RestMateActions) {
     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        ModeCard(DriveMode.ON_TIME, "약속 장소 · 아이 픽업 · 숙소 체크인", Modifier.weight(1f)) {
+        ModeCard(
+            DriveMode.ON_TIME,
+            "약속 장소 · 아이 픽업 · 숙소 체크인",
+            Modifier.weight(1f).cueRing(ui.cueing(AutoCue.MODE_ON_TIME), CardShape),
+        ) {
             actions.openMode(DriveMode.ON_TIME)
         }
-        ModeCard(DriveMode.LONGER, "데이트 · 퇴근길 혼자 쉬기", Modifier.weight(1f)) {
+        ModeCard(
+            DriveMode.LONGER,
+            "데이트 · 퇴근길 혼자 쉬기",
+            Modifier.weight(1f).cueRing(ui.cueing(AutoCue.MODE_LONGER), CardShape),
+        ) {
             actions.openMode(DriveMode.LONGER)
         }
     }
@@ -166,7 +175,8 @@ private fun SavedTripsPanel(saved: List<SavedTrip>, actions: RestMateActions) {
  */
 @Composable
 private fun ModeCard(mode: DriveMode, examples: String, modifier: Modifier, onClick: () -> Unit) {
-    val accent = modeColor(mode)
+    // 남색 카드라 낮 화면에서도 밝은 브랜드 색을 쓴다
+    val accent = if (mode == DriveMode.ON_TIME) RM.skyBlue else RM.sandBrand
     val shape = CardShape
     Row(
         modifier
@@ -192,13 +202,16 @@ private fun ModeCard(mode: DriveMode, examples: String, modifier: Modifier, onCl
             }
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(mode.title, color = RM.text, fontSize = 34.sp, fontWeight = FontWeight.Medium, letterSpacing = (-0.5).sp)
+            Text(mode.title, color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Medium, letterSpacing = (-0.5).sp)
             Text(mode.subtitle, color = accent, fontSize = 20.sp, fontWeight = FontWeight.Medium)
-            Text(examples, color = RM.textDim, fontSize = 16.sp)
+            Text(examples, color = HERO_DIM, fontSize = 16.sp)
         }
         Text("›", color = accent, fontSize = 44.sp, fontWeight = FontWeight.Light)
     }
 }
+
+/** 남색 모드 카드의 옅은 글자 */
+private val HERO_DIM = Color(0xFFB5C3D6)
 
 // ---------------------------------------------------------------- 설정
 
@@ -222,7 +235,7 @@ private fun DriveSetup(ui: UiState, actions: RestMateActions) {
                 ActionButton(
                     if (d.planPending) "시간 확인 중…" else "코스 찾기",
                     actions::planCourses,
-                    Modifier.weight(2f),
+                    Modifier.weight(2f).cueRing(ui.cueing(AutoCue.PLAN)),
                     tone,
                     enabled = d.destination != null && !d.planPending,
                 )
@@ -481,7 +494,8 @@ private fun DriveChoose(ui: UiState, actions: RestMateActions) {
             if (mode == DriveMode.LONGER) FlavorChips(d.flavor, tone, actions)
             d.options.forEachIndexed { i, option ->
                 val target = d.targetAt.takeIf { mode == DriveMode.ON_TIME }
-                CourseCard(i, option, arrivalFor(option, d, ui.now), target, tone) { actions.chooseCourse(option) }
+                val cue = i == 0 && ui.cueing(AutoCue.FIRST_COURSE)
+                CourseCard(i, option, arrivalFor(option, d, ui.now), target, tone, cue) { actions.chooseCourse(option) }
             }
         },
         right = {
@@ -531,7 +545,15 @@ private fun arrivalFor(option: CourseOption, d: DriveState, now: Long): Long? {
 }
 
 @Composable
-private fun CourseCard(index: Int, option: CourseOption, arrival: Long?, target: Long?, tone: Tone, onChoose: () -> Unit) {
+private fun CourseCard(
+    index: Int,
+    option: CourseOption,
+    arrival: Long?,
+    target: Long?,
+    tone: Tone,
+    cue: Boolean,
+    onChoose: () -> Unit,
+) {
     val shape = CardShape
     val color = if (option.via.isEmpty()) RM.textDim else candidateColor(index)
     Row(
@@ -573,7 +595,14 @@ private fun CourseCard(index: Int, option: CourseOption, arrival: Long?, target:
             }
         }
         val compact = LocalScreenSize.current.compact
-        ActionButton("이 코스로", onChoose, Modifier.width(if (compact) 118.dp else 150.dp), tone, minHeight = 64.dp, textSize = if (compact) 18.sp else 20.sp)
+        ActionButton(
+            "이 코스로",
+            onChoose,
+            Modifier.width(if (compact) 118.dp else 150.dp).cueRing(cue),
+            tone,
+            minHeight = 64.dp,
+            textSize = if (compact) 18.sp else 20.sp,
+        )
     }
 }
 
@@ -647,7 +676,13 @@ private fun DriveActive(ui: UiState, actions: RestMateActions) {
             // 달리는 중 시간 더하기: 온타임은 약속이 늦춰졌을 때, 롱웨이는 더 달리고 싶을 때
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (longer) {
-                    ActionButton("+15분 더", { actions.addDriveTime(15) }, Modifier.width(150.dp), minHeight = 58.dp, textSize = 19.sp)
+                    ActionButton(
+                        "+15분 더",
+                        { actions.addDriveTime(15) },
+                        Modifier.width(150.dp).cueRing(ui.cueing(AutoCue.ADD_TIME)),
+                        minHeight = 58.dp,
+                        textSize = 19.sp,
+                    )
                     Caption("${d.mood.label} 분위기로 무드등·공조를 맞췄어요. 도착하거나 끝내면 원래대로 돌려요.", modifier = Modifier.weight(1f))
                 } else {
                     ActionButton("+5분", { actions.addDriveTime(5) }, Modifier.width(120.dp), minHeight = 58.dp, textSize = 19.sp)

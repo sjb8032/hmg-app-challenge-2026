@@ -32,7 +32,7 @@ internal fun Logo(modifier: Modifier = Modifier) {
             moveTo(w * 0.24f, h * 0.80f)
             cubicTo(w * 0.24f, h * 0.48f, w * 0.76f, h * 0.62f, w * 0.72f, h * 0.34f)
         }
-        drawPath(road, RM.sky, style = Stroke(w * 0.10f, cap = StrokeCap.Round))
+        drawPath(road, RM.skyBlue, style = Stroke(w * 0.10f, cap = StrokeCap.Round))
         drawCircle(Color.White, w * 0.11f, Offset(w * 0.72f, h * 0.25f))
         drawCircle(RM.hyundaiNavy, w * 0.05f, Offset(w * 0.72f, h * 0.25f))
     }
@@ -159,6 +159,16 @@ internal fun PlayGlyph(color: Color, modifier: Modifier) {
             close()
         }
         drawPath(tri, color)
+    }
+}
+
+/** 누르기 표시 (자동 시연이 버튼을 짚을 때): 가운데 점과 바깥 고리 */
+@Composable
+internal fun TapGlyph(color: Color, modifier: Modifier) {
+    Canvas(modifier) {
+        val r = size.minDimension / 2f
+        drawCircle(color, radius = r * 0.36f)
+        drawCircle(color, radius = r * 0.84f, style = Stroke(width = r * 0.16f))
     }
 }
 
