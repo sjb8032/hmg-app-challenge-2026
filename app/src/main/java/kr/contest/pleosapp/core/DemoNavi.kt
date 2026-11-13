@@ -18,6 +18,8 @@ data class DemoTrip(
     val timeScale: Double,
     /** 가상 시계 시작 시각 (그날 자정부터 ms). null이면 지금 시각 */
     val startTimeOfDayMs: Long? = null,
+    /** 픽업 알림을 받을 표본 연락처 (실제로는 연결한 휴대폰의 연락처에서 고른다) */
+    val pickupContact: String = "아이",
 )
 
 sealed interface DemoNaviEvent {

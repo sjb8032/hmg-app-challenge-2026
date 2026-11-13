@@ -419,5 +419,20 @@ object TimeFitPlanner {
         )
     }
 
+    /**
+     * '자리 없음': [center]에서 한 바퀴 돌아 [loopMs] 안팎에 다시 오도록 거쳐 갈 지점.
+     * 진행 방향에서 오른쪽으로 60° 튼 쪽(우회전으로 블록을 도는 쪽)에, 왕복 도로 거리가 [loopMs]에 맞는 거리(250~900m)로 잡는다.
+     * 실제 길은 내비가 이 지점 가까운 도로로 잇는다.
+     */
+    fun circlePoint(center: LatLng, headingDeg: Double, loopMs: Long, speedMps: Double, config: DriveConfig): LatLng {
+        val road = loopMs / 1000.0 * speedMps
+        val radius = (road / 2.0 / config.detourFactor).coerceIn(CIRCLE_MIN_METERS, CIRCLE_MAX_METERS)
+        return Geo.destinationPoint(center, ((headingDeg + CIRCLE_TURN_DEG) % 360.0 + 360.0) % 360.0, radius)
+    }
+
+    private const val CIRCLE_MIN_METERS = 250.0
+    private const val CIRCLE_MAX_METERS = 900.0
+    private const val CIRCLE_TURN_DEG = 60.0
+
     private fun travelMs(meters: Double, speedMps: Double): Long = (meters / speedMps * 1000.0).toLong()
 }
