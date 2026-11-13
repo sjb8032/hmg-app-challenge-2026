@@ -62,7 +62,7 @@ internal fun PickupToggle(ui: UiState, actions: RestMateActions, tone: Tone) {
             if (on) tone else Tone.NEUTRAL,
             minHeight = 64.dp,
             textSize = 20.sp,
-            sub = "$name · 도착 3분 전 · 세운 곳 · 자리 없음",
+            sub = "$name · 3분 전 · 세운 곳 · 자리 없음",
         )
     }
 }

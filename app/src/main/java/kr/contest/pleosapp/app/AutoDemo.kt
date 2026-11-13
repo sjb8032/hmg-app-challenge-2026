@@ -535,7 +535,7 @@ object AutoDemoScript {
                 buildString {
                     append("내비 경로에 경유지가 들어갔어요. ")
                     v.drive.arrivalEstimate?.let { append("도착 예상 ${spoken(it)}. ") }
-                    append("달리는 화면 오른쪽 지도 아래에 픽업 알림 카드가 생겨요.")
+                    append("달리는 화면의 미니맵 아래에 픽업 알림 카드가 생겨요.")
                 }
             },
             readMs = 6_500L,

@@ -73,7 +73,7 @@
 | ![자동 시연 해설](docs/screens/7-auto-narration.png) | ![버튼 짚기](docs/screens/8-auto-cue.png) |
 | **밤 화면**: 차가 야간 모드일 때 (달리는 중) | **밤 화면**: 쉼터 안내 |
 | ![밤 화면 달리는 중](docs/screens/9-night-active.png) | ![밤 화면 쉼터 안내](docs/screens/10-night-rest.png) |
-| **픽업 알림**: 도착 3분 전 문자 (자동 시연 해설과 함께) | **픽업 알림**: 자리 없어 한 바퀴 돌고 와서 세운 곳을 다시 보냄 |
+| **픽업 알림**: 도착 3분 전 문자 (자동 시연 해설과 함께) | **픽업 알림**: 자리 없어 한 바퀴 돌고 와서 세운 곳을 다시 띄움 |
 | ![픽업 알림 도착 3분 전](docs/screens/11-pickup-active.png) | ![픽업 알림 세운 곳](docs/screens/12-pickup-arrived.png) |
 
 ## 쓰는 SDK
