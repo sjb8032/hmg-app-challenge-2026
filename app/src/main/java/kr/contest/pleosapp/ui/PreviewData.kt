@@ -396,7 +396,7 @@ internal object PreviewSamples {
     /** 레스트 모드: 졸려서 가장 빨리 닿는 휴게소로 안내 중 */
     fun guidance(): UiState {
         val now = HIGHWAY_START + 70 * MINUTE_MS
-        val car = lerp(highway.start, highway.destination.position, 0.36)
+        val car = lerp(highway.start, highway.destination!!.position, 0.36)
         val target = RestAreaCandidate(munmakArea, 9_500.0, 11_400.0, 7.0)
         return base(now).copy(
             demoTrip = highway,
@@ -433,9 +433,9 @@ internal object PreviewSamples {
             demoDriving = true,
             driveStartedAt = HIGHWAY_START,
             trail = trail(highway.start, car, 1.0),
-            route = RouteView(highway.destination, listOf(Place(munmakArea.name, munmakArea.position, PlaceKind.WAYPOINT))),
+            route = RouteView(highway.destination!!, listOf(Place(munmakArea.name, munmakArea.position, PlaceKind.WAYPOINT))),
             // 강릉 숙소 쪽으로 달리다(36%) 레스트 모드를 눌러 휴게소로 꺾은 참
-            legs = listOf(DriveLeg(highway.start, highway.destination.position, 0.36f)),
+            legs = listOf(DriveLeg(highway.start, highway.destination!!.position, 0.36f)),
             leg = DriveLeg(car, munmakArea.position, 0f),
             lastMessage = "졸릴 땐 쉬어 가요. 가장 빨리 닿는 문막휴게소로 안내할게요.",
             log = listOf(
@@ -481,7 +481,7 @@ internal object PreviewSamples {
             drive = g.drive.copy(now = now, position = munmakArea.position),
             demoDriving = false,
             trail = trail(highway.start, munmakArea.position, 1.0),
-            route = RouteView(highway.destination, emptyList()),
+            route = RouteView(highway.destination!!, emptyList()),
             lastMessage = null,
             extras = VehicleExtras(windowsAllClosed = true, recirculationOn = true, fuelPercent = 42, rangeKm = 310.0),
             cabinNote = "휴식 환경: 23°C · 무드등 은은하게 · 바깥 공기",

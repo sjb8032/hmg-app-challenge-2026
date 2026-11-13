@@ -47,7 +47,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -260,27 +259,6 @@ private fun PlaceRow(hit: PlaceHit, car: LatLng?, confirm: String, onClick: () -
             )
         }
         Text("$confirm ›", color = RM.sky, fontSize = 18.sp, fontWeight = FontWeight.Medium)
-    }
-}
-
-/** 핀 모양 (검색 결과·지도 가운데) */
-@Composable
-private fun PinGlyph(color: Color, modifier: Modifier) {
-    Canvas(modifier) {
-        val w = size.width
-        val h = size.height
-        val r = w * 0.36f
-        val cx = w / 2f
-        val cy = r + h * 0.04f
-        val path = Path().apply {
-            moveTo(cx, h)
-            lineTo(cx - r * 0.82f, cy + r * 0.55f)
-            lineTo(cx + r * 0.82f, cy + r * 0.55f)
-            close()
-        }
-        drawPath(path, color)
-        drawCircle(color, r, Offset(cx, cy))
-        drawCircle(Color.White, r * 0.42f, Offset(cx, cy))
     }
 }
 
