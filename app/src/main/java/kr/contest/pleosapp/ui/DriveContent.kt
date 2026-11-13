@@ -830,9 +830,12 @@ private fun DriveArrived(ui: UiState, actions: RestMateActions) {
                 if (arrived != null && target != null) {
                     // 롱웨이 모드의 시각은 마감이 아니라 예정이다.
                     val gap = DriveText.gapMs(arrived, target)
-                    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                        Stat("도착", DriveText.clock(arrived), color, valueSize = 36.sp)
-                        Stat(if (longer) "예정" else "목표", DriveText.clock(target), RM.text, valueSize = 36.sp)
+                    // 좁은 화면에서는 시각을 조금 줄여 '약 2분 늦어요' 칩이 잘리지 않게 한다
+                    val compact = LocalScreenSize.current.compact
+                    val size = if (compact) 30.sp else 36.sp
+                    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(if (compact) 16.dp else 24.dp)) {
+                        Stat("도착", DriveText.clock(arrived), color, valueSize = size)
+                        Stat(if (longer) "예정" else "목표", DriveText.clock(target), RM.text, valueSize = size)
                         val text = if (longer) DriveText.fitLonger(d.status, gap) else DriveText.fit(d.status, gap, (MARGIN_MINUTES + 2) * MINUTE_MS)
                         Chip(text, color, fontSize = 18.sp)
                     }
