@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kr.contest.pleosapp.app.AutoChapter
 import kr.contest.pleosapp.app.LogKind
+import kr.contest.pleosapp.app.PlacePurpose
 import kr.contest.pleosapp.app.RestMateActions
 import kr.contest.pleosapp.app.RestMateController
 import kr.contest.pleosapp.app.UiState
@@ -258,10 +259,24 @@ private fun AutoDemoControls(ui: UiState, actions: RestMateActions) {
 @Composable
 private fun DemoControls(ui: UiState, actions: RestMateActions) {
     val trip = ui.demoTrip
-    // 출발 상황 셋: 두 줄로 (옆 칸이 좁아 한 줄에 셋이면 아랫줄 글자가 꺾인다)
-    for (row in DemoTrips.ALL.chunked(2)) {
+    // 출발 상황 셋과 '직접 해 보기': 두 줄로 (옆 칸이 좁아 한 줄에 셋이면 아랫줄 글자가 꺾인다)
+    val free = trip?.id == DemoTrips.FREE_ID
+    for (row in (DemoTrips.ALL + listOf(null)).chunked(2)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             for (t in row) {
+                if (t == null) {
+                    // 출발지를 고르고, 목적지·도착 시각은 화면에서 실제 내비처럼 정한다. 가상 시계는 지금 시각부터.
+                    ActionButton(
+                        "직접 해 보기",
+                        { actions.openPlaceSearch(PlacePurpose.DEMO_START) },
+                        Modifier.weight(1f),
+                        if (free) Tone.AMBER else Tone.NEUTRAL,
+                        minHeight = 50.dp,
+                        textSize = 17.sp,
+                        sub = if (free) "${trip?.startName ?: "고른 곳"}에서" else "출발지 고르기",
+                    )
+                    continue
+                }
                 ActionButton(
                     t.title.substringBefore(" ·"),
                     { actions.selectDemoTrip(t.id) },

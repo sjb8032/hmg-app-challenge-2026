@@ -59,4 +59,45 @@ class DemoNaviTest {
         assertNull(navi.remainingMs())
         assertTrue(Geo.distanceMeters(navi.position, dest.position) < 1.0)
     }
+
+    @Test
+    fun freeTripPicksCityOrHighwaySpeedByRouteLength() {
+        // 직접 해 보기: 목적지 없이 고른 곳에서 시작해, 경로 길이에 따라 시내(32km/h)·고속도로(95km/h)로 달린다.
+        val trip = DemoTrips.free(origin, "고른 곳")
+        assertEquals(DemoTrips.FREE_ID, trip.id)
+        assertNull(trip.startTimeOfDayMs)
+        val navi = DemoNavi(trip)
+        assertNull(navi.destination)
+        assertNull(navi.remainingMs())
+
+        val near = Place("가까운 곳", southKm(10.0), PlaceKind.SEARCH)
+        // 바로 가는 시간도 같은 기준: 10km × 1.35 ÷ 32km/h ≈ 25분
+        assertEquals(25.3 * MINUTE_MS, navi.tripTimeMs(near).toDouble(), 0.2 * MINUTE_MS)
+        navi.routeTo(near, emptyList())
+        assertFalse(navi.onHighway)
+        assertEquals(25.3 * MINUTE_MS, navi.remainingMs()!!.toDouble(), 0.2 * MINUTE_MS)
+
+        val far = Place("먼 곳", southKm(100.0), PlaceKind.SEARCH)
+        // 100km × 1.2 ÷ 95km/h ≈ 75.8분
+        assertEquals(75.8 * MINUTE_MS, navi.tripTimeMs(far).toDouble(), 0.3 * MINUTE_MS)
+        navi.routeTo(far, emptyList())
+        assertTrue(navi.onHighway)
+        navi.moving = true
+        assertEquals(95.0, navi.speedKmh, 1e-9)
+
+        // 출발지를 옮기면 경로는 지운다
+        navi.moveTo(southKm(50.0))
+        assertNull(navi.destination)
+        assertFalse(navi.moving)
+        assertEquals(southKm(50.0), navi.position)
+    }
+
+    @Test
+    fun fixedTripsKeepTheirSpeed() {
+        val navi = DemoNavi(trip)
+        navi.routeTo(Place("먼 곳", southKm(100.0), PlaceKind.SEARCH), emptyList())
+        navi.moving = true
+        assertEquals(30.0, navi.speedKmh, 1e-9)
+        assertFalse(navi.onHighway)
+    }
 }

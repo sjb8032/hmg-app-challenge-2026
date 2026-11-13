@@ -78,6 +78,20 @@ class ScreenSnapshots {
     @Test
     fun p4_pickupArrived() = paparazzi.snapshot { PreviewScreen(PreviewSamples.pickupArrived()) }
 
+    // 직접 해 보기: 목적지 검색·지도에서 고르기·도착 시각
+
+    @Test
+    fun f1_placeSearch() = paparazzi.snapshot { PreviewScreen(PreviewSamples.placeSearch()) }
+
+    @Test
+    fun f2_placeMap() = paparazzi.snapshot { PreviewScreen(PreviewSamples.placeMap()) }
+
+    @Test
+    fun f3_timePicker() = paparazzi.snapshot { PreviewScreen(PreviewSamples.timePicker()) }
+
+    @Test
+    fun f4_freeHome() = paparazzi.snapshot { PreviewScreen(PreviewSamples.freeHome()) }
+
     // 밤 화면 (차가 야간 모드)
 
     @Test

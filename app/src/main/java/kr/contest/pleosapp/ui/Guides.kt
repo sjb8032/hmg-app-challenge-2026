@@ -163,9 +163,11 @@ internal fun demoHint(ui: UiState): String? {
             }
         }
         Phase.DRIVING -> when (d.step) {
-            DriveStep.HOME ->
-                if (driving) "달리는 중이에요. '레스트 모드'를 누르면 가까운 쉼터로 안내해요."
-                else "모드를 골라 시작해요. 고르는 동안 가상 시계는 멈춰 있어요."
+            DriveStep.HOME -> when {
+                driving -> "달리는 중이에요. '레스트 모드'를 누르면 가까운 쉼터로 안내해요."
+                d.naviDestination == null -> "'목적지 검색'으로 갈 곳을 정하거나, 모드를 골라 끝낼 곳을 찾아요."
+                else -> "모드를 골라 시작해요. 고르는 동안 가상 시계는 멈춰 있어요."
+            }
             DriveStep.SETUP -> "끝낼 곳과 시각을 고르고 '코스 찾기'를 눌러요."
             DriveStep.CHOOSE -> "코스를 고르면 내비 경로에 경유지가 들어가요."
             DriveStep.ACTIVE -> when {

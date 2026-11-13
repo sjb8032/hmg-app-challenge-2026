@@ -2,6 +2,7 @@ package kr.contest.pleosapp.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -86,7 +87,11 @@ fun RestMateScreen(ui: UiState, actions: RestMateActions) {
                     .padding(24.dp),
                 horizontalArrangement = Arrangement.spacedBy(24.dp),
             ) {
-                MainPanel(ui, actions, Modifier.weight(1f).fillMaxHeight())
+                // 장소 찾기·도착 시각 고르기 창은 왼쪽 화면 위에 띄운다 (오른쪽 차 상태·시연 조작은 그대로)
+                Box(Modifier.weight(1f).fillMaxHeight()) {
+                    MainPanel(ui, actions, Modifier.fillMaxSize())
+                    ui.sheet?.let { InputSheetOverlay(it, ui, actions, Modifier.fillMaxSize()) }
+                }
                 SidePanel(ui, actions, Modifier.width(sideWidth).fillMaxHeight())
             }
         }

@@ -572,7 +572,7 @@ private fun MapGrid(modifier: Modifier) {
 }
 
 /** 받아 둔 지도 타일을 제자리에 그린다 (돌리기 전 좌표, 이웃 타일 사이에 틈이 보이지 않게 반 픽셀씩 겹친다) */
-private fun DrawScope.drawTiles(layout: TileLayout) {
+internal fun DrawScope.drawTiles(layout: TileLayout) {
     val filter = if (RM.dark) MapTiles.nightFilter else MapTiles.dayFilter
     for (t in layout.tiles) {
         val image = MapTiles.get(TileKey(layout.zoom, t.x, t.y)) ?: continue

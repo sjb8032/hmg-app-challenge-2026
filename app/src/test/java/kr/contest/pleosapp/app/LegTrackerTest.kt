@@ -31,7 +31,7 @@ class LegTrackerTest {
         assertEquals(0f, legs.current!!.progress, 1e-4f)
 
         // 코스를 골라 낙산공원 경유: 출발하기 전이라 처음 구간은 기록하지 않는다
-        navi.routeTo(trip.destination, listOf(naksan))
+        navi.routeTo(trip.destination!!, listOf(naksan))
         navi.track(legs)
         assertTrue(legs.done.isEmpty())
         assertEquals(naksan.position, legs.current!!.to)
@@ -46,7 +46,7 @@ class LegTrackerTest {
         assertEquals(expected.toFloat(), p, 0.01f)
 
         // 도중에 인왕산 쪽으로 바꿈: 달리던 구간은 그때까지 온 만큼 남는다
-        navi.routeTo(trip.destination, listOf(inwang))
+        navi.routeTo(trip.destination!!, listOf(inwang))
         navi.track(legs)
         assertEquals(1, legs.done.size)
         assertEquals(p, legs.done[0].progress, 1e-4f)
@@ -61,7 +61,7 @@ class LegTrackerTest {
         assertEquals(2, legs.done.size)
         assertEquals(1f, legs.done[1].progress, 1e-4f)
         assertEquals(inwang.position, legs.current!!.from)
-        assertEquals(trip.destination.position, legs.current!!.to)
+        assertEquals(trip.destination!!.position, legs.current!!.to)
 
         // 목적지 도착: 지금 구간이 없어지고 마지막 구간은 끝까지
         repeat(200) { if (navi.destination != null) navi.advance(10_000L) }
