@@ -36,6 +36,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kr.contest.pleosapp.app.AutoCue
+import kr.contest.pleosapp.app.PlacePurpose
 import kr.contest.pleosapp.app.RestMateActions
 import kr.contest.pleosapp.app.RestMateController
 import kr.contest.pleosapp.app.UiState
@@ -97,7 +98,7 @@ private fun DriveHome(ui: UiState, actions: RestMateActions) {
     TwoPane(
         wide = LocalScreenSize.current.wide,
         left = {
-            NaviDestinationPanel(ui)
+            NaviDestinationPanel(ui, actions)
             SavedTripsPanel(ui.saved, actions)
             RestStatusPanel(ui)
         },
@@ -108,13 +109,24 @@ private fun DriveHome(ui: UiState, actions: RestMateActions) {
 }
 
 @Composable
-private fun NaviDestinationPanel(ui: UiState) {
+private fun NaviDestinationPanel(ui: UiState, actions: RestMateActions) {
     val d = ui.drive
     Panel {
-        Label("지금 내비 목적지")
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Label("지금 내비 목적지", modifier = Modifier.weight(1f))
+            // 실제 내비처럼 목적지를 이름·주소로 찾거나 지도에서 골라 바로 안내받는다
+            ActionButton(
+                if (d.naviDestination == null) "목적지 검색" else "목적지 바꾸기",
+                { actions.openPlaceSearch(PlacePurpose.NAVI_DESTINATION) },
+                Modifier.width(200.dp),
+                if (d.naviDestination == null) Tone.SKY else Tone.NEUTRAL,
+                minHeight = 52.dp,
+                textSize = 18.sp,
+            )
+        }
         val dest = d.naviDestination
         if (dest == null) {
-            Body("목적지가 없어요. 모드를 고르면 집·회사·즐겨찾기에서 끝낼 곳을 고를 수 있어요.", RM.textDim)
+            Body("목적지가 없어요. '목적지 검색'으로 찾거나, 모드를 고르면 집·회사·즐겨찾기에서 끝낼 곳을 고를 수 있어요.", RM.textDim)
         } else {
             Text(
                 dest.name,
@@ -226,7 +238,9 @@ private fun DriveSetup(ui: UiState, actions: RestMateActions) {
         left = {
             Panel {
                 Label(if (mode == DriveMode.ON_TIME) "어디에 맞춰 갈까요?" else "어디서 끝낼까요?")
-                PlaceChoices(placeChoices(d), d.destination, tone, actions::setDriveDestination)
+                PlaceChoices(placeChoices(d), d.destination, tone, actions::setDriveDestination) {
+                    actions.openPlaceSearch(PlacePurpose.END_PLACE)
+                }
             }
             when (mode) {
                 DriveMode.ON_TIME -> TargetPanel(ui, actions, tone)
@@ -344,14 +358,17 @@ private fun placeChoices(d: DriveState): List<Place> {
 }
 
 @Composable
-private fun PlaceChoices(places: List<Place>, selected: Place?, tone: Tone, onSelect: (Place) -> Unit) {
-    if (places.isEmpty()) {
-        Body("고를 곳이 없어요. 내비에 목적지를 정하거나 집·회사를 즐겨찾기에 넣어 주세요.")
-        return
-    }
-    for (row in places.chunked(3)) {
+private fun PlaceChoices(places: List<Place>, selected: Place?, tone: Tone, onSelect: (Place) -> Unit, onSearch: () -> Unit) {
+    if (places.isEmpty()) Body("고를 곳이 없어요. '다른 곳 찾기'로 검색하거나 지도에서 골라 주세요.", RM.textDim)
+    // 끝에 '다른 곳 찾기'(이름·주소 검색, 지도에서 고르기)를 둔다 (null 자리)
+    val items: List<Place?> = places + listOf(null)
+    for (row in items.chunked(3)) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             for (p in row) {
+                if (p == null) {
+                    ActionButton("다른 곳 찾기", onSearch, Modifier.weight(1f), minHeight = 68.dp, textSize = 20.sp, sub = "이름·주소, 지도")
+                    continue
+                }
                 val on = selected?.sameSpot(p) == true
                 ActionButton(
                     p.name,
@@ -374,9 +391,13 @@ private fun TargetPanel(ui: UiState, actions: RestMateActions, tone: Tone) {
     val d = ui.drive
     val target = d.targetAt
     Panel {
-        Label("몇 시에 도착할까요?")
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Label("몇 시에 도착할까요?", modifier = Modifier.weight(1f))
+            Caption("시각을 누르면 직접 골라요", RM.textFaint)
+        }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             StepButton("−5분") { actions.shiftTarget(-5) }
+            // 시각을 누르면 내비의 '도착 시간 설정'처럼 날짜·오전오후·시·분을 고른다
             Text(
                 target?.let { DriveText.clock(it) } ?: "—",
                 color = RM.text,
@@ -384,7 +405,12 @@ private fun TargetPanel(ui: UiState, actions: RestMateActions, tone: Tone) {
                 fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Center,
                 style = NumStyle,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(ButtonShape)
+                    .border(1.dp, RM.line, ButtonShape)
+                    .clickable(onClick = actions::openTimePicker)
+                    .padding(vertical = 4.dp),
             )
             StepButton("+5분") { actions.shiftTarget(5) }
         }

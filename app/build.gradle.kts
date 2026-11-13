@@ -13,6 +13,16 @@ val keystoreProps = Properties().apply {
     if (file.exists()) file.inputStream().use { load(it) }
 }
 
+// 장소 검색에 카카오 로컬을 쓰려면 local.properties(git에 올리지 않음)에 kakao.rest.key=… 를 넣는다.
+// 없으면 키가 필요 없는 OpenStreetMap 검색을 쓴다.
+val localProps = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+val kakaoRestKey = (localProps.getProperty("kakao.rest.key") ?: System.getenv("KAKAO_REST_KEY") ?: "")
+    .trim()
+    .filter { it.isLetterOrDigit() }
+
 android {
     // TODO: 앱 이름이 정해지면 namespace와 applicationId를 함께 바꾼다.
     namespace = "kr.contest.pleosapp"
@@ -24,6 +34,7 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
+        buildConfigField("String", "KAKAO_REST_KEY", "\"$kakaoRestKey\"")
     }
 
     signingConfigs {
@@ -57,6 +68,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

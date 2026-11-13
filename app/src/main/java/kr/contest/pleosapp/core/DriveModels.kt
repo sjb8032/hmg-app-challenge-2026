@@ -19,6 +19,8 @@ enum class PlaceKind(val label: String) {
     BOOKMARK("즐겨찾기"),
     RECENT("최근 목적지"),
     WAYPOINT("경유지"),
+    /** 검색하거나 지도에서 고른 곳 */
+    SEARCH("검색한 곳"),
 }
 
 /** 내비에 넘길 수 있는 장소. POI 값을 알면 같이 넘긴다. */

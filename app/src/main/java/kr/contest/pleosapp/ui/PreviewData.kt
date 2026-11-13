@@ -10,6 +10,8 @@ import kr.contest.pleosapp.app.ConnectionStatus
 import kr.contest.pleosapp.app.DriveLeg
 import kr.contest.pleosapp.app.LogEntry
 import kr.contest.pleosapp.app.LogKind
+import kr.contest.pleosapp.app.InputSheet
+import kr.contest.pleosapp.app.PlacePurpose
 import kr.contest.pleosapp.app.RestMateActions
 import kr.contest.pleosapp.app.RestMateController
 import kr.contest.pleosapp.app.RouteView
@@ -39,6 +41,8 @@ import kr.contest.pleosapp.core.PickupNotice
 import kr.contest.pleosapp.core.PickupNoticeKind
 import kr.contest.pleosapp.core.PickupText
 import kr.contest.pleosapp.core.Place
+import kr.contest.pleosapp.core.PlaceSource
+import kr.contest.pleosapp.core.PlaceHit
 import kr.contest.pleosapp.core.PlaceKind
 import kr.contest.pleosapp.core.RestArea
 import kr.contest.pleosapp.core.RestAreaCandidate
@@ -74,7 +78,7 @@ internal object PreviewSamples {
     const val HIGHWAY_START = 1_794_537_600_000L
 
     private val nonhyeon = DemoTrips.CITY.start
-    private val appointment = DemoTrips.CITY.destination
+    private val appointment = DemoTrips.CITY.destination!!
     private val naksan = Place("낙산공원", LatLng(37.5806, 127.0076), PlaceKind.WAYPOINT)
     private val sowol = Place("남산 소월로", LatLng(37.5535, 126.9800), PlaceKind.WAYPOINT)
     private val sejongnoArea = RestArea("city-sejongno-p", "세종로 공영주차장", RestAreaType.PARKING, LatLng(37.5727, 126.9771))
@@ -171,6 +175,77 @@ internal object PreviewSamples {
     /** 코스 고르기: 번호 붙은 후보 3개 */
     fun choose(): UiState = setup().copy(
         drive = setup().drive.copy(step = DriveStep.CHOOSE, options = options),
+    )
+
+    // ---------------------------------------------------------------- 직접 해 보기: 목적지 검색·지도에서 고르기·도착 시각
+
+    private const val SEARCH_SERVICE = "OpenStreetMap Nominatim (© OpenStreetMap contributors)"
+
+    /** '롯데월드타워'로 찾은 곳 (화면 표본, 좌표는 대략) */
+    private val lotteHits = listOf(
+        PlaceHit("롯데월드타워", "서울특별시 송파구 올림픽로 300", LatLng(37.5126, 127.1025), PlaceSource.OSM, "관광지"),
+        PlaceHit("롯데월드타워 주차장", "서울특별시 송파구 올림픽로 300", LatLng(37.5131, 127.1016), PlaceSource.OSM, "주차장"),
+        PlaceHit("잠실역", "서울특별시 송파구 올림픽로", LatLng(37.5133, 127.1001), PlaceSource.OSM, "역"),
+        PlaceHit("롯데월드", "서울특별시 송파구 올림픽로 240", LatLng(37.5111, 127.0981), PlaceSource.OSM, "관광지"),
+    )
+
+    /** 처음 화면에서 '목적지 검색': 검색 결과 (거리와 함께) */
+    fun placeSearch(): UiState = home().copy(
+        sheet = InputSheet.FindPlace(
+            purpose = PlacePurpose.NAVI_DESTINATION,
+            query = "롯데월드타워",
+            results = lotteHits,
+            mapCenter = nonhyeon,
+            service = SEARCH_SERVICE,
+        ),
+    )
+
+    /** 끝낼 곳 '지도에서 고르기': 지도를 끌어 가운데 핀을 맞춘다 */
+    fun placeMap(): UiState = setup().copy(
+        sheet = InputSheet.FindPlace(
+            purpose = PlacePurpose.END_PLACE,
+            onMap = true,
+            mapCenter = LatLng(37.5700, 126.9830),
+            service = SEARCH_SERVICE,
+        ),
+    )
+
+    /** 도착 목표 시각 고르기: 오늘·오후 7시 10분 */
+    fun timePicker(): UiState = setup().copy(sheet = InputSheet.PickTime)
+
+    /** 시연 '직접 해 보기'의 출발지 고르기: 검색어 없이 누르는 '바로 찾기'와 지금 차가 있는 곳·즐겨찾기 */
+    fun startSearch(): UiState = home().copy(
+        sheet = InputSheet.FindPlace(
+            purpose = PlacePurpose.DEMO_START,
+            suggestions = listOf(PlaceHit(RestMateController.HERE_NAME, "가상 시계만 지금 시각으로", nonhyeon, PlaceSource.APP)) +
+                places.map { PlaceHit.of(it) },
+            mapCenter = nonhyeon,
+            service = SEARCH_SERVICE,
+        ),
+    )
+
+    private val seoulStation = LatLng(37.5547, 126.9707)
+
+    /** 직접 해 보기: 서울역에서 출발, 목적지는 아직 없음 (가상 시계는 지금 시각부터) */
+    fun freeHome(): UiState = base(CITY_START).copy(
+        demoTrip = DemoTrips.free(seoulStation, "서울역"),
+        core = RestMateState(
+            now = CITY_START,
+            gear = Gear.DRIVE,
+            speedKmh = 0.0,
+            position = seoulStation,
+            headingDeg = 0.0,
+            onExpressway = false,
+        ),
+        drive = DriveState(now = CITY_START, places = places),
+        origin = seoulStation,
+        route = null,
+        demoClockHeld = true,
+        pickupContact = "동승자",
+        log = listOf(
+            LogEntry(CITY_START, "시연: 서울역에서 출발해요. 가상 시계는 지금 시각부터 흘러요. 목적지를 검색해 정해 주세요.", LogKind.DEMO),
+        ),
+        console = ConsoleStatus(ConsoleLinkState.ON, Gear.DRIVE, 0, browserActive = true),
     )
 
     private val activeNow = CITY_START + 9 * MINUTE_MS
@@ -332,7 +407,7 @@ internal object PreviewSamples {
     /** 레스트 모드: 졸려서 가장 빨리 닿는 휴게소로 안내 중 */
     fun guidance(): UiState {
         val now = HIGHWAY_START + 70 * MINUTE_MS
-        val car = lerp(highway.start, highway.destination.position, 0.36)
+        val car = lerp(highway.start, highway.destination!!.position, 0.36)
         val target = RestAreaCandidate(munmakArea, 9_500.0, 11_400.0, 7.0)
         return base(now).copy(
             demoTrip = highway,
@@ -369,9 +444,9 @@ internal object PreviewSamples {
             demoDriving = true,
             driveStartedAt = HIGHWAY_START,
             trail = trail(highway.start, car, 1.0),
-            route = RouteView(highway.destination, listOf(Place(munmakArea.name, munmakArea.position, PlaceKind.WAYPOINT))),
+            route = RouteView(highway.destination!!, listOf(Place(munmakArea.name, munmakArea.position, PlaceKind.WAYPOINT))),
             // 강릉 숙소 쪽으로 달리다(36%) 레스트 모드를 눌러 휴게소로 꺾은 참
-            legs = listOf(DriveLeg(highway.start, highway.destination.position, 0.36f)),
+            legs = listOf(DriveLeg(highway.start, highway.destination!!.position, 0.36f)),
             leg = DriveLeg(car, munmakArea.position, 0f),
             lastMessage = "졸릴 땐 쉬어 가요. 가장 빨리 닿는 문막휴게소로 안내할게요.",
             log = listOf(
@@ -417,7 +492,7 @@ internal object PreviewSamples {
             drive = g.drive.copy(now = now, position = munmakArea.position),
             demoDriving = false,
             trail = trail(highway.start, munmakArea.position, 1.0),
-            route = RouteView(highway.destination, emptyList()),
+            route = RouteView(highway.destination!!, emptyList()),
             lastMessage = null,
             extras = VehicleExtras(windowsAllClosed = true, recirculationOn = true, fuelPercent = 42, rangeKm = 310.0),
             cabinNote = "휴식 환경: 23°C · 무드등 은은하게 · 바깥 공기",
@@ -431,7 +506,7 @@ internal object PreviewSamples {
     const val PICKUP_START = CITY_START - 2 * HOUR_MS
 
     /** 내비에 걸린 학원 (시연 '학원 픽업'의 목적지) */
-    private val academy = DemoTrips.PICKUP.destination
+    private val academy = DemoTrips.PICKUP.destination!!
 
     /** 픽업 목표 오후 4:50 (바로 가면 4:41쯤 닿는다) */
     private val pickupTarget = PICKUP_START + 18 * MINUTE_MS
@@ -721,6 +796,13 @@ internal object PreviewActions : RestMateActions {
     override fun removeSavedTrip(trip: SavedTrip) = Unit
     override fun setPickup(on: Boolean) = Unit
     override fun circleForSpot() = Unit
+    override fun openPlaceSearch(purpose: PlacePurpose) = Unit
+    override fun searchPlaces(query: String) = Unit
+    override fun choosePlace(hit: PlaceHit) = Unit
+    override fun showPlaceMap(on: Boolean) = Unit
+    override fun pickPlaceOnMap(at: LatLng) = Unit
+    override fun openTimePicker() = Unit
+    override fun closeSheet() = Unit
     override fun setDemoMode(on: Boolean) = Unit
     override fun selectDemoTrip(id: String) = Unit
     override fun demoDrive() = Unit
@@ -749,6 +831,26 @@ internal fun PreviewScreen(ui: UiState, dark: Boolean = false) {
 @Preview(name = "1 처음", widthDp = 1696, heightDp = 1180)
 @Composable
 private fun HomePreview() = PreviewScreen(PreviewSamples.home())
+
+@Preview(name = "F1 목적지 검색", widthDp = 1696, heightDp = 1180)
+@Composable
+private fun PlaceSearchPreview() = PreviewScreen(PreviewSamples.placeSearch())
+
+@Preview(name = "F2 지도에서 고르기", widthDp = 1696, heightDp = 1180)
+@Composable
+private fun PlaceMapPreview() = PreviewScreen(PreviewSamples.placeMap())
+
+@Preview(name = "F3 도착 시각 고르기", widthDp = 1696, heightDp = 1180)
+@Composable
+private fun TimePickerPreview() = PreviewScreen(PreviewSamples.timePicker())
+
+@Preview(name = "F4 직접 해 보기", widthDp = 1696, heightDp = 1180)
+@Composable
+private fun FreeHomePreview() = PreviewScreen(PreviewSamples.freeHome())
+
+@Preview(name = "F5 직접 해 보기 출발지 (작은 화면)", widthDp = 1280, heightDp = 720)
+@Composable
+private fun StartSearchPreview() = PreviewScreen(PreviewSamples.startSearch())
 
 @Preview(name = "2 코스 고르기", widthDp = 1696, heightDp = 1180)
 @Composable

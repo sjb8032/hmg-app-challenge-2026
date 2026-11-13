@@ -9,6 +9,7 @@ import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
+import kr.contest.pleosapp.BuildConfig
 import kr.contest.pleosapp.audio.AlarmPlayer
 import kr.contest.pleosapp.audio.Speaker
 import kr.contest.pleosapp.core.CabinMode
@@ -36,7 +37,10 @@ import kr.contest.pleosapp.core.OnTimeStyle
 import kr.contest.pleosapp.core.Phase
 import kr.contest.pleosapp.core.PickupNotice
 import kr.contest.pleosapp.core.Place
+import kr.contest.pleosapp.core.PlaceHit
 import kr.contest.pleosapp.core.PlaceKind
+import kr.contest.pleosapp.core.PlaceSearch
+import kr.contest.pleosapp.core.PlaceSource
 import kr.contest.pleosapp.core.RestArea
 import kr.contest.pleosapp.core.RestAreaCandidate
 import kr.contest.pleosapp.core.RestAreaFinder
@@ -51,7 +55,9 @@ import kr.contest.pleosapp.core.VehicleEvent
 import kr.contest.pleosapp.core.VirtualClock
 import kr.contest.pleosapp.data.CityRestPlaces
 import kr.contest.pleosapp.data.CourseCatalog
+import kr.contest.pleosapp.data.PlaceSearchClient
 import kr.contest.pleosapp.data.RestAreaRepository
+import kr.contest.pleosapp.data.SearchFailure
 import kr.contest.pleosapp.sdk.ConsoleStatus
 import kr.contest.pleosapp.sdk.NaviSignals
 import kr.contest.pleosapp.sdk.VehicleExtras
@@ -114,6 +120,8 @@ data class UiState(
     val legs: List<DriveLeg> = emptyList(),
     /** 픽업 알림을 켜면 받을 사람 (시연: 표본 연락처 '아이', 실제: 휴대폰 연동 전이라 '동승자') */
     val pickupContact: String = RestMateController.DEFAULT_PICKUP_CONTACT,
+    /** 화면 위에 띄운 입력 창 (장소 찾기, 도착 시각 고르기) */
+    val sheet: InputSheet? = null,
 )
 
 /** 화면에서 부르는 동작. */
@@ -163,6 +171,21 @@ interface RestMateActions {
     fun setPickup(on: Boolean)
     /** '자리 없음': 픽업할 곳에 세울 곳이 없으면 한 바퀴 돌고 다시 오기 */
     fun circleForSpot()
+
+    // ---- 장소·시각 입력 ----
+    /** 장소 찾기 창 열기 (내비 목적지, 끝낼 곳, 시연 출발지) */
+    fun openPlaceSearch(purpose: PlacePurpose)
+    /** 이름·주소로 찾기 ('검색'을 누를 때만 묻는다) */
+    fun searchPlaces(query: String)
+    /** 찾은 곳 가운데 하나를 고른다 */
+    fun choosePlace(hit: PlaceHit)
+    /** 검색 결과 대신 지도에서 고르기 */
+    fun showPlaceMap(on: Boolean)
+    /** 지도 가운데 핀 자리를 고른다 (주소를 찾아 이름을 붙인다) */
+    fun pickPlaceOnMap(at: LatLng)
+    /** 도착 목표 시각 고르기 창 열기 */
+    fun openTimePicker()
+    fun closeSheet()
 
     // ---- 시연 ----
     fun setDemoMode(on: Boolean)
@@ -234,6 +257,26 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
 
     /** 시연: 계기판·Virtual Console을 모의 차량에 맞춘다 */
     private val console = VirtualConsoleLink(onStatus = { status -> _ui.update { it.copy(console = status) } })
+
+    /** 장소 검색 (카카오 키가 있으면 카카오 로컬, 없으면 OpenStreetMap) */
+    private val placeSearch = PlaceSearchClient(BuildConfig.KAKAO_REST_KEY)
+    /** 장소 검색 차례: 창을 닫거나 다시 찾으면 늦게 온 답은 버린다 */
+    private var searchToken = 0
+    /** 최근에 고른 곳 (검색 창에 먼저 보여 준다) */
+    private val recentPicks = ArrayDeque<PlaceHit>()
+
+    /** 앱에 있는 곳: 경치 지점, 시내 쉴 곳, 휴게소·졸음쉼터 (인터넷이 안 될 때도 찾는다) */
+    private val appPlaces: List<PlaceHit> by lazy {
+        val out = ArrayList<PlaceHit>()
+        for (p in CourseCatalog.POINTS) out += PlaceHit(p.name, "", p.position, PlaceSource.APP, "경치 지점")
+        for (a in areas) out += PlaceHit(a.name, "", a.position, PlaceSource.APP, if (a.onExpressway) "휴게소·쉼터" else "쉴 곳")
+        out
+    }
+
+    /** 시연 목적지 (광화문 약속 장소·아이 학원·강릉 숙소): 시연 모드에서만 찾는다 (실제 차량 검색에 가짜 장소가 먼저 나오지 않게) */
+    private val demoPlaces: List<PlaceHit> by lazy {
+        DemoTrips.ALL.mapNotNull { trip -> trip.destination?.let { PlaceHit.of(it).copy(category = "시연 목적지") } }
+    }
 
     /** 미니맵: 지나온 길, 실제 내비에 요청한 경로, 주행을 시작한 시각 */
     private val trail = ArrayList<LatLng>()
@@ -352,6 +395,10 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
             legs.update(d.navi.legStart, d.navi.target?.position, d.navi.position)
         }
         val route = if (d != null) d.navi.destination?.let { RouteView(it, d.navi.via) } else requestedRoute
+        // 띄운 입력 창이 지금 상황에 맞지 않으면 닫는다 (쉼터 안내가 시작되거나 화면 단계가 바뀜). 늦게 온 검색 답은 버린다
+        val open = _ui.value.sheet
+        val closeSheet = open != null && !sheetFits(open)
+        if (closeSheet) searchToken++
         _ui.update {
             it.copy(
                 now = t,
@@ -371,9 +418,13 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
                 leg = legs.current,
                 legs = legs.done.toList(),
                 pickupContact = pickupContact(),
+                sheet = if (closeSheet) null else it.sheet,
             )
         }
     }
+
+    private fun sheetFits(sheet: InputSheet): Boolean =
+        sheet.fitsNow(engine.state.phase, drive.state.step, drive.state.mode, demo != null, autoRunner.running)
 
     /** 픽업 알림을 받을 사람: 시연은 표본 연락처, 실제 차량은 휴대폰 연락처를 받기 전이라 '동승자' */
     private fun pickupContact(): String = demo?.trip?.pickupContact ?: DEFAULT_PICKUP_CONTACT
@@ -712,6 +763,137 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
         }
     }
 
+    // ---- 장소·시각 입력 ----
+
+    override fun openPlaceSearch(purpose: PlacePurpose) {
+        val sheet = InputSheet.FindPlace(
+            purpose = purpose,
+            mapCenter = carPosition(),
+            suggestions = suggestionsFor(purpose),
+            service = placeSearch.serviceName,
+        )
+        if (!sheetFits(sheet)) return
+        searchToken++
+        _ui.update { it.copy(sheet = sheet) }
+    }
+
+    override fun searchPlaces(query: String) {
+        val sheet = _ui.value.sheet as? InputSheet.FindPlace ?: return
+        val q = query.trim()
+        if (q.isEmpty()) return
+        val near = carPosition()
+        val local = PlaceSearch.local(q, localPlaces(), near)
+        val token = ++searchToken
+        _ui.update { it.copy(sheet = sheet.copy(query = q, results = local, searching = true, note = null, onMap = false)) }
+        placeSearch.search(q, near) { result ->
+            if (token != searchToken) return@search
+            val current = _ui.value.sheet as? InputSheet.FindPlace ?: return@search
+            val merged = PlaceSearch.merge(local, result.hits)
+            val why = when (result.failure) {
+                SearchFailure.OFFLINE -> "인터넷에 연결되지 않아"
+                SearchFailure.SERVICE -> "검색 서비스가 답하지 않아"
+                null -> null
+            }
+            val note = when {
+                why != null && merged.isEmpty() -> "$why 찾지 못했어요. 잠시 뒤 다시 찾거나 '지도에서 고르기'로 골라 주세요."
+                why != null -> "$why 앱에 있는 곳에서만 찾았어요."
+                merged.isEmpty() -> "'$q'(으)로 찾은 곳이 없어요. 다른 이름이나 주소로 찾아 보세요."
+                else -> null
+            }
+            // 카카오 키가 거절되어 OpenStreetMap으로 바꿨으면 출처 표시도 바꾼다
+            _ui.update {
+                it.copy(sheet = current.copy(results = merged, searching = false, note = note, service = placeSearch.serviceName))
+            }
+        }
+    }
+
+    override fun choosePlace(hit: PlaceHit) {
+        val sheet = _ui.value.sheet as? InputSheet.FindPlace ?: return
+        searchToken++
+        _ui.update { it.copy(sheet = null) }
+        // 창을 연 뒤 쉼터 안내가 시작되었거나 화면 단계가 바뀌었으면 고른 곳을 쓰지 않는다 (안내 중인 경로를 덮어쓰지 않게)
+        if (!sheetFits(sheet)) return
+        rememberPick(hit)
+        when (sheet.purpose) {
+            PlacePurpose.NAVI_DESTINATION -> setNaviDestination(hit.toPlace(PlaceKind.CURRENT))
+            // 즐겨찾기·최근 목적지면 그 장소 그대로 (POI 번호, 즐겨찾기의 '근처에서 기다리기' 기본값)
+            PlacePurpose.END_PLACE -> act { drive.setDestination(it, hit.toPlace()) }
+            PlacePurpose.DEMO_START -> startDemo(DemoTrips.free(hit.position, if (hit.name == HERE_NAME) "지금 위치" else hit.name))
+        }
+    }
+
+    /** 목록 ↔ 지도. 찾는 중이던 검색은 그대로 두어, 목록으로 돌아오면 결과가 보인다 */
+    override fun showPlaceMap(on: Boolean) {
+        val sheet = _ui.value.sheet as? InputSheet.FindPlace ?: return
+        _ui.update { it.copy(sheet = sheet.copy(onMap = on)) }
+    }
+
+    override fun pickPlaceOnMap(at: LatLng) {
+        val sheet = _ui.value.sheet as? InputSheet.FindPlace ?: return
+        if (!sheetFits(sheet)) {
+            closeSheet()
+            return
+        }
+        val token = ++searchToken
+        _ui.update { it.copy(sheet = sheet.copy(locating = true, searching = false)) }
+        placeSearch.reverse(at) { hit ->
+            if (token != searchToken) return@reverse
+            choosePlace(hit ?: PlaceHit(MAP_PICK_NAME, "", at, PlaceSource.MAP))
+        }
+    }
+
+    override fun openTimePicker() {
+        if (!sheetFits(InputSheet.PickTime)) return
+        searchToken++
+        _ui.update { it.copy(sheet = InputSheet.PickTime) }
+    }
+
+    override fun closeSheet() {
+        searchToken++
+        _ui.update { it.copy(sheet = null) }
+    }
+
+    /** 지금 차 위치 (검색 결과의 거리, 지도에서 고르기의 처음 가운데) */
+    private fun carPosition(): LatLng? = engine.state.position ?: drive.state.position
+
+    /** 검색어를 넣기 전에 보여 줄 곳: 최근에 고른 곳, 즐겨찾기·최근 목적지. 시연 출발지는 지금 차가 있는 곳부터 */
+    private fun suggestionsFor(purpose: PlacePurpose): List<PlaceHit> {
+        val out = ArrayList<PlaceHit>()
+        if (purpose == PlacePurpose.DEMO_START) {
+            carPosition()?.let { out += PlaceHit(HERE_NAME, "가상 시계만 지금 시각으로", it, PlaceSource.APP) }
+        }
+        out += recentPicks
+        drive.state.naviDestination?.let { out += PlaceHit.of(it.copy(kind = PlaceKind.CURRENT)) }
+        for (p in drive.state.places) out += PlaceHit.of(p)
+        return PlaceSearch.merge(emptyList(), out, limit = MAX_SUGGESTIONS)
+    }
+
+    /** 앱 안에서 찾을 곳: 최근에 고른 곳, 내비 즐겨찾기·최근 목적지, (시연이면) 시연 목적지, 앱에 있는 곳 */
+    private fun localPlaces(): List<PlaceHit> =
+        recentPicks.toList() + drive.state.places.map { PlaceHit.of(it) } + (if (demo != null) demoPlaces else emptyList()) + appPlaces
+
+    private fun rememberPick(hit: PlaceHit) {
+        if (hit.name == HERE_NAME) return
+        recentPicks.removeAll { it.name == hit.name && Geo.distanceMeters(it.position, hit.position) < 50.0 }
+        recentPicks.addFirst(hit.copy(source = PlaceSource.APP, category = "최근에 고른 곳"))
+        while (recentPicks.size > MAX_RECENT_PICKS) recentPicks.removeLast()
+    }
+
+    /**
+     * 처음 화면에서 고른 목적지로 내비 경로를 요청한다. 시연은 모의 내비, 실제 차량은 차량 내비(NaviHelper 경로 요청).
+     * 내비 목적지가 바뀌면 온타임·롱웨이 모드의 끝낼 곳도 그곳이 먼저 나온다.
+     */
+    private fun setNaviDestination(place: Place) {
+        val before = requestedRoute
+        val sent = routeNavi(place, emptyList())
+        // 내비에 넘기지 못했으면 미니맵에도 그 경로를 그리지 않는다
+        if (!sent) requestedRoute = before
+        note(if (sent) "내비에 ${place.name} 안내를 요청했어요." else "내비가 연결되지 않아 목적지를 바꾸지 못했어요.")
+        val t = now()
+        if (demo != null) feedDemo(t)
+        publish()
+    }
+
     // ---- 시연 모드 ----
 
     override fun setDemoMode(on: Boolean) {
@@ -729,6 +911,12 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
 
     override fun demoDrive() {
         val d = demo ?: return
+        // 직접 해 보기는 목적지를 정해야 출발한다 (목적지 없이 달리면 모의 차가 한쪽으로 끝없이 간다)
+        if (d.trip.autoProfile && d.navi.destination == null) {
+            note(FREE_TRIP_NEEDS_DESTINATION, LogKind.DEMO)
+            publish()
+            return
+        }
         d.navi.moving = true
         engine.onGear(now(), Gear.DRIVE)
         stepDemo()
@@ -781,8 +969,9 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
 
     override fun startAutoDemo(chapter: AutoChapter?) {
         main.removeCallbacks(autoLoop)
+        searchToken++
         autoRunner.start(chapter, SystemClock.elapsedRealtime())
-        _ui.update { it.copy(auto = autoRunner.status) }
+        _ui.update { it.copy(auto = autoRunner.status, sheet = null) }
         if (autoRunner.running) main.postDelayed(autoLoop, AUTO_STEP_MS)
     }
 
@@ -825,7 +1014,10 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
         engine.onSpeed(t, 0.0)
         drive.onPlaces(trip.places)
         feedDemo(t)
-        _ui.update { it.copy(demoMode = true, demoTrip = trip, lastMessage = null, naviNote = null) }
+        _ui.update { it.copy(demoMode = true, demoTrip = trip, lastMessage = null, naviNote = null, sheet = null) }
+        if (trip.id == DemoTrips.FREE_ID) {
+            note("시연: ${trip.startName ?: "고른 곳"}에서 출발해요. 가상 시계는 지금 시각부터 흘러요. 목적지를 검색해 정해 주세요.", LogKind.DEMO)
+        }
         main.post(demoLoop)
         publish()
     }
@@ -839,7 +1031,7 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
         console.stop()
         engine = RestMateEngine(finder)
         replayRealSignals()
-        _ui.update { it.copy(demoMode = false, demoTrip = null, lastMessage = null, naviNote = null) }
+        _ui.update { it.copy(demoMode = false, demoTrip = null, lastMessage = null, naviNote = null, sheet = null) }
         publish()
     }
 
@@ -943,7 +1135,10 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
     }
 
     private fun feedDemo(t: Long) {
-        val n = demo?.navi ?: return
+        val d = demo ?: return
+        val n = d.navi
+        // 직접 해 보기: 먼 곳으로 가면 고속도로로 보고 쉼터·기본 휴식 시간을 고른다
+        if (d.trip.autoProfile) engine.setOnExpressway(n.onHighway)
         addTrail(n.position)
         engine.onSpeed(t, n.speedKmh)
         engine.onLocation(t, n.position, n.headingDeg)
@@ -1095,6 +1290,14 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
         const val CONNECTED = "연결됨"
         /** 실제 차량에서 픽업 알림 받는 사람 이름 (휴대폰 연락처를 받기 전) */
         const val DEFAULT_PICKUP_CONTACT = "동승자"
+
+        /** 지도에서 고른 곳의 주소를 찾지 못했을 때 붙이는 이름 */
+        const val MAP_PICK_NAME = "지도에서 고른 곳"
+
+        /** 시연 출발지: 지금 차가 있는 곳에서 그대로 */
+        const val HERE_NAME = "지금 차가 있는 곳"
+        private const val MAX_SUGGESTIONS = 8
+        private const val MAX_RECENT_PICKS = 6
         private const val PREFS = "restmate"
         private const val KEY_ENV_ENABLED = "env_enabled"
         private const val KEY_ENV_TEMP = "env_temp"

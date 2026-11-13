@@ -285,6 +285,11 @@ class DemoRig(highwayAreas: List<RestArea> = loadHighwayAreas()) : AutoDemoHost 
 
     override fun demoDrive() {
         val d = demo ?: return
+        // 직접 해 보기는 목적지를 정해야 출발한다 (컨트롤러와 같게)
+        if (d.trip.autoProfile && d.navi.destination == null) {
+            notes += FREE_TRIP_NEEDS_DESTINATION
+            return
+        }
         d.navi.moving = true
         engine.onGear(now(), Gear.DRIVE)
         stepDemo()
@@ -313,6 +318,21 @@ class DemoRig(highwayAreas: List<RestArea> = loadHighwayAreas()) : AutoDemoHost 
     }
 
     override fun demoSkipRest() = act { engine.skipToAlarm(it) }
+
+    // ---- 직접 해 보기 (컨트롤러의 출발지 고르기·목적지 검색과 같게) ----
+
+    /** 시연 중 모의 내비 */
+    val navi: DemoNavi? get() = demo?.navi
+
+    /** '직접 해 보기'로 [start]에서 출발 */
+    fun startFree(start: LatLng, name: String) = startDemo(DemoTrips.free(start, name))
+
+    /** 처음 화면의 '목적지 검색'으로 고른 곳을 내비 목적지로 */
+    fun setNaviDestination(place: Place) {
+        routeNavi(place, emptyList())
+        feedDemo(now())
+        publish()
+    }
 
     private fun startDemo(trip: DemoTrip) {
         resetEngines()
@@ -387,7 +407,10 @@ class DemoRig(highwayAreas: List<RestArea> = loadHighwayAreas()) : AutoDemoHost 
     }
 
     private fun feedDemo(t: Long) {
-        val n = demo?.navi ?: return
+        val d = demo ?: return
+        val n = d.navi
+        // 직접 해 보기: 고속도로 구간이면 쉼터·기본 휴식 시간을 고속도로 기준으로 (컨트롤러와 같게)
+        if (d.trip.autoProfile) engine.setOnExpressway(n.onHighway)
         engine.onSpeed(t, n.speedKmh)
         engine.onLocation(t, n.position, n.headingDeg)
         drive.onLocation(t, n.position)
