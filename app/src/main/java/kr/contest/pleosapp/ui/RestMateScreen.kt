@@ -27,11 +27,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kr.contest.pleosapp.R
 import kr.contest.pleosapp.app.AutoCue
 import kr.contest.pleosapp.app.RestMateActions
 import kr.contest.pleosapp.app.RestMateController
@@ -874,11 +876,15 @@ private fun BottomAction(ui: UiState, actions: RestMateActions) {
     // 자동 시연이 이 버튼을 누르려고 짚는 중
     val cue = Modifier.cueRing(ui.cueing(AutoCue.BOTTOM))
     when (s.phase) {
-        // P단으로 세워 두었으면 쉼터로 보내지 않고 그 자리에서 쉰다
-        Phase.DRIVING -> if (s.gear == Gear.PARK) {
-            BigButton("레스트 모드", "지금 세운 곳에서 바로 눈 붙여요 · 알람으로 깨워 드려요", Tone.AMBER, actions::pressDrowsy, cue)
-        } else {
-            BigButton("레스트 모드", "졸리면 눌러요 · 가까운 휴게소·졸음쉼터·주차장으로 바로 안내해요", Tone.AMBER, actions::pressDrowsy, cue)
+        // P단으로 세워 두었으면 쉼터로 보내지 않고 그 자리에서 쉰다.
+        // 레스트 모드 아이콘(의자에 기대 조는 사람)은 온타임·롱웨이 모드 카드 아이콘과 같은 72dp로 글자 왼쪽에 둔다.
+        Phase.DRIVING -> {
+            val restIcon = painterResource(R.drawable.ic_mode_rest)
+            if (s.gear == Gear.PARK) {
+                BigButton("레스트 모드", "지금 세운 곳에서 바로 눈 붙여요 · 알람으로 깨워 드려요", Tone.AMBER, actions::pressDrowsy, cue, icon = restIcon)
+            } else {
+                BigButton("레스트 모드", "졸리면 눌러요 · 가까운 휴게소·졸음쉼터·주차장으로 바로 안내해요", Tone.AMBER, actions::pressDrowsy, cue, icon = restIcon)
+            }
         }
         Phase.TO_REST_AREA ->
             BigButton("더 빨리 쉴래요", "더 빨리 닿는 곳이 있으면 바꿔서 안내해요", Tone.AMBER, actions::pressDrowsy, cue)
