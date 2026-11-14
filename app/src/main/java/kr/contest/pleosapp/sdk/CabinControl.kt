@@ -202,11 +202,12 @@ class CabinControl(
         }
         val lights = lightTargets()
         lights.forEach { setLightSwitch(it, LightSwitch.ON) }
-        // 무드등을 몇 단계에 걸쳐 밝힌다 (해 뜨는 것처럼).
-        for (step in 1..WAKE_LIGHT_STEPS) {
+        // 무드등을 몇 단계에 걸쳐 밝힌다 (해 뜨는 것처럼). 첫 단계는 바로: 결과 줄을 알리기 전에 밝기가 바뀌는지 확인되게.
+        lights.forEach { setBrightness(it, fraction = 1.0 / WAKE_LIGHT_STEPS) }
+        for (step in 2..WAKE_LIGHT_STEPS) {
             main.postDelayed({
                 if (gen == generation) lights.forEach { setBrightness(it, fraction = step.toDouble() / WAKE_LIGHT_STEPS) }
-            }, step * WAKE_LIGHT_STEP_MS)
+            }, (step - 1) * WAKE_LIGHT_STEP_MS)
         }
         change.arm()
     }
