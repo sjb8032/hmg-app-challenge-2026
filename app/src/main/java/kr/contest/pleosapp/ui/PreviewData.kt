@@ -513,6 +513,9 @@ internal object PreviewSamples {
     private val pickupTarget = PICKUP_START + 18 * MINUTE_MS
     private const val ACADEMY_DIRECT_MS = 9 * MINUTE_MS
 
+    /** 학원 픽업 표본의 문자 받는 사람 (아이에게 보내는 말투) */
+    private const val KID = "아이"
+
     /** 학원 근처에 들를 만한 경치 지점이 없어 계산으로 잡은 돌아가는 지점 */
     private val detourPoint = Place("돌아가는 지점", LatLng(37.5085, 127.0505), PlaceKind.WAYPOINT)
     private val detour = CourseOption(
@@ -558,7 +561,7 @@ internal object PreviewSamples {
         route = RouteView(academy, emptyList()),
         demoClockHeld = true,
         console = ConsoleStatus(ConsoleLinkState.ON, Gear.DRIVE, 0, browserActive = true),
-        pickupContact = "아이",
+        pickupContact = KID,
         auto = AutoStatus(
             chapter = AutoChapter.PICKUP,
             scene = autoSceneNo("픽업 알림 켜기"),
@@ -575,7 +578,7 @@ internal object PreviewSamples {
         val now = PICKUP_START + 13 * MINUTE_MS
         val car = lerp(detourPoint.position, academy.position, 0.55)
         val eta = now + 3 * MINUTE_MS
-        val approach = notice(now, PickupNoticeKind.APPROACH, PickupText.approach(academy.name, DriveText.clock(eta), car), car)
+        val approach = notice(now, PickupNoticeKind.APPROACH, PickupText.approach(KID, academy.name, eta, car), car)
         val a = active()
         return a.copy(
             now = now,
@@ -599,7 +602,7 @@ internal object PreviewSamples {
                 pickupTo = "아이",
                 pickupNotices = listOf(approach),
             ),
-            pickupContact = "아이",
+            pickupContact = KID,
             driveStartedAt = PICKUP_START,
             trail = trail(nonhyeon, detourPoint.position, 1.0, 20) + trail(detourPoint.position, car, 1.0, 10),
             route = RouteView(academy, emptyList()),
@@ -631,7 +634,7 @@ internal object PreviewSamples {
         val back = pressed + 3 * MINUTE_MS
         val car = lerp(academy.position, loop.position, 0.7)
         val circle = CourseOption("circle", CourseKind.DETOUR, "한 바퀴 돌고 다시 오기", "세울 곳이 없어 주변을 약 3분 돌아요", listOf(loop), 3 * MINUTE_MS)
-        val circling = notice(pressed, PickupNoticeKind.CIRCLING, PickupText.circling(academy.name, DriveText.clock(back)), null)
+        val circling = notice(pressed, PickupNoticeKind.CIRCLING, PickupText.circling(KID, academy.name, back), null)
         return p.copy(
             now = now,
             core = p.core.copy(now = now, position = car, headingDeg = Geo.bearingDegrees(car, loop.position)),
@@ -667,7 +670,7 @@ internal object PreviewSamples {
         val c = pickupCircling()
         val arrived = PICKUP_START + 19 * MINUTE_MS + 40 * SECOND_MS
         val now = arrived + 20 * SECOND_MS
-        val parked = notice(now, PickupNoticeKind.PARKED, PickupText.parked(academy.name, 0.0, academy.position), academy.position)
+        val parked = notice(now, PickupNoticeKind.PARKED, PickupText.parked(KID, academy.name, 0.0, academy.position), academy.position)
         val loop = circlePlace()
         return c.copy(
             now = now,

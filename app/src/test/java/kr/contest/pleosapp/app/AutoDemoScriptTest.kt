@@ -104,13 +104,14 @@ class AutoDemoScriptTest {
             rig.sent.map { it.kind },
         )
         assertEquals(rig.sent.toList(), d.pickupNotices)
-        assertTrue(rig.sent.last().text, "아이 학원 바로 앞에 차를 세웠어요" in rig.sent.last().text)
+        assertTrue(rig.sent.last().text, "학원 바로 앞에 차 세웠어. 천천히 나와!" in rig.sent.last().text)
         assertEquals(Gear.PARK, rig.view().core.gear)
         assertTrue(rig.said.any { it.startsWith("한 바퀴 돌고") })
         assertTrue(rig.said.any { it == "아이에게 보낼 도착 문자를 띄웠어요." })
         // 학원 앞에 세운 것은 도착이라 '주차하셨네요'를 묻지 않는다
         assertNull(rig.view().core.prompt)
-        assertTrue(runner.transcript.any { it.startsWith("도착 3분 전") && "아이 학원 앞에 도착해요" in it })
+        // 아이에게 보내는 말투 그대로 해설에 나온다
+        assertTrue(runner.transcript.joinToString("\n"), runner.transcript.any { it.startsWith("도착 3분 전") && "곧 도착해! 9시 " in it && "학원 앞에서 만나자." in it })
         // 기획서 시나리오 2처럼 밤 9시 50분 픽업 (바로 가면 10분 남짓 일찍)
         assertEquals("pickup", rig.view().tripId)
         assertTrue(runner.transcript.joinToString("\n"), runner.transcript.any { "픽업은 9시 50분" in it && "분 일찍 닿아" in it })

@@ -260,7 +260,7 @@ class DriveEngine(
         val last = parkedNoticeAt
         if (last == null || Geo.distanceMeters(last, at) >= PARKED_RESEND_METERS) {
             parkedNoticeAt = at
-            send(now, PickupNoticeKind.PARKED, PickupText.parked(dest.name, meters, at), at)
+            send(now, PickupNoticeKind.PARKED, PickupText.parked(to, dest.name, meters, at), at)
             speak(Say.NOTICE, "${to}에게 보낼 세운 곳 문자를 띄웠어요.")
         }
         return true
@@ -324,7 +324,7 @@ class DriveEngine(
         val back = DriveText.clock(backAt)
         setMessage(now, "세울 곳이 없어 한 바퀴 돌고 ${back}쯤 다시 와요.")
         speak(Say.VIA, "한 바퀴 돌고 ${DriveText.spokenClock(backAt)}쯤 다시 올게요. ${to}에게 보낼 문자도 띄웠어요.")
-        send(now, PickupNoticeKind.CIRCLING, PickupText.circling(dest.name, back), null)
+        send(now, PickupNoticeKind.CIRCLING, PickupText.circling(to, dest.name, backAt), null)
         track(now)
     }
 
@@ -1113,7 +1113,7 @@ class DriveEngine(
         if (driving > config.pickupNoticeMs) return
         val dest = state.destination ?: return
         approachSent = true
-        send(now, PickupNoticeKind.APPROACH, PickupText.approach(dest.name, DriveText.clock(eta), state.position), state.position)
+        send(now, PickupNoticeKind.APPROACH, PickupText.approach(to, dest.name, eta, state.position), state.position)
         speak(Say.NOTICE, "${to}에게 보낼 도착 문자를 띄웠어요.")
     }
 
@@ -1591,9 +1591,10 @@ class DriveEngine(
     private fun arrive(now: Long, naviFinished: Boolean = false) {
         val dest = state.destination
         // 픽업 알림: 마지막 구간이 짧아(기다리던 곳이 학원 바로 옆 등) '곧 도착' 문자를 아직 못 띄웠으면 도착하면서 띄운다.
-        if (state.pickupTo != null && !approachSent && !state.circling && dest != null) {
+        val pickupTo = state.pickupTo
+        if (pickupTo != null && !approachSent && !state.circling && dest != null) {
             approachSent = true
-            send(now, PickupNoticeKind.APPROACH, PickupText.approach(dest.name, DriveText.clock(now), state.position), state.position)
+            send(now, PickupNoticeKind.APPROACH, PickupText.approach(pickupTo, dest.name, now, state.position), state.position)
         }
         // 경유지가 남은 채 도착했으면 (지나가다 1분 머묾, '자리 없음'으로 돌다 빈자리에 세움) 내비 경로에서 경유지를 뺀다.
         if (state.viaActive && !state.paused && dest != null) {
