@@ -174,6 +174,23 @@ class RestMateEngineTest {
         assertEquals(Prompt.ParkedHere, e.state.prompt)
     }
 
+    /** 앱을 켤 때부터 P단으로 서 있으면(출발 전) '주차하셨네요'를 묻지 않는다. 달렸다가 세우면 묻는다 */
+    @Test
+    fun parkedFromTheStartDoesNotAskToRest() {
+        val e = engine()
+        e.onGear(t0, Gear.PARK)
+        e.onSpeed(t0, 0.0)
+        e.onLocation(t0, origin, null)
+        e.onTick(t0 + 30_000)
+        assertNull(e.state.prompt)
+        e.onGear(t0 + 60_000, Gear.DRIVE)
+        e.onSpeed(t0 + 61_000, 40.0)
+        e.onSpeed(t0 + 120_000, 0.0)
+        e.onGear(t0 + 120_000, Gear.PARK)
+        e.onTick(t0 + 135_000)
+        assertEquals(Prompt.ParkedHere, e.state.prompt)
+    }
+
     /** P단으로 세워 '주차하셨네요' 물음까지 */
     private fun RestMateEngine.parkWithoutGuidance(start: Long): Long {
         driveAt(start)

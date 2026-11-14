@@ -52,7 +52,28 @@ object RestAreaCleaner {
         Zone("전주", LatLng(35.8242, 127.1480), 7_000.0),
     )
 
-    fun clean(areas: List<RestArea>): List<RestArea> = dropOddTwins(dedupe(areas.filter(::keep)))
+    fun clean(areas: List<RestArea>): List<RestArea> = dropOddTwins(dedupe(areas.filter(::keep).map(::withUpDown)))
+
+    /** 서울 시청. 고속도로는 서울 쪽이 상행이다 */
+    private val SEOUL = LatLng(37.5667, 126.9783)
+
+    /**
+     * 이름에 '상행'·'하행'만 적고 방향 지명이 없는 쉼터에 방향을 붙인다.
+     * 상행은 서울로 가는 차, 하행은 서울에서 멀어지는 차가 들르는 쪽으로 본다 (하행은 서울의 반대쪽 점을 향하게).
+     * 방향이 없으면 마주 보는 두 쉼터가 같은 곳으로 합쳐져, 반대편 쉼터로 안내할 수 있다 (가평 휴게소 상행·하행).
+     */
+    fun withUpDown(area: RestArea): RestArea {
+        if (area.directionTarget != null || area.directionLabel != null) return area
+        val up = "상행" in area.name
+        val down = "하행" in area.name
+        if (up == down) return area
+        val p = area.position
+        return if (up) {
+            area.copy(directionLabel = "서울", directionTarget = SEOUL)
+        } else {
+            area.copy(directionLabel = "하행", directionTarget = LatLng(2 * p.lat - SEOUL.lat, 2 * p.lon - SEOUL.lon))
+        }
+    }
 
     /**
      * 이름에 휴게·쉼터 같은 말이 없는 항목(회사 이름·지명만)은 300m 안에 제대로 된 이름의 같은 종류가 있으면 뺀다.
@@ -67,7 +88,7 @@ object RestAreaCleaner {
     }
 
     /**
-     * 같은 곳이 두 번 들어 있으면 하나만 남긴다: 같은 종류, 250m 안, 방향 표시를 뺀 이름이 같고, 방향이 서로 다르지 않을 때.
+     * 같은 곳이 두 번 들어 있으면 하나만 남긴다: 같은 종류, 250m 안, 방향 표시를 뺀 이름이 같고, 같은 쪽(진행 방향)일 때.
      * 괄호로 방향을 적은 이름("○○ 휴게소 (강릉 방향)")을 먼저 남긴다. 순서는 그대로 둔다.
      */
     fun dedupe(areas: List<RestArea>): List<RestArea> {
@@ -77,15 +98,26 @@ object RestAreaCleaner {
             if (group.size < 2) continue
             val kept = ArrayList<RestArea>()
             for (a in group.sortedBy { rank(it) }) {
-                val twin = kept.any { k ->
-                    (k.directionLabel == null || a.directionLabel == null || k.directionLabel == a.directionLabel) &&
-                        Geo.distanceMeters(k.position, a.position) <= SAME_PLACE_METERS
-                }
+                val twin = kept.any { k -> sameWay(k, a) && Geo.distanceMeters(k.position, a.position) <= SAME_PLACE_METERS }
                 if (twin) dropped += a.id else kept += a
             }
         }
         return if (dropped.isEmpty()) areas else areas.filterNot { it.id in dropped }
     }
+
+    /**
+     * 두 쉼터가 같은 쪽(같은 진행 방향) 것인지. 방향을 모르는 쪽이 있으면 같다고 본다.
+     * 방향 지명이 달라도 가리키는 쪽이 비슷하면 같은 쪽이다 ('오산 휴게소 (상행)'과 '오산휴게소(과천방향)').
+     */
+    private fun sameWay(a: RestArea, b: RestArea): Boolean {
+        if (a.directionLabel == null || b.directionLabel == null || a.directionLabel == b.directionLabel) return true
+        val ta = a.directionTarget ?: return false
+        val tb = b.directionTarget ?: return false
+        return Geo.angleDiff(Geo.bearingDegrees(a.position, ta), Geo.bearingDegrees(b.position, tb)) <= SAME_WAY_DEGREES
+    }
+
+    /** 방향 지명이 가리키는 쪽이 이 각도 안이면 같은 쪽 */
+    private const val SAME_WAY_DEGREES = 60.0
 
     /** 이름에서 괄호·방향 표시·띄어쓰기·끝의 '휴게소/쉼터'를 뺀 것 ("용인 휴게소 (강릉 방향)" → "용인") */
     fun baseKey(area: RestArea): String {

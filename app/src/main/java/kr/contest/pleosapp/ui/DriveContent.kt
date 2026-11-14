@@ -49,6 +49,7 @@ import kr.contest.pleosapp.core.DriveState
 import kr.contest.pleosapp.core.DriveStep
 import kr.contest.pleosapp.core.DriveText
 import kr.contest.pleosapp.core.FitStatus
+import kr.contest.pleosapp.core.Gear
 import kr.contest.pleosapp.core.MINUTE_MS
 import kr.contest.pleosapp.core.Mood
 import kr.contest.pleosapp.core.OnTimeStyle
@@ -247,13 +248,18 @@ private fun DriveSetup(ui: UiState, actions: RestMateActions) {
                 DriveMode.LONGER -> LongerPanel(ui, actions, tone)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                ActionButton(
-                    if (d.planPending) "시간 확인 중…" else "코스 찾기",
-                    actions::planCourses,
-                    Modifier.weight(2f).cueRing(ui.cueing(AutoCue.PLAN)),
-                    tone,
-                    enabled = d.destination != null && !d.planPending,
-                )
+                if (mode == DriveMode.ON_TIME && noSpareTime(ui)) {
+                    // 남는 시간이 없으면 채울 코스가 없다: 위 문구('바로 가세요')와 같은 버튼을 둔다
+                    ActionButton("바로 가기", actions::goDirect, Modifier.weight(2f), tone, sub = "코스 없이 바로 출발")
+                } else {
+                    ActionButton(
+                        if (d.planPending) "시간 확인 중…" else "코스 찾기",
+                        actions::planCourses,
+                        Modifier.weight(2f).cueRing(ui.cueing(AutoCue.PLAN)),
+                        tone,
+                        enabled = d.destination != null && !d.planPending,
+                    )
+                }
                 ActionButton("뒤로", actions::driveBack, Modifier.weight(1f))
             }
             d.message?.let { Notice(it, RM.textDim) }
@@ -266,6 +272,17 @@ private fun DriveSetup(ui: UiState, actions: RestMateActions) {
             if (mode == DriveMode.ON_TIME) Panel { PickupToggle(ui, actions, tone) }
         },
     )
+}
+
+/**
+ * 온타임 설정: 바로 가도 남는 시간이 1분도 없는지 (늦거나 딱 맞음). 바로 가는 시간을 아직 모르면 false.
+ * 목표 칸의 문구·요약과 같은 기준 (남는 시간 = 목표 − 지금 − 바로 가는 시간 − 여유 3분)
+ */
+private fun noSpareTime(ui: UiState): Boolean {
+    val d = ui.drive
+    val direct = d.directMs ?: return false
+    val target = d.targetAt ?: return false
+    return target - ui.now - direct - MARGIN_MINUTES * MINUTE_MS < MINUTE_MS
 }
 
 /** 설정 화면 오른쪽: 바로 가면 언제 닿는지와 무엇을 맞추는지 */
@@ -305,7 +322,13 @@ private fun TimeBudget(now: Long, direct: Long, target: Long) {
     val margin = MARGIN_MINUTES * MINUTE_MS
     val spare = total - direct - margin
     if (total <= 0L || spare < 0L || direct <= 0L) {
-        Caption("바로 가도 목표 시각에 맞추기 빠듯해요.", RM.amber)
+        // 왼쪽 목표 칸과 같은 기준·같은 말로 (늦으면 몇 분 늦는지, 아니면 남는 시간이 없다고)
+        val late = now + direct - target
+        if (late > 30 * SECOND_MS) {
+            Caption("바로 가도 약 ${DriveText.duration(late)} 늦어요.", RM.amber)
+        } else {
+            Caption("바로 가면 시간에 거의 딱 맞아요. 남는 시간이 없어요.", RM.textDim)
+        }
         return
     }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -438,6 +461,8 @@ private fun TargetPanel(ui: UiState, actions: RestMateActions, tone: Tone) {
                 else -> Body("바로 가면 시간에 거의 딱 맞아요. 남는 시간이 없어요.", RM.textDim)
             }
         }
+        // 남는 시간이 없으면 쓸 방법도 묻지 않는다 (늦을 때는 위 문구와 '바로 가기'만)
+        if (noSpareTime(ui)) return@Panel
         Label("남는 시간은 어떻게 쓸까요?")
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             for (style in OnTimeStyle.entries) {
@@ -616,7 +641,7 @@ private fun CourseCard(
                 val note = if (option.kind == CourseKind.DIRECT) "" else fitNote(arrival, target)
                 Text(
                     "${DriveText.clock(arrival)} 도착 예상$note",
-                    color = kindColor(option.kind),
+                    color = fitColor(arrival, target),
                     fontSize = 17.sp,
                     fontWeight = FontWeight.SemiBold,
                     style = NumStyle,
@@ -643,6 +668,17 @@ private fun fitNote(arrival: Long, target: Long?): String {
         early < -30 * SECOND_MS -> " · 약 ${DriveText.duration(early)} 늦어요"
         early > (MARGIN_MINUTES + 2) * MINUTE_MS -> " · ${DriveText.duration(early)} 일찍"
         else -> ""
+    }
+}
+
+/** 코스 카드의 도착 예상 색: 목표에 맞으면 하늘색, 다 못 채워 일찍이면 샌드, 늦으면 호박색 (롱웨이는 마감이 없어 샌드) */
+private fun fitColor(arrival: Long, target: Long?): Color {
+    if (target == null) return RM.sand
+    val early = -DriveText.gapMs(arrival, target)
+    return when {
+        early < -30 * SECOND_MS -> RM.amber
+        early > (MARGIN_MINUTES + 2) * MINUTE_MS -> RM.sand
+        else -> RM.sky
     }
 }
 
@@ -772,6 +808,9 @@ private fun CourseStops(ui: UiState) {
         val arriveAt = d.stopArriveAt
         val departAt = d.stopDepartAt
         val detail = when {
+            // '바로 가기'로 빼거나 늦지 않게 뺀 경유지는 지난 것이 아니다
+            passed && !d.viaReached -> "들르지 않았어요"
+            passed && isRest -> "들렀다 왔어요"
             passed -> "지났어요"
             isRest && arriveAt != null && departAt != null ->
                 "${DriveText.clock(arriveAt)} 도착 → ${DriveText.clock(departAt)} 출발"
@@ -875,8 +914,9 @@ private fun DriveArrived(ui: UiState, actions: RestMateActions) {
                 }
             }
             CourseStops(ui)
-            if (d.pickupOn()) {
-                // 픽업: 세울 곳이 없으면 한 바퀴 돌고 다시 오기 (픽업할 사람에게 다시 오는 시각을 알린다)
+            // 픽업: 세울 곳이 없으면 한 바퀴 돌고 다시 오기 (픽업할 사람에게 다시 오는 시각을 알린다).
+            // 이미 P단으로 세웠으면 자리를 찾은 것이라 묻지 않는다 (옮기려고 D단으로 바꾸면 다시 보인다)
+            if (d.pickupOn() && ui.core.gear != Gear.PARK) {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     ActionButton(
                         "자리 없음",

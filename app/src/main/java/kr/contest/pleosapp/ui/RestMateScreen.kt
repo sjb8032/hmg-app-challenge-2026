@@ -188,7 +188,8 @@ private fun driveTitle(d: DriveState): Pair<String, Color> {
         DriveStep.HOME -> "어떻게 갈까요?" to RM.textDim
         DriveStep.SETUP -> (mode?.title ?: "드라이브") to color
         DriveStep.CHOOSE -> "${mode?.title ?: "드라이브"} · 코스 고르기" to color
-        DriveStep.ACTIVE -> "${mode?.title ?: "드라이브"} · 달리는 중" to color
+        // '달리는 중'이라고 하면 출발 전(신호 대기·D단으로 서 있음)과 맞지 않아 내비처럼 '안내 중'이라고 쓴다
+        DriveStep.ACTIVE -> "${mode?.title ?: "드라이브"} · 안내 중" to color
         DriveStep.ARRIVED -> "도착했어요" to color
     }
 }
@@ -602,7 +603,8 @@ private fun DepartPanel(rest: RestSession, ui: UiState, actions: RestMateActions
             }
             else -> {
                 val left = rest.alarmAt - now
-                Text(if (left > 0) clock(left) else "시간이 됐어요", color = RM.text, fontSize = 72.sp, fontWeight = FontWeight.SemiBold, style = NumStyle)
+                // '14:08'만 쓰면 오후 2시 8분으로 읽혀서 눈 붙이기 화면처럼 '남음'을 붙인다
+                Text(if (left > 0) "${clock(left)} 남음" else "시간이 됐어요", color = RM.text, fontSize = 72.sp, fontWeight = FontWeight.SemiBold, style = NumStyle)
                 Caption("${DriveText.clock(rest.alarmAt)}에 알려 드려요 · 깨우는 알람은 울리지 않아요")
             }
         }
@@ -808,8 +810,9 @@ private fun ArrivalPanel(rest: RestSession, ui: UiState) {
             Label("도착 예상")
             Text("지금 출발하면 ${DriveText.clock(now + route)} 도착", color = RM.text, fontSize = 26.sp, fontWeight = FontWeight.SemiBold)
         } else {
-            // 출발 시각을 따로 정한 계획(깨운 뒤 기다렸다 출발)과 헷갈리지 않게 '깨자마자 출발하면'이라고 쓴다.
-            Label("깨자마자 출발하면 (휴식 시간별 도착 예상)")
+            // 출발 시각을 따로 정한 계획(깨운 뒤 기다렸다 출발)과 헷갈리지 않게 '바로 출발하면'이라고 쓴다.
+            // 몸을 깨우는 시간은 더한다 (아래 설명). '깨자마자'라고 쓰면 깨우는 시간을 더한 것과 어긋난다.
+            Label("몸 깨우고 바로 출발하면 (휴식 시간별 도착 예상)")
             val options = (REST_OPTIONS + rest.plannedMinutes).distinct().sorted()
             for (m in options) {
                 val wakeMs = RestTiming.wakeMsFor(m * MINUTE_MS, ui.config.wakeUpMs)

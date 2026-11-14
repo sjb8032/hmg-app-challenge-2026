@@ -395,7 +395,7 @@ private fun MapPicker(
 // ---------------------------------------------------------------- 도착 목표 시각
 
 /**
- * 도착 목표 시각 고르기 (내비의 '도착 시간 설정'처럼): 오늘·내일, 오전·오후, 시·분 바퀴.
+ * 도착 목표 시각 고르기 (내비의 '도착 시간 설정'처럼): 오늘·내일, 오전·오후, 시·분 바퀴 (분은 5분 단위).
  * 고르는 동안 바로 가면 언제 닿는지와 남는 시간을 같이 보여 준다. 지금부터 5분 뒤보다 이르게는 정할 수 없다.
  */
 @Composable
@@ -411,6 +411,7 @@ private fun PickTimeSheet(ui: UiState, actions: RestMateActions) {
     var pm by remember { mutableStateOf(start.pm) }
     var hour12 by remember { mutableIntStateOf(start.hour12) }
     var minute by remember { mutableIntStateOf(start.minute) }
+    val minutes = remember { ClockPick.minuteChoices(start.minute) }
     val at = ClockPick(day, pm, hour12, minute).at(baseDay)
     val earliest = DriveEngine.roundUp(now + 5 * MINUTE_MS, 5 * MINUTE_MS)
     val tooEarly = at < earliest
@@ -449,7 +450,13 @@ private fun PickTimeSheet(ui: UiState, actions: RestMateActions) {
             }
             Row(Modifier.weight(1.1f), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Wheel(12, hour12 - 1, { "${it + 1}시" }, { hour12 = it + 1 }, Modifier.weight(1f))
-                Wheel(60, minute, { String.format(java.util.Locale.ROOT, "%02d분", it) }, { minute = it }, Modifier.weight(1f))
+                Wheel(
+                    minutes.size,
+                    minutes.indexOf(minute).coerceAtLeast(0),
+                    { String.format(java.util.Locale.ROOT, "%02d분", minutes[it]) },
+                    { minute = minutes[it] },
+                    Modifier.weight(1f),
+                )
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {

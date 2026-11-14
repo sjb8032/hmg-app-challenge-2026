@@ -74,4 +74,16 @@ class ClockPickTest {
         assertEquals(expected, ClockPick(1, false, 8, 0).at(base))
         assertEquals(ClockPick(1, false, 8, 0), ClockPick.of(base, expected))
     }
+
+    @Test
+    fun minuteWheelStepsByFiveAndKeepsAnOddMinute() {
+        val five = ClockPick.minuteChoices(50)
+        assertEquals(12, five.size)
+        assertEquals(listOf(0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55), five)
+        // 정해 둔 분이 5분 단위가 아니면 그 분도 둔다 (열고 그냥 정해도 그대로)
+        val odd = ClockPick.minuteChoices(47)
+        assertEquals(13, odd.size)
+        assertEquals(listOf(40, 45, 47, 50), odd.filter { it in 40..50 })
+        assertEquals(odd.sorted(), odd)
+    }
 }

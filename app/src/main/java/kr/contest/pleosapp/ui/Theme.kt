@@ -18,6 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.intl.LocaleList
+import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -110,9 +112,10 @@ object RM {
         skyDeep = Color(0xFF00668A),
         onSky = Color(0xFFFFFFFF),
         sand = Color(0xFF8C6A43),
-        sandFill = Color(0xFFEADFD1),
+        // 롱웨이 모드 버튼(고른 칸·'코스 찾기')은 온타임의 하늘색처럼 진한 샌드에 흰 글자로 (옅은 베이지는 흰 바탕에서 꺼진 버튼처럼 보였다)
+        sandFill = Color(0xFF8C6A43),
         sandDeep = Color(0xFF6F5232),
-        onSand = Color(0xFF3D2B16),
+        onSand = Color(0xFFFFFFFF),
         amber = Color(0xFFB85C00),
         amberFill = Color(0xFFFFB547),
         amberDeep = Color(0xFF9A4D00),
@@ -268,8 +271,13 @@ fun RestMateTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable ()
                         .fillMaxSize()
                         .background(Brush.verticalGradient(listOf(RM.backgroundTop, RM.background))),
                 ) {
-                    // 기본 글자: 현대 제품 화면처럼 자간을 조금 좁게
-                    val base = TextStyle(color = RM.text, letterSpacing = (-0.3).sp)
+                    // 기본 글자: 현대 제품 화면처럼 자간을 조금 좁게. 줄은 어절(띄어쓰기)에서 바꾼다
+                    val base = TextStyle(
+                        color = RM.text,
+                        letterSpacing = (-0.3).sp,
+                        lineBreak = KOREAN_LINE_BREAK,
+                        localeList = KOREAN,
+                    )
                     CompositionLocalProvider(LocalTextStyle provides LocalTextStyle.current.merge(base)) {
                         content()
                     }
@@ -278,3 +286,15 @@ fun RestMateTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable ()
         }
     }
 }
+
+/**
+ * 한국어 줄바꿈: 글자마다가 아니라 어절(띄어쓰기)에서 바꾼다 ('있어요'가 '있 / 어요'로, '레스트'가 '레스 / 트'로 갈리지 않게).
+ * 안드로이드 13 이상에서 쓰이고 그 아래는 기본 줄바꿈이다. 글자 언어를 한국어로 두어야 어절 단위로 바뀐다 (기기 언어가 영어여도).
+ */
+internal val KOREAN_LINE_BREAK = LineBreak(
+    strategy = LineBreak.Strategy.HighQuality,
+    strictness = LineBreak.Strictness.Strict,
+    wordBreak = LineBreak.WordBreak.Phrase,
+)
+
+private val KOREAN = LocaleList("ko-KR")

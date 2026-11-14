@@ -24,6 +24,15 @@ data class ClockPick(val day: Int, val pm: Boolean, val hour12: Int, val minute:
     }
 
     companion object {
+        /** 분 바퀴의 간격 (차 안에서 60줄을 돌리지 않게. 목표 칸의 −5분·+5분과 같은 단위) */
+        const val MINUTE_STEP = 5
+
+        /**
+         * 분 바퀴에 둘 값: 0, 5, …, 55분. [keep](지금 정해 둔 분)이 5분 단위가 아니면 그 분도 넣는다
+         * (창을 열었다가 그냥 정해도 시각이 바뀌지 않게).
+         */
+        fun minuteChoices(keep: Int): List<Int> = ((0 until 60 step MINUTE_STEP) + keep.coerceIn(0, 59)).distinct().sorted()
+
         /** [now]가 든 날의 0시 */
         fun dayStart(now: Long): Long = Calendar.getInstance().run {
             timeInMillis = now

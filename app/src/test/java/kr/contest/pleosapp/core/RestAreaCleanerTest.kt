@@ -86,4 +86,32 @@ class RestAreaCleanerTest {
         val kept = RestAreaCleaner.clean(listOf(company, proper, bare, dream, alone, operator)).map { it.id }
         assertEquals(listOf("b", "d", "e"), kept)
     }
+
+    @Test
+    fun keepsBothSidesOfAnUpDownPairAndGuidesToTheSideOfTravel() {
+        // 서울양양고속도로 가평 휴게소: 이름에 상행·하행만 있고 방향 지명이 없다.
+        // 예전에는 둘이 같은 곳으로 합쳐져 상행만 남았고, 양양 쪽으로 가는 차를 건너편(상행) 휴게소로 안내했다.
+        val up = area("가평 휴게소 (상행)", RestAreaType.SERVICE_AREA, LatLng(37.70107, 127.54415), motorway = true)
+        val down = area("가평 휴게소 (하행)", RestAreaType.SERVICE_AREA, LatLng(37.70200, 127.54590), motorway = true)
+        val kept = RestAreaCleaner.clean(listOf(up, down))
+        assertEquals(listOf("가평 휴게소 (상행)", "가평 휴게소 (하행)"), kept.map { it.name })
+
+        val finder = RestAreaFinder(kept)
+        // 남양주에서 동쪽(강릉·양양)으로 가는 차는 하행, 서울로 돌아오는 차는 상행
+        val eastbound = finder.findAhead(LatLng(37.62, 127.40), headingDeg = 60.0, speedKmh = 95.0, expresswayOnly = true)
+        assertEquals("가평 휴게소 (하행)", eastbound.best?.area?.name)
+        val westbound = finder.findAhead(LatLng(37.78, 127.70), headingDeg = 240.0, speedKmh = 95.0, expresswayOnly = true)
+        assertEquals("가평 휴게소 (상행)", westbound.best?.area?.name)
+
+        // 경부고속도로 오산 휴게소: 부산 쪽(남쪽)으로 가면 하행
+        val osanUp = area("오산 휴게소 (상행)", RestAreaType.SERVICE_AREA, LatLng(37.17812, 127.03755), motorway = true)
+        val osanDown = area("오산 휴게소 (하행)", RestAreaType.SERVICE_AREA, LatLng(37.17654, 127.03742), motorway = true)
+        val south = RestAreaFinder(RestAreaCleaner.clean(listOf(osanUp, osanDown)))
+            .findAhead(LatLng(37.30, 127.05), headingDeg = 180.0, speedKmh = 95.0, expresswayOnly = true)
+        assertEquals("오산 휴게소 (하행)", south.best?.area?.name)
+        // 방향 지명이 이미 있으면 그대로 둔다
+        val named = area("홍천 휴게소 (양양 방향)", RestAreaType.SERVICE_AREA, LatLng(37.75775, 128.00431), motorway = true)
+            .copy(directionLabel = "양양", directionTarget = LatLng(38.0806, 128.6241))
+        assertEquals(named, RestAreaCleaner.withUpDown(named))
+    }
 }

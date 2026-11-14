@@ -6,6 +6,7 @@ import kr.contest.pleosapp.core.FitStatus
 import kr.contest.pleosapp.core.Gear
 import kr.contest.pleosapp.core.Phase
 import kr.contest.pleosapp.core.PickupNoticeKind
+import kr.contest.pleosapp.core.SECOND_MS
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -15,6 +16,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.util.TimeZone
+import kotlin.math.abs
 
 /**
  * 자동 시연 대본을 실제 엔진(모의 내비·가상 시계·두 엔진)으로 끝까지 돌려 본다.
@@ -58,6 +60,9 @@ class AutoDemoScriptTest {
         println(runner.transcript.joinToString("\n"))
         println("자동 시연 길이: ${rig.real / 1000}초")
         assertEquals("시간이 다 되어 넘어간 장면: ${runner.timedOut}", emptyList<String>(), runner.timedOut)
+        // 시연 카드에 쓴 길이(약 5분)와 실제로 도는 길이가 10초 넘게 어긋나지 않게
+        val seconds = rig.real / 1000
+        assertTrue("실제 ${seconds}초, 카드에는 ${AutoDemoScript.LENGTH_SECONDS}초", abs(seconds - AutoDemoScript.LENGTH_SECONDS) <= 10)
         assertNull(runner.status)
         // 다 돌고 나면 고속도로에서 다시 출발해 강릉 숙소로 가는 중
         assertEquals(Phase.DRIVING, rig.view().core.phase)
@@ -142,6 +147,33 @@ class AutoDemoScriptTest {
         assertNotNull(d.chosen)
     }
 
+    /**
+     * '+15분 더'는 출발하고 곧 누른다: 시연 길에서는 출발 뒤 실제 8초쯤까지만 15분짜리 코스가 맞는다.
+     * 출발 해설이 길어지거나 기기에서 장면이 조금 늦게 넘어가도 코스가 나오게, 5초 안에 누르는지 본다.
+     */
+    @Test
+    fun addTimeIsPressedSoonAfterDeparting() {
+        val rig = DemoRig()
+        val runner = AutoDemoRunner(rig)
+        runner.start(AutoChapter.LONGER, rig.real)
+        var departedAt: Long? = null
+        var addedAt: Long? = null
+        var seen = 0
+        var guard = 0
+        while (runner.running && addedAt == null && guard++ < 10_000) {
+            rig.advance(100)
+            runner.tick(rig.real)
+            if (runner.transcript.size > seen) {
+                seen = runner.transcript.size
+                val title = runner.transcript.last().substringBefore(" — ")
+                if (title == "출발") departedAt = rig.real
+                if (title == "15분 더 달리고 싶을 때") addedAt = rig.real
+            }
+        }
+        val gap = addedAt!! - departedAt!!
+        assertTrue("출발하고 ${gap}ms 뒤에 눌렀어요", gap <= 5_000)
+    }
+
     @Test
     fun restStoryNapsAndDepartsAgain() {
         val phases = ArrayList<Phase>()
@@ -153,6 +185,73 @@ class AutoDemoScriptTest {
         assertFalse(rig.alarmOn)
         assertTrue(rig.said.any { it.startsWith("휴식 시간이 끝났어요") })
         assertTrue(rig.notes.any { it == "다시 안내: 강릉 숙소" })
+    }
+
+    /**
+     * '휴식 건너뛰기'는 가상 시계를 알람 시각까지 돌린다. 쉰 시작 시각을 앞당겨 적지 않아서
+     * 화면의 지금 시각·알람 시각·쉰 시간이 서로 맞고, 해설에서 말한 알람 시각에 알람이 울린다.
+     */
+    @Test
+    fun skippingTheRestMovesTheClockToTheAlarm() {
+        val rig = DemoRig()
+        val runner = AutoDemoRunner(rig)
+        runner.start(AutoChapter.REST, rig.real)
+        var guard = 0
+        while (rig.view().core.phase != Phase.RESTING && guard++ < 5_000) {
+            rig.advance(200)
+            runner.tick(rig.real)
+        }
+        runner.stop()
+        val rest = rig.view().core.rest
+        assertNotNull(rest)
+        assertTrue(rest!!.alarmPending)
+        rig.demoSkipRest()
+        val after = rig.view().core.rest!!
+        assertEquals(rest.startedAt, after.startedAt)
+        assertTrue("지금 ${rig.now()}, 알람 ${rest.alarmAt}", rig.now() >= rest.alarmAt && rig.now() - rest.alarmAt <= SECOND_MS)
+        assertTrue(after.alarmRinging)
+        assertFalse(after.alarmPending)
+        // 다시 눌러도 더 돌리지 않는다
+        val now = rig.now()
+        rig.demoSkipRest()
+        assertEquals(now, rig.now())
+    }
+
+    /** 해설은 다 읽을 수 있을 만큼 띄운다: 공백 뺀 글자 수를 초당 7.5자로 읽는 시간보다 빨리 넘기지 않는다 */
+    @Test
+    fun everyNarrationStaysLongEnoughToRead() {
+        val rig = DemoRig()
+        val runner = AutoDemoRunner(rig)
+        runner.start(null, rig.real)
+        val tooFast = ArrayList<String>()
+        var shownAt = rig.real
+        var shownText: String? = null
+        var seen = 0
+        var guard = 0
+        while (runner.running && guard++ < 20_000) {
+            rig.advance(100)
+            val before = runner.status?.scene
+            runner.tick(rig.real)
+            val text = shownText
+            if (text != null && runner.status?.scene != before) {
+                val need = (text.count { !it.isWhitespace() } * 1_000 / AutoDemoScript.READ_CHARS_PER_SECOND).toLong()
+                if (rig.real - shownAt < need - 200) tooFast += "${text.take(20)}… ${rig.real - shownAt}ms < ${need}ms"
+                shownText = null
+            }
+            if (runner.transcript.size > seen) {
+                seen = runner.transcript.size
+                shownAt = rig.real
+                shownText = runner.transcript.last().substringAfter(" — ")
+            }
+        }
+        assertEquals(emptyList<String>(), tooFast)
+    }
+
+    @Test
+    fun lengthLabelRoundsToTenSeconds() {
+        assertEquals("약 5분", AutoDemoScript.lengthLabel)
+        assertEquals(1_000L * 10, AutoDemoScript.readMsFor("가".repeat(75), atLeast = 3_000L))
+        assertEquals(7_000L, AutoDemoScript.readMsFor("짧은 해설이에요.", atLeast = 7_000L))
     }
 
     @Test

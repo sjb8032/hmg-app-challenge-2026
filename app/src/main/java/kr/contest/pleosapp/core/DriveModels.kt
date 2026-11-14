@@ -198,6 +198,8 @@ data class DriveState(
     val chosen: CourseOption? = null,
     /** 경유지를 지났거나 뺐는지 */
     val viaCleared: Boolean = false,
+    /** 고른 코스의 경유지에 실제로 닿았는지 (뺐으면 false: 코스 목록에 '지났어요' 대신 '들르지 않았어요') */
+    val viaReached: Boolean = false,
 
     // ---- 진행 ----
     val arrivalEstimate: Long? = null,

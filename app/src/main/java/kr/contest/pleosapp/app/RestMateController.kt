@@ -941,16 +941,19 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
     override fun demoSkip(minutes: Int) {
         val d = demo ?: return
         addLog("시연: 가상 시계를 ${minutes}분 앞으로 돌렸어요.", LogKind.DEMO)
-        repeat(minutes * 2) {
-            d.shift(30 * SECOND_MS)
-            stepDemo()
-            val t = now()
-            shareDeadline()
-            engine.onTick(t)
-            drive.onTick(t)
-            checkRestStopParking(t)
-            publish()
-        }
+        repeat(minutes * 2) { skipStep(d, 30 * SECOND_MS) }
+    }
+
+    /** 가상 시계를 [ms]만큼 돌리고 그 시각으로 한 번 돈다 (시간 건너뛰기의 한 걸음) */
+    private fun skipStep(d: DemoSession, ms: Long) {
+        d.shift(ms)
+        stepDemo()
+        val t = now()
+        shareDeadline()
+        engine.onTick(t)
+        drive.onTick(t)
+        checkRestStopParking(t)
+        publish()
     }
 
     override fun demoAddDrivingTime() {
@@ -961,8 +964,20 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
         if (demo != null) act { engine.onAttentionWarning(it) }
     }
 
+    /**
+     * 시연 '휴식 건너뛰기': 알람(기다리기·머물기는 출발 알림)이 울릴 때까지 가상 시계를 돌린다.
+     * 쉰 시간을 앞당겨 적지 않고 시계를 돌려서, 화면의 지금 시각·알람 시각·쉰 시간이 서로 맞는다.
+     * 쉬는 동안 알람이 옮겨질 수 있어 시각을 미리 정하지 않고 울릴 때까지 30초씩 돌린다 (마지막 걸음은 알람 시각에 맞춘다).
+     */
     override fun demoSkipRest() {
-        if (demo != null) act { engine.skipToAlarm(it) }
+        val d = demo ?: return
+        val from = now()
+        var steps = 0
+        while (steps++ < MAX_REST_SKIP_STEPS) {
+            val rest = engine.state.rest?.takeIf { engine.state.phase == Phase.RESTING && it.alarmPending } ?: break
+            skipStep(d, (rest.alarmAt - now()).coerceIn(SECOND_MS, 30 * SECOND_MS))
+        }
+        if (now() > from) addLog("시연: 가상 시계를 알람 시각까지 ${DriveText.duration(now() - from)} 돌렸어요.", LogKind.DEMO)
     }
 
     // ---- 자동 시연 ----
@@ -1310,6 +1325,10 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
         private const val DEMO_STEP_MS = 200L
         private const val AUTO_STEP_MS = 200L
         private const val DEMO_JAM_MS = 6 * MINUTE_MS
+
+        /** '휴식 건너뛰기'로 돌리는 가장 긴 시간: 30초씩 6시간 */
+        private const val MAX_REST_SKIP_STEPS = 6 * 120
+
         private const val TRAIL_STEP_METERS = 25.0
         private const val TRAIL_MAX = 600
         private const val LOG_MAX = 8

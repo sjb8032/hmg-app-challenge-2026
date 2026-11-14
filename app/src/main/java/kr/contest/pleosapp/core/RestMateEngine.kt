@@ -79,6 +79,12 @@ class RestMateEngine(
     private var lastTick: Long? = null
     private var parkedSince: Long? = null
     private var parkedPromptShown = false
+
+    /**
+     * 앱을 켠 뒤 한 번이라도 달렸는지 (D·R·N단). 처음부터 P단으로 서 있으면(집 주차장에서 앱을 켬)
+     * '주차하셨네요. 여기서 쉬어 갈까요?'를 묻지 않는다. 쉬어 가자는 말은 달리다 세웠을 때만 맞다.
+     */
+    private var droveSinceStart = false
     private var longDriveSnoozeUntil = 0L
     /** 휴식 공백 안내·2시간 알림을 넘긴 뒤 한동안 다시 묻지 않는다 */
     private var adviceSnoozeUntil = 0L
@@ -128,6 +134,7 @@ class RestMateEngine(
     fun onGear(now: Long, gear: Gear) {
         advance(now)
         state = state.copy(gear = gear)
+        if (gear == Gear.DRIVE || gear == Gear.REVERSE || gear == Gear.NEUTRAL) droveSinceStart = true
         evaluate(now)
     }
 
@@ -535,15 +542,7 @@ class RestMateEngine(
     }
 
     // ---- 시연용 ----
-
-    /** 시연용: 알람(알림) 시각을 지금으로 당긴다. 쉰 시간도 알람 시각까지 쉰 것으로 친다 (깨우는 시간이 그만큼 정해짐). */
-    fun skipToAlarm(now: Long) {
-        advance(now)
-        val rest = state.rest ?: return
-        val shift = (rest.alarmAt - now).coerceAtLeast(0L)
-        state = state.copy(rest = rest.copy(startedAt = rest.startedAt - shift, alarmAt = now, alarmDone = false))
-        evaluate(now)
-    }
+    // '휴식 건너뛰기'는 앱이 가상 시계를 알람 시각까지 돌려서 한다 (쉰 시간·알람 시각이 시계와 맞게). [RestSession.alarmPending]
 
     /** 시연용: 연속 주행 시간을 더한다. */
     fun addDrivingTime(now: Long, ms: Long) {
@@ -610,7 +609,7 @@ class RestMateEngine(
             Phase.DRIVING -> {
                 if (parkedFor >= config.restResetMs) state = state.copy(continuousDrivingMs = 0L)
                 val atDestination = abs(since - tripArrivedAt) <= ARRIVAL_PARK_WINDOW_MS
-                if (!parkedPromptShown && state.prompt == null && !atDestination) {
+                if (!parkedPromptShown && state.prompt == null && !atDestination && droveSinceStart) {
                     parkedPromptShown = true
                     state = state.copy(prompt = Prompt.ParkedHere)
                 }

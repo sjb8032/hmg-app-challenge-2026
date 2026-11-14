@@ -1,6 +1,7 @@
 package kr.contest.pleosapp.app
 
 import kr.contest.pleosapp.core.CheckInAnswer
+import kr.contest.pleosapp.core.CourseFlavor
 import kr.contest.pleosapp.core.CourseOption
 import kr.contest.pleosapp.core.DemoNavi
 import kr.contest.pleosapp.core.DemoNaviEvent
@@ -23,6 +24,7 @@ import kr.contest.pleosapp.core.RestArea
 import kr.contest.pleosapp.core.RestAreaCleaner
 import kr.contest.pleosapp.core.RestAreaFinder
 import kr.contest.pleosapp.core.RestAreaType
+import kr.contest.pleosapp.core.RestKind
 import kr.contest.pleosapp.core.RestMateConfig
 import kr.contest.pleosapp.core.RestMateEngine
 import kr.contest.pleosapp.core.SECOND_MS
@@ -260,6 +262,21 @@ class DemoRig(highwayAreas: List<RestArea> = loadHighwayAreas()) : AutoDemoHost 
     override fun chooseCourse(option: CourseOption) = act { drive.choose(it, option) }
     override fun addDriveTime(minutes: Int) = act { drive.addTime(it, minutes) }
     fun setOnTimeStyle(style: OnTimeStyle) = act { drive.setOnTimeStyle(style) }
+    fun shiftTarget(minutes: Int) = act { drive.shiftTarget(it, minutes) }
+    fun setFlavor(flavor: CourseFlavor) = act { drive.setFlavor(it, flavor) }
+    fun goDirect() = act { drive.goDirect(it) }
+    fun extendCourse() = act { drive.extend(it) }
+    fun finishDrive() = act { drive.finish(it) }
+    fun driveBack() = act { drive.back(it) }
+
+    // 레스트 모드 (앱과 같이)
+    fun restHere(kind: RestKind) = act { engine.restHere(it, kind) }
+    fun setRestKind(kind: RestKind) = act { engine.setRestKind(it, kind) }
+    fun setRestMinutes(minutes: Int) = act { engine.setRestMinutes(it, minutes) }
+    fun extendRest(minutes: Int) = act { engine.extendRest(it, minutes) }
+    fun acceptPrompt() = act { engine.acceptPrompt(it) }
+    fun dismissPrompt() = act { engine.dismissPrompt(it) }
+    fun cancelGuidance() = act { engine.cancelGuidance(it) }
     override fun setPickup(on: Boolean) = act { drive.setPickup(if (on) demo?.trip?.pickupContact else null) }
 
     override fun circleForSpot() {
@@ -305,27 +322,44 @@ class DemoRig(highwayAreas: List<RestArea> = loadHighwayAreas()) : AutoDemoHost 
 
     override fun demoSkip(minutes: Int) {
         val d = demo ?: return
-        repeat(minutes * 2) {
-            d.clock.shift(30 * SECOND_MS)
-            stepDemo()
-            val t = now()
-            shareDeadline()
-            engine.onTick(t)
-            drive.onTick(t)
-            checkRestStopParking(t)
-            publish()
-        }
+        repeat(minutes * 2) { skipStep(d, 30 * SECOND_MS) }
     }
 
-    override fun demoSkipRest() = act { engine.skipToAlarm(it) }
+    private fun skipStep(d: Session, ms: Long) {
+        d.clock.shift(ms)
+        stepDemo()
+        val t = now()
+        shareDeadline()
+        engine.onTick(t)
+        drive.onTick(t)
+        checkRestStopParking(t)
+        publish()
+    }
+
+    /** 앱과 같이: 알람(출발 알림)이 울릴 때까지 가상 시계를 30초씩 돌린다 */
+    override fun demoSkipRest() {
+        val d = demo ?: return
+        var steps = 0
+        while (steps++ < 6 * 120) {
+            val rest = engine.state.rest?.takeIf { engine.state.phase == Phase.RESTING && it.alarmPending } ?: break
+            skipStep(d, (rest.alarmAt - now()).coerceIn(SECOND_MS, 30 * SECOND_MS))
+        }
+    }
 
     // ---- 직접 해 보기 (컨트롤러의 출발지 고르기·목적지 검색과 같게) ----
 
     /** 시연 중 모의 내비 */
     val navi: DemoNavi? get() = demo?.navi
 
-    /** '직접 해 보기'로 [start]에서 출발 */
-    fun startFree(start: LatLng, name: String) = startDemo(DemoTrips.free(start, name))
+    /** 지금 시연 출발 상황 */
+    val trip: DemoTrip? get() = demo?.trip
+
+    /** 출발 전이라 가상 시계를 멈춘 중 */
+    val clockHeld: Boolean get() = demo?.clock?.held == true
+
+    /** '직접 해 보기'로 [start]에서 출발. [timeOfDayMs]를 주면 그 시각에서 시작 (없으면 0시: 실제 앱은 지금 시각) */
+    fun startFree(start: LatLng, name: String, timeOfDayMs: Long? = null) =
+        startDemo(DemoTrips.free(start, name).copy(startTimeOfDayMs = timeOfDayMs))
 
     /** 처음 화면의 '목적지 검색'으로 고른 곳을 내비 목적지로 */
     fun setNaviDestination(place: Place) {
@@ -434,8 +468,11 @@ class DemoRig(highwayAreas: List<RestArea> = loadHighwayAreas()) : AutoDemoHost 
             set(2026, Calendar.NOVEMBER, 14, 0, 0, 0)
         }.timeInMillis
 
-        /** assets/rest_areas.json을 org.json 없이 읽는다 (항목이 평평한 객체라 정규식으로 충분) */
-        fun loadHighwayAreas(): List<RestArea> {
+        /** assets/rest_areas.json을 읽어 앱처럼 거른다 */
+        fun loadHighwayAreas(): List<RestArea> = RestAreaCleaner.clean(loadHighwayAreasRaw())
+
+        /** assets/rest_areas.json을 org.json 없이 거르기 전 그대로 읽는다 (항목이 평평한 객체라 정규식으로 충분) */
+        fun loadHighwayAreasRaw(): List<RestArea> {
             val file = listOf("src/main/assets/rest_areas.json", "app/src/main/assets/rest_areas.json")
                 .map(::File).firstOrNull { it.exists() } ?: error("rest_areas.json 없음")
             val text = file.readText(Charsets.UTF_8)
@@ -458,7 +495,7 @@ class DemoRig(highwayAreas: List<RestArea> = loadHighwayAreas()) : AutoDemoHost 
                     onExpressway = f["e"] == "1",
                 )
             }.toList()
-            return RestAreaCleaner.clean(out)
+            return out
         }
     }
 }
