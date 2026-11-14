@@ -212,16 +212,13 @@ private fun ModeCard(mode: DriveMode, examples: String, modifier: Modifier, onCl
                 .background(accent, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            if (mode == DriveMode.ON_TIME) {
-                // 온타임 모드 아이콘(시계와 차): 하늘색 바탕 원이 가장자리에 3dp 테두리로 남게 조금 작게 얹는다
-                Image(
-                    painter = painterResource(R.drawable.ic_mode_ontime),
-                    contentDescription = null,
-                    modifier = Modifier.size(66.dp),
-                )
-            } else {
-                RoadGlyph(RM.hyundaiNavy, Modifier.size(40.dp))
-            }
+            // 모드 아이콘(온타임: 시계와 차, 롱웨이: 굽이진 길). 그림의 남색 테두리가 남색 카드에 묻히지 않게
+            // 모드 색 바탕 원이 가장자리에 3dp 테두리로 남도록 조금 작게 얹는다
+            Image(
+                painter = painterResource(if (mode == DriveMode.ON_TIME) R.drawable.ic_mode_ontime else R.drawable.ic_mode_longway),
+                contentDescription = null,
+                modifier = Modifier.size(66.dp),
+            )
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(mode.title, color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Medium, letterSpacing = (-0.5).sp)
