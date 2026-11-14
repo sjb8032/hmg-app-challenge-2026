@@ -51,6 +51,24 @@ class RestMateEngineTest {
     }
 
     @Test
+    fun drowsyPressWhileParkedNapsRightThereWithoutGuidance() {
+        val e = engine()
+        e.onLocation(t0, origin, null)
+        e.onSpeed(t0, 0.0)
+        e.onGear(t0, Gear.PARK)
+        e.onTick(t0 + 60_000)
+        e.drainEffects()
+        e.pressDrowsy(t0 + 61_000)
+
+        assertEquals(Phase.RESTING, e.state.phase)
+        assertEquals(RestKind.NAP, e.state.rest?.kind)
+        assertNull(e.state.rest?.area)
+        val effects = e.drainEffects()
+        assertFalse(effects.any { it is Effect.StartGuidance })
+        assertTrue(effects.any { it is Effect.Speak && it.text.startsWith("휴식을 시작할게요") })
+    }
+
+    @Test
     fun drowsyWithoutLocationReportsFailure() {
         val e = engine()
         e.onGear(t0, Gear.DRIVE)

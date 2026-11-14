@@ -286,7 +286,7 @@ object AutoDemoScript {
     }
 
     /** 네 이야기를 처음부터 끝까지 도는 길이 (실제 초). 대본을 고치면 시험이 실제로 돌린 길이와 견준다 */
-    const val LENGTH_SECONDS = 297
+    const val LENGTH_SECONDS = 299
 
     /** 시연 카드에 쓰는 길이: "약 5분", "약 4분 50초" (10초 단위로 반올림) */
     val lengthLabel: String
@@ -824,7 +824,8 @@ object AutoDemoScript {
                 buildString {
                     val area = rest?.area?.name?.let(RestMateText::spokenName)
                     append(if (area != null) "${area}에서 쉬는 중이에요. " else "쉬는 중이에요. ")
-                    append("무드등을 낮추고 공조를 쉬기 좋게 맞췄어요. ")
+                    // 차가 바꾸지 못한 것은 실내 환경 결과 줄에 따로 나온다 (에뮬레이터는 공조·무드등을 바꾸지 않는다)
+                    append("무드등을 낮추고 공조를 쉬기 좋게 바꿔요. 이 차에서 안 되는 것은 화면에 따로 적어요. ")
                     if (rest != null && rest.kind == RestKind.NAP) {
                         append("${rest.plannedMinutes}분 뒤 ${spoken(rest.alarmAt)}에 알람으로 깨워요.")
                     }

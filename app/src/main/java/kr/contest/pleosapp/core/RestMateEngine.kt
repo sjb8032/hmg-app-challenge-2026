@@ -248,11 +248,15 @@ class RestMateEngine(
 
     // ---- 운전자 조작 ----
 
-    /** '레스트 모드'(졸려요) 버튼. 묻지 않고 바로 쉼터 안내로 넘어간다. */
+    /**
+     * '레스트 모드'(졸려요) 버튼. 묻지 않고 바로 쉼터 안내로 넘어간다.
+     * 이미 P단으로 세워 두었으면 쉼터로 보내지 않고 그 자리에서 바로 눈 붙이기를 시작한다
+     * (예전에는 쉼터 안내를 요청한 직후 '주차 확인'으로 그 자리 휴식이 시작돼, 쉬는 동안 내비가 쉼터로 안내하고 있었다).
+     */
     fun pressDrowsy(now: Long) {
         advance(now)
         when (state.phase) {
-            Phase.DRIVING -> guideToBest(now, announce = true)
+            Phase.DRIVING -> if (state.gear == Gear.PARK) startRest(now, RestKind.NAP, area = null) else guideToBest(now, announce = true)
             Phase.TO_REST_AREA -> findFasterStop(now, Hurry.BUTTON)
             Phase.RESTING -> Unit
         }

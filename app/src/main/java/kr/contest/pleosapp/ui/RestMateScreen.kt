@@ -41,6 +41,7 @@ import kr.contest.pleosapp.core.DriveMode
 import kr.contest.pleosapp.core.DriveState
 import kr.contest.pleosapp.core.DriveStep
 import kr.contest.pleosapp.core.DriveText
+import kr.contest.pleosapp.core.Gear
 import kr.contest.pleosapp.core.MINUTE_MS
 import kr.contest.pleosapp.core.Phase
 import kr.contest.pleosapp.core.Prompt
@@ -876,8 +877,12 @@ private fun BottomAction(ui: UiState, actions: RestMateActions) {
     // 자동 시연이 이 버튼을 누르려고 짚는 중
     val cue = Modifier.cueRing(ui.cueing(AutoCue.BOTTOM))
     when (s.phase) {
-        Phase.DRIVING ->
+        // P단으로 세워 두었으면 쉼터로 보내지 않고 그 자리에서 쉰다
+        Phase.DRIVING -> if (s.gear == Gear.PARK) {
+            BigButton("레스트 모드", "지금 세운 곳에서 바로 눈 붙여요 · 알람으로 깨워 드려요", Tone.AMBER, actions::pressDrowsy, cue)
+        } else {
             BigButton("레스트 모드", "졸리면 눌러요 · 가까운 휴게소·졸음쉼터·주차장으로 바로 안내해요", Tone.AMBER, actions::pressDrowsy, cue)
+        }
         Phase.TO_REST_AREA ->
             BigButton("더 빨리 쉴래요", "더 빨리 닿는 곳이 있으면 바꿔서 안내해요", Tone.AMBER, actions::pressDrowsy, cue)
         Phase.RESTING -> {
