@@ -131,7 +131,7 @@ NaviHelper에는 장소 검색 API가 없어서(차 내비의 검색 화면을 �
 2. APK를 설치합니다.
 
    ```bash
-   adb install -r apk/팀명_앱이름_release.apk
+   adb install -r apk/wheeling_드라이브메이트_release.apk
    ```
 
 3. 런처에서 '드라이브메이트'를 실행합니다.
@@ -255,8 +255,8 @@ NaviHelper에는 장소 검색 API가 없어서(차 내비의 검색 화면을 �
 
 ## APK 위치
 
-- `apk/팀명_앱이름_release.apk`
-- 용량이 커서 저장소에 못 올리면 GitHub Releases 링크로 대체합니다.
+- [`apk/wheeling_드라이브메이트_release.apk`](apk/wheeling_드라이브메이트_release.apk) (버전 0.1.0, release 빌드, 약 22MB)
+- GitHub Actions에서 키 없이 빌드했습니다. 서명은 debug 키이고, 카카오 키가 들어 있지 않아 장소 검색은 OpenStreetMap(Nominatim)을 씁니다.
 
 ## 팀
 
