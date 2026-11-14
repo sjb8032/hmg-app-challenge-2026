@@ -159,14 +159,14 @@ private fun SavedTripsPanel(saved: List<SavedTrip>, actions: RestMateActions) {
             }
         }
         if (saved.isEmpty()) {
-            Caption("코스 후보 화면에서 '이 설정 저장'을 누르면 여기서 한 번에 다시 쓸 수 있어요 (학원 픽업 4:50 같은).")
+            Caption("코스 후보 화면에서 '이 설정 저장'을 누르면 여기서 한 번에 다시 쓸 수 있어요 (학원 픽업 9:50 같은).")
             return@Panel
         }
         for (row in saved.chunked(2)) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 for (trip in row) {
                     ActionButton(
-                        // 같은 장소 칩이 여럿이면 큰 글씨에 시각을 붙인다 ("4:50 아이 학원")
+                        // 같은 장소 칩이 여럿이면 큰 글씨에 시각을 붙인다 ("9:50 아이 학원")
                         trip.title(saved),
                         { if (editing) actions.removeSavedTrip(trip) else actions.applySavedTrip(trip) },
                         Modifier.weight(1f),

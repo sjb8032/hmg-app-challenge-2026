@@ -110,7 +110,7 @@ internal object PreviewSamples {
     )
 
     private val saved = listOf(
-        SavedTrip(DriveMode.ON_TIME, places[2], minuteOfDay = 16 * 60 + 50, onTimeStyle = OnTimeStyle.WAIT_NEAR),
+        SavedTrip(DriveMode.ON_TIME, places[2], minuteOfDay = 21 * 60 + 50, onTimeStyle = OnTimeStyle.WAIT_NEAR),
         SavedTrip(DriveMode.LONGER, places[0], extraMinutes = 30, mood = Mood.DATE, flavor = CourseFlavor.NIGHT_VIEW),
     )
 
@@ -502,13 +502,13 @@ internal object PreviewSamples {
 
     // ---------------------------------------------------------------- 학원 픽업 알림 (온타임 모드, 시연 '학원 픽업')
 
-    /** 2026-11-13 오후 4:32 (한국 시간): 학원 픽업 시연은 4시 30분에 시작한다 */
-    const val PICKUP_START = CITY_START - 2 * HOUR_MS
+    /** 2026-11-13 오후 9:32 (한국 시간): 학원 픽업 시연은 밤 9시 30분에 시작한다 */
+    const val PICKUP_START = CITY_START + 3 * HOUR_MS
 
     /** 내비에 걸린 학원 (시연 '학원 픽업'의 목적지) */
     private val academy = DemoTrips.PICKUP.destination!!
 
-    /** 픽업 목표 오후 4:50 (바로 가면 4:41쯤 닿는다) */
+    /** 픽업 목표 오후 9:50 (바로 가면 9:41쯤 닿는다) */
     private val pickupTarget = PICKUP_START + 18 * MINUTE_MS
     private const val ACADEMY_DIRECT_MS = 9 * MINUTE_MS
 
@@ -530,7 +530,7 @@ internal object PreviewSamples {
     private fun notice(at: Long, kind: PickupNoticeKind, text: String, position: LatLng?) =
         PickupNotice(at, kind, "아이", text, position)
 
-    /** 설정: 끝낼 곳은 내비에 걸린 '아이 학원', 4:50, 돌면서 맞추기. 자동 시연이 픽업 알림 켜기를 짚는 중 */
+    /** 설정: 끝낼 곳은 내비에 걸린 '아이 학원', 9:50, 돌면서 맞추기. 자동 시연이 픽업 알림 켜기를 짚는 중 */
     fun pickupSetup(): UiState = base(PICKUP_START).copy(
         demoTrip = DemoTrips.PICKUP,
         core = RestMateState(

@@ -106,9 +106,9 @@ class AutoDemoScriptTest {
         // 학원 앞에 세운 것은 도착이라 '주차하셨네요'를 묻지 않는다
         assertNull(rig.view().core.prompt)
         assertTrue(runner.transcript.any { it.startsWith("도착 3분 전") && "아이 학원 앞에 도착해요" in it })
-        // 기획서 시나리오 2처럼 오후 4시 50분 픽업 (바로 가면 10분 남짓 일찍)
+        // 기획서 시나리오 2처럼 밤 9시 50분 픽업 (바로 가면 10분 남짓 일찍)
         assertEquals("pickup", rig.view().tripId)
-        assertTrue(runner.transcript.joinToString("\n"), runner.transcript.any { "픽업은 4시 50분" in it && "분 일찍 닿아" in it })
+        assertTrue(runner.transcript.joinToString("\n"), runner.transcript.any { "픽업은 9시 50분" in it && "분 일찍 닿아" in it })
     }
 
     @Test
