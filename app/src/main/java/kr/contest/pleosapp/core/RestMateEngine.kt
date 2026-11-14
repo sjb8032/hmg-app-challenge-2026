@@ -79,6 +79,12 @@ class RestMateEngine(
     private var lastTick: Long? = null
     private var parkedSince: Long? = null
     private var parkedPromptShown = false
+
+    /**
+     * 앱을 켠 뒤 한 번이라도 달렸는지 (D·R·N단). 처음부터 P단으로 서 있으면(집 주차장에서 앱을 켬)
+     * '주차하셨네요. 여기서 쉬어 갈까요?'를 묻지 않는다. 쉬어 가자는 말은 달리다 세웠을 때만 맞다.
+     */
+    private var droveSinceStart = false
     private var longDriveSnoozeUntil = 0L
     /** 휴식 공백 안내·2시간 알림을 넘긴 뒤 한동안 다시 묻지 않는다 */
     private var adviceSnoozeUntil = 0L
@@ -128,6 +134,7 @@ class RestMateEngine(
     fun onGear(now: Long, gear: Gear) {
         advance(now)
         state = state.copy(gear = gear)
+        if (gear == Gear.DRIVE || gear == Gear.REVERSE || gear == Gear.NEUTRAL) droveSinceStart = true
         evaluate(now)
     }
 
@@ -602,7 +609,7 @@ class RestMateEngine(
             Phase.DRIVING -> {
                 if (parkedFor >= config.restResetMs) state = state.copy(continuousDrivingMs = 0L)
                 val atDestination = abs(since - tripArrivedAt) <= ARRIVAL_PARK_WINDOW_MS
-                if (!parkedPromptShown && state.prompt == null && !atDestination) {
+                if (!parkedPromptShown && state.prompt == null && !atDestination && droveSinceStart) {
                     parkedPromptShown = true
                     state = state.copy(prompt = Prompt.ParkedHere)
                 }
