@@ -1,6 +1,7 @@
 package kr.contest.pleosapp.app
 
 import kr.contest.pleosapp.core.CheckInAnswer
+import kr.contest.pleosapp.core.CourseFlavor
 import kr.contest.pleosapp.core.CourseOption
 import kr.contest.pleosapp.core.DemoNavi
 import kr.contest.pleosapp.core.DemoNaviEvent
@@ -23,6 +24,7 @@ import kr.contest.pleosapp.core.RestArea
 import kr.contest.pleosapp.core.RestAreaCleaner
 import kr.contest.pleosapp.core.RestAreaFinder
 import kr.contest.pleosapp.core.RestAreaType
+import kr.contest.pleosapp.core.RestKind
 import kr.contest.pleosapp.core.RestMateConfig
 import kr.contest.pleosapp.core.RestMateEngine
 import kr.contest.pleosapp.core.SECOND_MS
@@ -260,6 +262,21 @@ class DemoRig(highwayAreas: List<RestArea> = loadHighwayAreas()) : AutoDemoHost 
     override fun chooseCourse(option: CourseOption) = act { drive.choose(it, option) }
     override fun addDriveTime(minutes: Int) = act { drive.addTime(it, minutes) }
     fun setOnTimeStyle(style: OnTimeStyle) = act { drive.setOnTimeStyle(style) }
+    fun shiftTarget(minutes: Int) = act { drive.shiftTarget(it, minutes) }
+    fun setFlavor(flavor: CourseFlavor) = act { drive.setFlavor(it, flavor) }
+    fun goDirect() = act { drive.goDirect(it) }
+    fun extendCourse() = act { drive.extend(it) }
+    fun finishDrive() = act { drive.finish(it) }
+    fun driveBack() = act { drive.back(it) }
+
+    // 레스트 모드 (앱과 같이)
+    fun restHere(kind: RestKind) = act { engine.restHere(it, kind) }
+    fun setRestKind(kind: RestKind) = act { engine.setRestKind(it, kind) }
+    fun setRestMinutes(minutes: Int) = act { engine.setRestMinutes(it, minutes) }
+    fun extendRest(minutes: Int) = act { engine.extendRest(it, minutes) }
+    fun acceptPrompt() = act { engine.acceptPrompt(it) }
+    fun dismissPrompt() = act { engine.dismissPrompt(it) }
+    fun cancelGuidance() = act { engine.cancelGuidance(it) }
     override fun setPickup(on: Boolean) = act { drive.setPickup(if (on) demo?.trip?.pickupContact else null) }
 
     override fun circleForSpot() {

@@ -247,13 +247,18 @@ private fun DriveSetup(ui: UiState, actions: RestMateActions) {
                 DriveMode.LONGER -> LongerPanel(ui, actions, tone)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                ActionButton(
-                    if (d.planPending) "시간 확인 중…" else "코스 찾기",
-                    actions::planCourses,
-                    Modifier.weight(2f).cueRing(ui.cueing(AutoCue.PLAN)),
-                    tone,
-                    enabled = d.destination != null && !d.planPending,
-                )
+                if (mode == DriveMode.ON_TIME && noSpareTime(ui)) {
+                    // 남는 시간이 없으면 채울 코스가 없다: 위 문구('바로 가세요')와 같은 버튼을 둔다
+                    ActionButton("바로 가기", actions::goDirect, Modifier.weight(2f), tone, sub = "코스 없이 바로 출발")
+                } else {
+                    ActionButton(
+                        if (d.planPending) "시간 확인 중…" else "코스 찾기",
+                        actions::planCourses,
+                        Modifier.weight(2f).cueRing(ui.cueing(AutoCue.PLAN)),
+                        tone,
+                        enabled = d.destination != null && !d.planPending,
+                    )
+                }
                 ActionButton("뒤로", actions::driveBack, Modifier.weight(1f))
             }
             d.message?.let { Notice(it, RM.textDim) }
@@ -266,6 +271,17 @@ private fun DriveSetup(ui: UiState, actions: RestMateActions) {
             if (mode == DriveMode.ON_TIME) Panel { PickupToggle(ui, actions, tone) }
         },
     )
+}
+
+/**
+ * 온타임 설정: 바로 가도 남는 시간이 1분도 없는지 (늦거나 딱 맞음). 바로 가는 시간을 아직 모르면 false.
+ * 목표 칸의 문구·요약과 같은 기준 (남는 시간 = 목표 − 지금 − 바로 가는 시간 − 여유 3분)
+ */
+private fun noSpareTime(ui: UiState): Boolean {
+    val d = ui.drive
+    val direct = d.directMs ?: return false
+    val target = d.targetAt ?: return false
+    return target - ui.now - direct - MARGIN_MINUTES * MINUTE_MS < MINUTE_MS
 }
 
 /** 설정 화면 오른쪽: 바로 가면 언제 닿는지와 무엇을 맞추는지 */
@@ -444,6 +460,8 @@ private fun TargetPanel(ui: UiState, actions: RestMateActions, tone: Tone) {
                 else -> Body("바로 가면 시간에 거의 딱 맞아요. 남는 시간이 없어요.", RM.textDim)
             }
         }
+        // 남는 시간이 없으면 쓸 방법도 묻지 않는다 (늦을 때는 위 문구와 '바로 가기'만)
+        if (noSpareTime(ui)) return@Panel
         Label("남는 시간은 어떻게 쓸까요?")
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             for (style in OnTimeStyle.entries) {

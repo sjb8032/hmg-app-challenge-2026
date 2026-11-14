@@ -106,6 +106,30 @@ class DriveEngineTest {
         assertTrue(e.drainEffects().filterIsInstance<DriveEffect.Route>().single().via.isEmpty())
     }
 
+    /** 남는 시간이 없으면 설정 화면의 '바로 가기'로 후보 화면을 거치지 않고 바로 출발한다 */
+    @Test
+    fun goDirectFromSetupWhenThereIsNoSpareTime() {
+        val e = engine()
+        e.openMode(t0, DriveMode.ON_TIME)
+        // 바로 가도 늦는 목표 (지금부터 10분 뒤, 바로 가면 20분)
+        e.setTarget(t0, t0 + 10 * MINUTE_MS)
+        e.drainEffects()
+        e.goDirect(t0 + 1_000)
+        assertEquals(DriveStep.ACTIVE, e.state.step)
+        assertEquals(CourseKind.DIRECT, e.state.chosen?.kind)
+        assertFalse(e.state.viaActive)
+        assertTrue(e.state.options.isEmpty())
+        assertTrue(e.drainEffects().filterIsInstance<DriveEffect.Route>().all { it.via.isEmpty() })
+        // 바로 가는 시간을 모르면 누를 수 없다 (설정 화면 그대로)
+        val unknown = DriveEngine(listOf(p6), listOf(stop)).apply { onLocation(t0, origin) }
+        unknown.openMode(t0, DriveMode.ON_TIME)
+        unknown.setDestination(t0, dest)
+        if (unknown.state.directMs == null) {
+            unknown.goDirect(t0 + 1_000)
+            assertEquals(DriveStep.SETUP, unknown.state.step)
+        }
+    }
+
     @Test
     fun lateWithoutWaypointIsSpokenOnce() {
         val e = engine().planOnTime()

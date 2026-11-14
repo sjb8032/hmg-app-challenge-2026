@@ -565,10 +565,16 @@ class DriveEngine(
 
     /**
      * '바로 가기': 후보 화면에서는 경유지 없이 출발, 주행 중에는 남은 경유지를 뺀다.
+     * 설정 화면에서도 누를 수 있다 (온타임 모드에서 남는 시간이 없을 때: 채울 코스가 없어 후보 화면을 거치지 않는다).
      * 롱웨이 모드에서는 '바로 집으로': 경유지를 빼고, 내비가 새 경로를 계산하면 그 도착 시각을 새 예정으로 삼는다.
      */
     fun goDirect(now: Long) {
         when (state.step) {
+            DriveStep.SETUP -> {
+                if (state.destination == null || state.directMs == null) return
+                makeOptions(now)
+                if (state.step == DriveStep.CHOOSE) goDirect(now)
+            }
             DriveStep.CHOOSE -> {
                 if (state.chosen != null) {
                     state = state.copy(step = DriveStep.ACTIVE, options = emptyList())

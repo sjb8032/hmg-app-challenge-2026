@@ -10,14 +10,21 @@ import kr.contest.pleosapp.app.InputSheet
 import kr.contest.pleosapp.app.RestMateController
 import kr.contest.pleosapp.app.RouteView
 import kr.contest.pleosapp.app.UiState
+import kr.contest.pleosapp.core.ClockPick
+import kr.contest.pleosapp.core.CourseFlavor
+import kr.contest.pleosapp.core.CourseKind
 import kr.contest.pleosapp.core.DriveMode
 import kr.contest.pleosapp.core.DriveStep
 import kr.contest.pleosapp.core.Geo
 import kr.contest.pleosapp.core.HOUR_MS
 import kr.contest.pleosapp.core.LatLng
+import kr.contest.pleosapp.core.MINUTE_MS
+import kr.contest.pleosapp.core.Mood
+import kr.contest.pleosapp.core.OnTimeStyle
 import kr.contest.pleosapp.core.Phase
 import kr.contest.pleosapp.core.Place
 import kr.contest.pleosapp.core.PlaceKind
+import kr.contest.pleosapp.core.RestKind
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -173,6 +180,129 @@ class JourneySnapshots {
         rig.openMode(DriveMode.LONGER)
         j.advance(1_000)
         shot("2_longerNoDestination", j.ui())
+    }
+
+    /** 직접 해 보기: 저녁 6시 30분 서울역에서 집으로, 롱웨이 모드 30분 더 (데이트), 달리다 +15분, 바로 집으로 */
+    @Test
+    fun j4_freeLonger() {
+        val j = Journey(SEOUL_STATION, "서울역", 18 * HOUR_MS + 30 * MINUTE_MS)
+        val rig = j.rig
+        rig.openMode(DriveMode.LONGER)
+        rig.setExtraMinutes(30)
+        rig.setMood(Mood.DATE)
+        j.advance(1_000)
+        shot("1_setup", j.ui())
+        rig.planCourses()
+        j.advance(1_000)
+        shot("2_choose", j.ui())
+        rig.setFlavor(CourseFlavor.RIVER)
+        j.advance(1_000)
+        shot("3_chooseRiver", j.ui())
+        rig.drive.state.options.firstOrNull { it.kind != CourseKind.DIRECT }?.let { rig.chooseCourse(it) }
+        j.advance(1_000)
+        rig.demoDrive()
+        j.advance(4_000)
+        rig.addDriveTime(15)
+        j.advance(2_000)
+        shot("4_plus15", j.ui())
+        j.advance(20_000)
+        rig.goDirect()
+        j.advance(2_000)
+        shot("5_goHome", j.ui())
+        j.advanceUntil { rig.drive.state.step == DriveStep.ARRIVED }
+        j.advance(3_000)
+        shot("6_arrived", j.ui())
+    }
+
+    /** 직접 해 보기: 오후 2시 서울역에서 롯데월드타워 3시 30분, 근처에서 기다리기 (주차장에서 기다렸다 출발) */
+    @Test
+    fun j5_freeWaitNear() {
+        val j = Journey(SEOUL_STATION, "서울역", 14 * HOUR_MS)
+        val rig = j.rig
+        rig.setNaviDestination(LOTTE_TOWER)
+        j.advance(1_000)
+        rig.openMode(DriveMode.ON_TIME)
+        rig.setOnTimeStyle(OnTimeStyle.WAIT_NEAR)
+        rig.setTarget(ClockPick(0, true, 3, 30).at(ClockPick.dayStart(rig.now())))
+        j.advance(1_000)
+        shot("1_setup", j.ui())
+        rig.planCourses()
+        j.advance(1_000)
+        shot("2_choose", j.ui())
+        rig.drive.state.options.firstOrNull()?.let { rig.chooseCourse(it) }
+        j.advance(1_000)
+        shot("3_active", j.ui())
+        rig.demoDrive()
+        j.advanceUntil { rig.engine.state.phase == Phase.RESTING }
+        j.advance(3_000)
+        shot("4_waiting", j.ui())
+        rig.demoSkipRest()
+        j.advance(2_000)
+        shot("5_departCall", j.ui())
+        rig.departNow()
+        j.advance(3_000)
+        shot("6_departed", j.ui())
+        j.advanceUntil { rig.drive.state.step == DriveStep.ARRIVED }
+        j.advance(3_000)
+        shot("7_arrived", j.ui())
+    }
+
+    /** 직접 해 보기: 밤 9시 30분 서울역에서 아이 학원, 픽업 알림 켜고 기다렸다 가기 → 자리 없음 → 세운 곳 */
+    @Test
+    fun j6_freePickup() {
+        val j = Journey(SEOUL_STATION, "서울역", 21 * HOUR_MS + 30 * MINUTE_MS)
+        val rig = j.rig
+        rig.openMode(DriveMode.ON_TIME)
+        rig.drive.state.places.firstOrNull { it.name == "아이 학원" }?.let { rig.setDriveDestination(it) }
+        rig.setPickup(true)
+        j.advance(1_000)
+        shot("1_setup", j.ui())
+        rig.planCourses()
+        j.advance(1_000)
+        rig.drive.state.options.firstOrNull()?.let { rig.chooseCourse(it) }
+        j.advance(1_000)
+        shot("2_active", j.ui())
+        rig.demoDrive()
+        j.advanceUntil { rig.engine.state.phase == Phase.RESTING }
+        j.advance(2_000)
+        rig.demoSkipRest()
+        j.advance(1_000)
+        rig.departNow()
+        j.advanceUntil { rig.drive.state.step == DriveStep.ARRIVED }
+        j.advance(2_000)
+        shot("3_arrived", j.ui())
+        rig.circleForSpot()
+        j.advance(2_000)
+        shot("4_circling", j.ui())
+        j.advanceUntil { rig.drive.state.step == DriveStep.ARRIVED && !rig.drive.state.circling }
+        j.advance(2_000)
+        rig.demoPark()
+        j.advance(2_000)
+        shot("5_parked", j.ui())
+    }
+
+    /** 직접 해 보기: 오후 3시 시내에서 졸려서 레스트 모드 → 공원 주차장 → 그냥 기다리기 → 조금 쉬고 출발 */
+    @Test
+    fun j7_cityDrowsyWait() {
+        val j = Journey(SEOUL_STATION, "서울역", 15 * HOUR_MS)
+        val rig = j.rig
+        rig.setNaviDestination(LOTTE_TOWER)
+        j.advance(1_000)
+        rig.demoDrive()
+        j.advance(30_000)
+        rig.pressDrowsy()
+        j.advance(2_000)
+        shot("1_guidance", j.ui())
+        j.advanceUntil { rig.engine.state.phase == Phase.RESTING }
+        j.advance(2_000)
+        shot("2_resting", j.ui())
+        rig.setRestKind(RestKind.WAIT)
+        j.advance(2_000)
+        shot("3_wait", j.ui())
+        j.advance(30_000)
+        rig.departNow()
+        j.advance(3_000)
+        shot("4_departed", j.ui())
     }
 
     private companion object {

@@ -188,7 +188,8 @@ private fun driveTitle(d: DriveState): Pair<String, Color> {
         DriveStep.HOME -> "어떻게 갈까요?" to RM.textDim
         DriveStep.SETUP -> (mode?.title ?: "드라이브") to color
         DriveStep.CHOOSE -> "${mode?.title ?: "드라이브"} · 코스 고르기" to color
-        DriveStep.ACTIVE -> "${mode?.title ?: "드라이브"} · 달리는 중" to color
+        // '달리는 중'이라고 하면 출발 전(신호 대기·D단으로 서 있음)과 맞지 않아 내비처럼 '안내 중'이라고 쓴다
+        DriveStep.ACTIVE -> "${mode?.title ?: "드라이브"} · 안내 중" to color
         DriveStep.ARRIVED -> "도착했어요" to color
     }
 }
