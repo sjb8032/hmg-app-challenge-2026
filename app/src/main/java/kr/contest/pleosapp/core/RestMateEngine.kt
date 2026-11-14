@@ -1244,10 +1244,10 @@ class RestMateEngine(
             else -> ""
         }
         val d = deadline
-        // 시간 모드로 달리는 중이면 어느 길로 가는지는 시간 모드가 알린다.
+        // 시간 모드로 달리는 중이면 어느 길로 가는지는 시간 모드가 알린다. 목적지 없이 쉬었으면 되돌아갈 길이 없다.
         val tail = when {
             config.compareAfterRest -> " 처음 ${RestMateText.duration(config.afterWindowMs)} 동안 휴식 전과 주행을 비교해 볼게요."
-            d != null || destNear -> ""
+            d != null || destNear || state.destination == null -> ""
             else -> " 원래 가던 길로 다시 안내할게요."
         }
         if ((d?.quiet == true || destNear) && caution.isEmpty() && tail.isEmpty()) return

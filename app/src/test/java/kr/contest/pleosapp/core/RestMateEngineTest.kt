@@ -69,6 +69,23 @@ class RestMateEngineTest {
     }
 
     @Test
+    fun departingAfterARestWithoutDestinationDoesNotPromiseTheOldRoute() {
+        val e = engine()
+        e.onLocation(t0, origin, null)
+        e.onSpeed(t0, 0.0)
+        e.onGear(t0, Gear.PARK)
+        e.onTick(t0 + 60_000)
+        e.pressDrowsy(t0 + 61_000)
+        e.drainEffects()
+        e.departNow(t0 + 30 * 60_000)
+
+        assertEquals(Phase.DRIVING, e.state.phase)
+        val speech = e.drainEffects().filterIsInstance<Effect.Speak>().map { it.text }
+        assertTrue(speech.toString(), speech.none { "원래 가던 길" in it })
+        assertTrue(speech.toString(), speech.any { it.startsWith("다시 출발하시네요") })
+    }
+
+    @Test
     fun drowsyWithoutLocationReportsFailure() {
         val e = engine()
         e.onGear(t0, Gear.DRIVE)
@@ -159,6 +176,8 @@ class RestMateEngineTest {
     @Test
     fun departureWithoutComparisonJustResumesGuidance() {
         val e = engine()
+        // 가던 목적지가 있어야 '원래 가던 길로' 되돌아간다 (목적지 없이 쉬었으면 그 말을 하지 않는다)
+        e.onDestination(southKm(200.0))
         e.driveAt(t0)
         val restAt = e.restAtNearest(t0 + 1_000)
         e.drainEffects()
