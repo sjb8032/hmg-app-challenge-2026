@@ -123,6 +123,14 @@ object DriveText {
         return word + if (hasFinal) "을" else "를"
     }
 
+    /** 받침에 맞춰 '은/는'을 붙인다: "바람 세기는", "무드등은", "공조 전원은" */
+    fun topic(word: String): String {
+        val last = particleBase(word) ?: return word
+        if (last !in '가'..'힣') return "$word(은)는"
+        val hasFinal = (last.code - '가'.code) % 28 != 0
+        return word + if (hasFinal) "은" else "는"
+    }
+
     /** 받침에 맞춰 '로/으로'를 붙인다 (ㄹ 받침은 '로'): "휴게소로", "공영 주차장으로", "서울로" */
     fun toward(word: String): String {
         val last = particleBase(word) ?: return word

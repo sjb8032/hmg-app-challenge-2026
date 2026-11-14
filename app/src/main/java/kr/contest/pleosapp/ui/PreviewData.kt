@@ -388,9 +388,9 @@ internal object PreviewSamples {
             trail = trail(nonhyeon, at, 1.0),
             route = RouteView(home, listOf(eungbong)),
             leg = DriveLeg(nonhyeon, eungbong.position, 0.6f),
-            cabinNote = "분위기: 데이트 · 무드등 35% · 22°C",
+            cabinNote = "데이트 분위기: 무드등 35% · 22°C · 약한 바람",
             log = listOf(
-                LogEntry(CITY_START + MINUTE_MS, "분위기: 데이트 · 무드등 35% · 22°C", LogKind.VEHICLE),
+                LogEntry(CITY_START + MINUTE_MS, "데이트 분위기: 무드등 35% · 22°C · 약한 바람", LogKind.VEHICLE),
                 LogEntry(CITY_START + MINUTE_MS, "내비에 응봉산 경유 경로를 요청했어요.", LogKind.NAVI),
             ),
             console = ConsoleStatus(ConsoleLinkState.ON, Gear.DRIVE, 30, browserActive = true),
@@ -495,8 +495,8 @@ internal object PreviewSamples {
             trail = trail(highway.start, munmakArea.position, 1.0),
             route = RouteView(highway.destination!!, emptyList()),
             lastMessage = null,
-            extras = VehicleExtras(windowsAllClosed = true, recirculationOn = true, fuelPercent = 42, rangeKm = 310.0),
-            cabinNote = "휴식 환경: 23°C · 무드등 은은하게 · 바깥 공기",
+            extras = VehicleExtras(windowsAllClosed = true, recirculationOn = false, fuelPercent = 42, rangeKm = 310.0),
+            cabinNote = "휴식 모드: 23°C · 약한 바람 · 바깥 공기 · 무드등 은은하게",
             console = ConsoleStatus(ConsoleLinkState.ON, Gear.PARK, 0, browserActive = true),
         )
     }

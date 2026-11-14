@@ -10,6 +10,8 @@ import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import kr.contest.pleosapp.core.CabinMode
+import kr.contest.pleosapp.core.CabinPart
+import kr.contest.pleosapp.core.CabinSummary
 import kr.contest.pleosapp.core.Mood
 import kr.contest.pleosapp.core.MoodPreset
 import kr.contest.pleosapp.core.RestEnvironment
@@ -23,7 +25,8 @@ import kr.contest.pleosapp.core.RestEnvironment
  * - 롱웨이 모드 분위기: 데이트·혼자 쉬기에 맞춘 무드등 밝기와 온도. 도착하면 무드등은 천천히 되돌림
  *
  * 제어할 수 있는 영역과 범위는 차량마다 달라 시작할 때 capability로 읽는다.
- * 제어가 실패해도 앱 흐름은 멈추지 않고, 결과를 문구로 알린다.
+ * 제어가 실패해도 앱 흐름은 멈추지 않는다. 결과는 제어 결과가 돌아올 때쯤 한 줄로 알리고,
+ * 이 차에서 되지 않는 제어(예: 에뮬레이터의 바람 세기)는 그 줄에서 빼고 짧게 덧붙인다 ([CabinSummary]).
  */
 class CabinControl(
     private val vehicle: Vehicle,
@@ -46,9 +49,14 @@ class CabinControl(
     private val savedPower = HashMap<SeatArea, Boolean>()
     private val savedLightSwitch = HashMap<SeatArea, LightSwitch>()
     private val savedBrightness = HashMap<SeatArea, Int>()
+    /** 쉬려고 켠 공조 전원 영역. 되돌릴 때 다시 끈다 (원래 켜져 있던 차는 건드리지 않는다) */
+    private val poweredOn = HashSet<SeatArea>()
     private var changed = false
-    private var failureReported = false
     private var generation = 0
+    /** 지금 하고 있는 바꾸기. 제어가 실패하면 이 바꾸기의 결과 줄에 모인다 */
+    private var current: Change? = null
+    /** 이 차에서 되지 않은 제어. 되돌릴 때 같은 제어가 또 안 되어도 다시 알리지 않는다 */
+    private val unsupported = HashSet<CabinPart>()
     /** 마지막으로 되돌린 시각. 되돌린 직후에는 되돌린 값이 아직 반영되지 않았을 수 있어 다시 읽지 않는다. */
     private var restoredAt = Long.MIN_VALUE / 2
     /** 켜 둔 분위기의 무드등 밝기 (0~1). 분위기를 천천히 끌 때 여기서부터 원래 밝기로 바꾼다. */
@@ -96,7 +104,6 @@ class CabinControl(
             return
         }
         val gen = ++generation
-        failureReported = false
         // 원래 설정을 읽는 동안 기다렸다가 바꾼다. 그 사이에 다른 단계로 넘어가면(예: 바로 출발) 건너뛴다.
         when (mode) {
             CabinMode.REST -> if (env.enabled) {
@@ -129,7 +136,6 @@ class CabinControl(
             return
         }
         val gen = ++generation
-        failureReported = false
         val preset = MoodPreset.of(mood)
         val wait = beginChange()
         main.postDelayed({ if (gen == generation) applyPreset(preset) }, wait)
@@ -149,6 +155,17 @@ class CabinControl(
     // ---- 단계별 설정 ----
 
     private fun applyRest(env: RestEnvironment) {
+        val change = begin(
+            CabinSummary(
+                "휴식 모드",
+                buildList {
+                    add(formatTemp(env.restTemperatureC) to CabinPart.TEMPERATURE)
+                    add("약한 바람" to CabinPart.FAN)
+                    if (env.freshAir) add("바깥 공기" to CabinPart.RECIRCULATION)
+                    if (env.dimLight) add("무드등 은은하게" to CabinPart.AMBIENT)
+                },
+            ),
+        )
         withHvacOn {
             hvacAreas().forEach { setTemperature(it, env.restTemperatureC) }
             fanAreas().forEach { setFan(it, fraction = 0.25) }
@@ -160,16 +177,22 @@ class CabinControl(
                 setBrightness(area, fraction = 0.15)
             }
         }
-        val parts = buildList {
-            add("${formatTemp(env.restTemperatureC)} 약한 바람")
-            if (env.freshAir) add("바깥 공기")
-            if (env.dimLight) add("무드등 은은하게")
-        }
-        report("휴식 모드: ${parts.joinToString(" · ")}")
+        change.publishLater()
     }
 
     private fun applyWake(env: RestEnvironment) {
         val gen = generation
+        val change = begin(
+            CabinSummary(
+                "깨우기",
+                listOf(
+                    "무드등을 점점 밝게" to CabinPart.AMBIENT,
+                    formatTemp(env.restTemperatureC - 2f) to CabinPart.TEMPERATURE,
+                    "센 바람" to CabinPart.FAN,
+                    "바깥 공기" to CabinPart.RECIRCULATION,
+                ),
+            ),
+        )
         withHvacOn {
             hvacAreas().forEach { setTemperature(it, env.restTemperatureC - 2f) }
             fanAreas().forEach { setFan(it, fraction = 0.7) }
@@ -183,10 +206,20 @@ class CabinControl(
                 if (gen == generation) lights.forEach { setBrightness(it, fraction = step.toDouble() / WAKE_LIGHT_STEPS) }
             }, step * WAKE_LIGHT_STEP_MS)
         }
-        report("깨우기: 무드등을 점점 밝게 · ${formatTemp(env.restTemperatureC - 2f)} 센 바람 · 바깥 공기")
+        change.publishLater()
     }
 
     private fun applyPreset(p: MoodPreset) {
+        val change = begin(
+            CabinSummary(
+                "${p.label} 분위기",
+                listOf(
+                    "무드등 ${Math.round(p.brightness * 100)}%" to CabinPart.AMBIENT,
+                    formatTemp(p.temperatureC) to CabinPart.TEMPERATURE,
+                    "약한 바람" to CabinPart.FAN,
+                ),
+            ),
+        )
         withHvacOn {
             hvacAreas().forEach { setTemperature(it, p.temperatureC) }
             fanAreas().forEach { setFan(it, fraction = p.fan) }
@@ -196,27 +229,27 @@ class CabinControl(
             setBrightness(area, fraction = p.brightness)
         }
         moodBrightness = p.brightness
-        report("${p.label} 분위기: 무드등 ${Math.round(p.brightness * 100)}% · ${formatTemp(p.temperatureC)} · 약한 바람")
+        change.publishLater()
     }
 
     private fun restore(message: String?) {
         val gen = ++generation
+        val change = begin(null, message)
         savedTemp.forEach { (area, value) -> setTemperature(area, value) }
         savedFan.forEach { (area, value) -> setFanExact(area, value) }
         savedRecirc.forEach { (area, value) -> setRecirculation(area, value) }
         savedBrightness.forEach { (area, value) -> setBrightnessExact(area, value) }
         savedLightSwitch.forEach { (area, value) -> setLightSwitch(area, value) }
-        // 공조 전원은 마지막에 (꺼 두었던 차는 다시 끈다). 온도·바람을 되돌린 뒤에 끄도록 조금 기다린다.
-        val power = HashMap(savedPower)
-        if (power.values.any { !it }) {
-            main.postDelayed({
-                if (gen == generation) power.forEach { (area, on) -> if (!on) setPower(area, false) }
-            }, POWER_WAIT_MS)
+        // 공조 전원은 마지막에: 쉬려고 켠 전원만 다시 끈다. 온도·바람을 되돌린 뒤에 끄도록 조금 기다린다.
+        val off = poweredOn.toList()
+        poweredOn.clear()
+        if (off.isNotEmpty()) {
+            main.postDelayed({ if (gen == generation) off.forEach { setPower(it, false) } }, POWER_WAIT_MS)
         }
         changed = false
         moodBrightness = null
         restoredAt = SystemClock.elapsedRealtime()
-        message?.let(report)
+        change.publishLater()
     }
 
     /**
@@ -226,6 +259,7 @@ class CabinControl(
     private fun fadeOutMood() {
         val from = moodBrightness ?: return
         val gen = ++generation
+        val change = begin(null, "드라이브를 마쳐서 무드등을 천천히 원래대로 되돌려요.")
         savedTemp.forEach { (area, value) -> setTemperature(area, value) }
         savedFan.forEach { (area, value) -> setFanExact(area, value) }
         savedRecirc.forEach { (area, value) -> setRecirculation(area, value) }
@@ -248,7 +282,7 @@ class CabinControl(
                 }
             }, step * MOOD_FADE_STEP_MS)
         }
-        report("드라이브를 마쳐서 무드등을 천천히 원래대로 되돌려요.")
+        change.publishLater()
     }
 
     // ---- 휴식 전 설정 읽기 ----
@@ -319,8 +353,8 @@ class CabinControl(
 
     private fun setTemperature(area: SeatArea, celsius: Float) {
         val value = tempRanges[area]?.let { celsius.coerceIn(it.start, it.endInclusive) } ?: celsius
-        safely("set temperature") {
-            vehicle.getHVAC().setHvacTemperature(area, value, TemperatureUnit.CELSIUS, { _, _ -> }, { e -> failed("공조 온도", e) })
+        control(CabinPart.TEMPERATURE) { change ->
+            vehicle.getHVAC().setHvacTemperature(area, value, TemperatureUnit.CELSIUS, { _, _ -> }, { e -> failed(change, CabinPart.TEMPERATURE, e) })
         }
     }
 
@@ -330,41 +364,45 @@ class CabinControl(
     }
 
     private fun setFanExact(area: SeatArea, speed: Int) {
-        safely("set fan") {
-            vehicle.getHVAC().setHvacFanSpeed(area, speed, { _, _ -> }, { e -> failed("바람 세기", e) })
+        control(CabinPart.FAN) { change ->
+            vehicle.getHVAC().setHvacFanSpeed(area, speed, { _, _ -> }, { e -> failed(change, CabinPart.FAN, e) })
         }
     }
 
     /**
-     * 공조 전원이 꺼져 있으면 켠 뒤에 [block]을 한다. 전원이 꺼진 차에서는 바람 세기를 바꿀 수 없다
-     * (에뮬레이터에서 'HVAC_FAN_SPEED … error code 2'(쓸 수 없음)로 실패했다). 켤 수 있는 영역을 모르면 그대로 한다.
+     * 공조 전원이 꺼져 있으면 켠 뒤에 [block]을 한다 (꺼진 공조에 온도·바람만 바꿔 두면 쉬는 동안 바람이 나오지 않는다).
+     * 꺼져 있는지 모르는 영역은 건드리지 않는다. Pleos Connect 에뮬레이터는 전원은 켜지지만 바람 세기는
+     * 켠 뒤에도 바꿀 수 없다('HVAC_FAN_SPEED … error code 2'). 그런 제어는 결과 줄에 짧게 덧붙는다.
      */
     private fun withHvacOn(block: () -> Unit) {
-        val off = powerAreas.filter { savedPower[it] != true }
+        val off = powerAreas.filter { savedPower[it] == false && it !in poweredOn }
         if (off.isEmpty()) {
             block()
             return
         }
         val gen = generation
-        off.forEach { setPower(it, true) }
+        off.forEach {
+            poweredOn += it
+            setPower(it, true)
+        }
         main.postDelayed({ if (gen == generation) block() }, POWER_WAIT_MS)
     }
 
     private fun setPower(area: SeatArea, on: Boolean) {
-        safely("set power") {
-            vehicle.getHVAC().setHvacPower(area, on, { _, _ -> }, { e -> failed("공조 전원", e) })
+        control(CabinPart.POWER) { change ->
+            vehicle.getHVAC().setHvacPower(area, on, { _, _ -> }, { e -> failed(change, CabinPart.POWER, e) })
         }
     }
 
     private fun setRecirculation(area: SeatArea, on: Boolean) {
-        safely("set recirculation") {
-            vehicle.getHVAC().setHvacRecirculation(area, on, { _, _ -> }, { e -> failed("내외기", e) })
+        control(CabinPart.RECIRCULATION) { change ->
+            vehicle.getHVAC().setHvacRecirculation(area, on, { _, _ -> }, { e -> failed(change, CabinPart.RECIRCULATION, e) })
         }
     }
 
     private fun setLightSwitch(area: SeatArea, value: LightSwitch) {
-        safely("set ambient switch") {
-            vehicle.getLight().setAmbientLightSwitch(area, value, { _, _ -> }, { e -> failed("무드등", e) })
+        control(CabinPart.AMBIENT) { change ->
+            vehicle.getLight().setAmbientLightSwitch(area, value, { _, _ -> }, { e -> failed(change, CabinPart.AMBIENT, e) })
         }
     }
 
@@ -375,8 +413,8 @@ class CabinControl(
     }
 
     private fun setBrightnessExact(area: SeatArea, value: Int) {
-        safely("set ambient brightness") {
-            vehicle.getLight().setAmbientLightBrightness(area, value, { _, _ -> }, { e -> failed("무드등 밝기", e) })
+        control(CabinPart.AMBIENT) { change ->
+            vehicle.getLight().setAmbientLightBrightness(area, value, { _, _ -> }, { e -> failed(change, CabinPart.AMBIENT, e) })
         }
     }
 
@@ -393,6 +431,9 @@ class CabinControl(
 
     private fun recircTargets(): List<SeatArea> = recircAreas.ifEmpty { listOf(driver) }
 
+    /** 내외기 상태를 읽을 영역: 차가 알려 준 내외기 영역 (에뮬레이터는 운전석 영역으로 읽으면 실패한다) */
+    fun recirculationArea(): SeatArea = recircTargets().first()
+
     private fun lightTargets(): List<SeatArea> = lightRanges.keys.toList().ifEmpty { listOf(driver) }
 
     private fun level(range: IntRange, fraction: Double): Int {
@@ -400,12 +441,61 @@ class CabinControl(
         return (range.first + Math.round(span * fraction.coerceIn(0.0, 1.0)).toInt()).coerceIn(range.first, range.last)
     }
 
-    private fun failed(what: String, e: Any?) {
-        warn("control $what", e)
-        post {
-            if (!failureReported) {
-                failureReported = true
-                report("$what 제어가 되지 않았어요. 차량 제어 권한과 차종 지원 여부를 확인해 주세요.")
+    // ---- 결과 알리기 ----
+
+    private fun begin(summary: CabinSummary?, message: String? = null): Change =
+        Change(generation, summary, message).also { current = it }
+
+    /** 제어 하나: 실패는 지금 바꾸기에 모은다 (바로 던진 예외도 실패로 친다) */
+    private inline fun control(part: CabinPart, block: (Change?) -> Unit) {
+        val change = current
+        try {
+            block(change)
+        } catch (e: Exception) {
+            failed(change, part, e)
+        }
+    }
+
+    private fun failed(change: Change?, part: CabinPart, e: Any?) {
+        warn("control ${part.label}", e)
+        post { change?.fail(part) }
+    }
+
+    /**
+     * 바꾸기 한 번 (휴식·깨우기·분위기·되돌리기). 제어 결과가 돌아올 때쯤 결과를 한 줄로 한 번 알리고,
+     * 그 뒤에 온 실패는 줄을 고쳐 다시 알린다. 그 사이 다른 단계로 넘어갔으면 알리지 않는다.
+     *
+     * @param summary 바꾼 것 (되돌리기는 null)
+     * @param message 되돌리기를 알릴 문구 (null이면 알리지 않는다)
+     */
+    private inner class Change(val gen: Int, val summary: CabinSummary?, val message: String?) {
+        private val failed = LinkedHashSet<CabinPart>()
+        private var due = false
+        private var shown: String? = null
+
+        fun fail(part: CabinPart) {
+            if (!failed.add(part)) return
+            if (summary != null) unsupported += part
+            if (due) publish()
+        }
+
+        fun publishLater() {
+            main.postDelayed({
+                due = true
+                publish()
+            }, REPORT_WAIT_MS)
+        }
+
+        private fun publish() {
+            if (gen != generation) return
+            val text = when {
+                summary != null -> summary.text(failed)
+                message != null -> CabinSummary.restored(message, failed.filter { it !in unsupported })
+                else -> null
+            }
+            if (text != null && text != shown) {
+                shown = text
+                report(text)
             }
         }
     }
@@ -432,6 +522,9 @@ class CabinControl(
 
         /** 공조 전원을 켠 뒤(또는 끄기 전) 다른 설정이 먹을 때까지 기다리는 시간 */
         private const val POWER_WAIT_MS = 500L
+
+        /** 바꾸기 결과를 알리기 전에 제어 결과를 기다리는 시간 (전원을 켜고 기다리는 시간보다 길게) */
+        private const val REPORT_WAIT_MS = POWER_WAIT_MS + 1_000L
         private const val RESNAPSHOT_GUARD_MS = 5_000L
         private const val WAKE_LIGHT_STEPS = 5
         private const val WAKE_LIGHT_STEP_MS = 4_000L

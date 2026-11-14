@@ -2,9 +2,7 @@ package kr.contest.pleosapp.sdk
 
 import ai.pleos.playground.vehicle.Vehicle
 import ai.pleos.playground.vehicle.api.model.telltale.Telltales
-import ai.pleos.playground.vehicle.api.model.area.SeatArea
 import ai.pleos.playground.vehicle.api.model.area.WindowArea
-import ai.pleos.playground.vehicle.constant.area.SeatValue
 import ai.pleos.playground.vehicle.constant.area.TurnSignalValue
 import ai.pleos.playground.vehicle.constant.area.WindowValue
 import ai.pleos.playground.vehicle.constant.control.VehicleGear
@@ -214,7 +212,7 @@ class VehicleSignals(context: Context, private val sink: Sink) {
         }
         safely("recirculation") {
             vehicle.getHVAC().getHvacRecirculationState(
-                SeatArea(SeatValue.ROW_1_LEFT),
+                cabin.recirculationArea(),
                 { on -> post { updateExtras(extras.copy(recirculationOn = (on as Any?) as? Boolean)) } },
                 { e -> warn("recirculation", e) },
             )
