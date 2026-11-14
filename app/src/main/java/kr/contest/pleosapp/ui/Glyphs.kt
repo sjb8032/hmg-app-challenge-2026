@@ -17,20 +17,6 @@ import kr.contest.pleosapp.app.LogKind
  * 화면에 쓰는 작은 그림 (아이콘 라이브러리를 더하지 않으려고 직접 그린다). 모두 정사각형 영역에 맞춰 그린다.
  */
 
-/** 온타임 모드: 시계 */
-@Composable
-internal fun ClockGlyph(color: Color, modifier: Modifier) {
-    Canvas(modifier) {
-        val r = size.minDimension / 2f
-        val c = Offset(size.width / 2f, size.height / 2f)
-        val w = r * 0.14f
-        drawCircle(color, r * 0.86f, c, style = Stroke(w))
-        drawLine(color, c, Offset(c.x, c.y - r * 0.52f), strokeWidth = w, cap = StrokeCap.Round)
-        drawLine(color, c, Offset(c.x + r * 0.40f, c.y + r * 0.14f), strokeWidth = w, cap = StrokeCap.Round)
-        drawCircle(color, r * 0.11f, c)
-    }
-}
-
 /** 롱웨이 모드: 굽이진 길 */
 @Composable
 internal fun RoadGlyph(color: Color, modifier: Modifier) {
