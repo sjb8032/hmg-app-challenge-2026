@@ -42,6 +42,7 @@
 4. **Advanced Settings**에서 Default boot를 `Cold`, RAM을 `4 GB`로 바꿉니다.
 5. System image에서 API 34의 `Pleos Connect v2.1.0 APIs`를 고르고 Finish를 누릅니다.
 6. Device Manager에서 ▶로 AVD를 켭니다. 첫 부팅은 몇 분 걸립니다.
+7. 상태 표시줄 시계가 한국 시각과 다르면(미국 태평양 시간대로 켜지기도 합니다) 에뮬레이터의 설정 > 날짜 및 시간에서 시간대를 서울로 바꿉니다. 시연의 '직접 해 보기'는 에뮬레이터 시각부터 흘러, 그대로 두면 새벽 시각으로 시작합니다.
 
 ### Virtual Console (차량 값 바꾸기)
 

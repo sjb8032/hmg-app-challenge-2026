@@ -63,6 +63,8 @@ class RestMateEngineTest {
         assertEquals(Phase.RESTING, e.state.phase)
         assertEquals(RestKind.NAP, e.state.rest?.kind)
         assertNull(e.state.rest?.area)
+        // 졸려서 누른 것이므로 쉼터 안내로 온 휴식처럼 '졸려서 쉬는 중'으로 본다
+        assertTrue(e.state.rest!!.fatigue)
         val effects = e.drainEffects()
         assertFalse(effects.any { it is Effect.StartGuidance })
         assertTrue(effects.any { it is Effect.Speak && it.text.startsWith("휴식을 시작할게요") })

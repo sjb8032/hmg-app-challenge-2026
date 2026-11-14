@@ -261,7 +261,11 @@ class RestMateEngine(
     fun pressDrowsy(now: Long) {
         advance(now)
         when (state.phase) {
-            Phase.DRIVING -> if (state.gear == Gear.PARK) startRest(now, RestKind.NAP, area = null) else guideToBest(now, announce = true)
+            Phase.DRIVING -> if (state.gear == Gear.PARK) {
+                startRest(now, RestKind.NAP, area = null, drowsy = true)
+            } else {
+                guideToBest(now, announce = true)
+            }
             Phase.TO_REST_AREA -> findFasterStop(now, Hurry.BUTTON)
             Phase.RESTING -> Unit
         }
@@ -338,8 +342,9 @@ class RestMateEngine(
      *
      * @param kind 졸음·레스트 모드 버튼으로 왔으면 눈 붙이기, 쉬다 가는 코스면 그냥 기다리기
      * @param area 쉬는 곳. 기본값은 안내하던 쉼터 (그 쉼터에서 멀리 세웠으면 '지금 있는 곳')
+     * @param drowsy 세워 둔 채 '레스트 모드'(졸려요)를 눌러 쉬는지 (쉼터 안내를 거쳐 온 것처럼 졸려서 쉬는 것으로 본다)
      */
-    fun startRest(now: Long, kind: RestKind = RestKind.NAP, area: RestArea? = guidedAreaHere()) {
+    fun startRest(now: Long, kind: RestKind = RestKind.NAP, area: RestArea? = guidedAreaHere(), drowsy: Boolean = false) {
         advance(now)
         if (state.phase == Phase.RESTING) return
         val fromGuidance = state.phase == Phase.TO_REST_AREA
@@ -361,7 +366,7 @@ class RestMateEngine(
             strictTarget = d?.strict == true,
             remainingRouteMs = remaining,
             remainingRouteEstimated = d?.remainingMs == null && navRemaining == null && remaining != null,
-            fatigue = fromGuidance || warned,
+            fatigue = fromGuidance || warned || drowsy,
             warned = warned,
             stopPosition = state.position.takeIf { still },
         )
