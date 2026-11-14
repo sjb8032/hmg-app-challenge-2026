@@ -76,11 +76,30 @@ internal fun TwoPane(
     }
 }
 
-internal enum class Tone(val container: Color, val content: Color) {
-    SKY(RM.sky, RM.onSky),
-    SAND(RM.sand, RM.onSand),
-    AMBER(RM.amber, RM.onAmber),
-    NEUTRAL(RM.button, RM.text),
+internal enum class Tone {
+    SKY,
+    SAND,
+    AMBER,
+    NEUTRAL,
+    ;
+
+    /** 버튼을 채우는 색 (낮·밤 색 한 벌에서 그때그때 읽는다) */
+    val container: Color
+        get() = when (this) {
+            SKY -> RM.sky
+            SAND -> RM.sandFill
+            AMBER -> RM.amberFill
+            NEUTRAL -> RM.button
+        }
+
+    /** 그 위 글자 */
+    val content: Color
+        get() = when (this) {
+            SKY -> RM.onSky
+            SAND -> RM.onSand
+            AMBER -> RM.onAmber
+            NEUTRAL -> RM.text
+        }
 }
 
 /** 모드 색: 온타임 하늘색(스카이 블루), 롱웨이 샌드 */
@@ -138,8 +157,8 @@ internal fun ActionButton(
 }
 
 @Composable
-internal fun BigButton(text: String, sub: String?, tone: Tone, onClick: () -> Unit) {
-    ActionButton(text, onClick, Modifier.fillMaxWidth(), tone, minHeight = 104.dp, textSize = 38.sp, sub = sub)
+internal fun BigButton(text: String, sub: String?, tone: Tone, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    ActionButton(text, onClick, modifier.fillMaxWidth(), tone, minHeight = 104.dp, textSize = 38.sp, sub = sub)
 }
 
 @Composable

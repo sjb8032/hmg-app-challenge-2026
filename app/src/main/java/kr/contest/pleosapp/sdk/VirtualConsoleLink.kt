@@ -131,7 +131,8 @@ class VirtualConsoleLink(
         val path = when (write) {
             is ConsoleSync.Write.Controls ->
                 "/vehicle/controls?speed=${write.speedKmh}" +
-                    "&accelerator=${String.format(Locale.ROOT, "%.3f", write.acceleratorPct)}&brake=0"
+                    "&accelerator=${String.format(Locale.ROOT, "%.3f", write.acceleratorPct)}" +
+                    "&brake=${String.format(Locale.ROOT, "%.3f", write.brakePct)}"
             is ConsoleSync.Write.SetGear -> "/vehicle/gear?gear=${gearName(write.gear)}"
         }
         val conn = open(path)

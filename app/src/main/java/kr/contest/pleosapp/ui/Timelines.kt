@@ -121,6 +121,10 @@ private fun Explain(ui: UiState) {
     }
     val (text, color) = when {
         d.paused -> "쉬었다 가는 동안 시간 맞추기를 잠시 멈췄어요. 다시 출발하면 이어서 맞춰요." to RM.amber
+        // '자리 없음'으로 한 바퀴 도는 중: 늦어도 길을 줄이지 않는다 (세울 곳이 없어 도는 것이라)
+        d.circling && gap > 30 * SECOND_MS ->
+            "세울 곳이 없어 한 바퀴 돌고 ${DriveText.clock(eta)}쯤 다시 와요 · 목표보다 약 ${DriveText.duration(gap)} 늦어요." to RM.amber
+        d.circling -> "세울 곳이 없어 한 바퀴 돌고 ${DriveText.clock(eta)}쯤 다시 와요." to RM.textDim
         d.mode != DriveMode.LONGER && d.status == FitStatus.LATE ->
             "바로 가도 약 ${DriveText.duration(gap)} 늦어요. 서두르지 말고 안전하게 가세요." to RM.amber
         d.extendOffered && extend != null -> {
@@ -220,20 +224,20 @@ private fun TrackBar(
             }
             // 목표: 깃발
             val tx = x(target)
-            drawLine(Color.White, Offset(tx, cy - 22.dp.toPx()), Offset(tx, cy + 12.dp.toPx()), strokeWidth = 2.5.dp.toPx())
+            drawLine(RM.text, Offset(tx, cy - 22.dp.toPx()), Offset(tx, cy + 12.dp.toPx()), strokeWidth = 2.5.dp.toPx())
             val flag = Path().apply {
                 moveTo(tx, cy - 22.dp.toPx())
                 lineTo(tx + 13.dp.toPx(), cy - 17.dp.toPx())
                 lineTo(tx, cy - 12.dp.toPx())
                 close()
             }
-            drawPath(flag, Color.White)
+            drawPath(flag, RM.text)
             // 지금
-            drawCircle(Color.White, 6.dp.toPx(), Offset(x(now), cy))
+            drawCircle(RM.text, 6.dp.toPx(), Offset(x(now), cy))
             // 도착 예상
             val ex = x(eta)
             drawCircle(etaColor.copy(alpha = 0.25f), 17.dp.toPx(), Offset(ex, cy))
-            drawCircle(Color.White, 10.dp.toPx(), Offset(ex, cy))
+            drawCircle(RM.text, 10.dp.toPx(), Offset(ex, cy))
             drawCircle(etaColor, 7.dp.toPx(), Offset(ex, cy))
         }
         val pins = ArrayList<Pin>()
@@ -350,11 +354,11 @@ private fun SegmentBar(segments: List<Segment>, now: Long, target: Long?) {
             }
             if (target != null) {
                 val tx = x(target)
-                drawLine(Color.White, Offset(tx, cy - 16.dp.toPx()), Offset(tx, cy + 16.dp.toPx()), strokeWidth = 2.5.dp.toPx())
+                drawLine(RM.text, Offset(tx, cy - 16.dp.toPx()), Offset(tx, cy + 16.dp.toPx()), strokeWidth = 2.5.dp.toPx())
             }
             val nx = x(now)
-            drawLine(Color.White.copy(alpha = 0.9f), Offset(nx, cy - 13.dp.toPx()), Offset(nx, cy + 13.dp.toPx()), strokeWidth = 2.dp.toPx())
-            drawCircle(Color.White, 5.dp.toPx(), Offset(nx, cy - 13.dp.toPx()))
+            drawLine(RM.text.copy(alpha = 0.9f), Offset(nx, cy - 13.dp.toPx()), Offset(nx, cy + 13.dp.toPx()), strokeWidth = 2.dp.toPx())
+            drawCircle(RM.text, 5.dp.toPx(), Offset(nx, cy - 13.dp.toPx()))
         }
         val minWidth = with(density) { 56.dp.toPx() }
         val labelY = cy + with(density) { 26.dp.toPx() }

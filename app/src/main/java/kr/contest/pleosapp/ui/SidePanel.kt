@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -24,7 +25,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kr.contest.pleosapp.app.AutoChapter
 import kr.contest.pleosapp.app.LogKind
+import kr.contest.pleosapp.app.PlacePurpose
 import kr.contest.pleosapp.app.RestMateActions
 import kr.contest.pleosapp.app.RestMateController
 import kr.contest.pleosapp.app.UiState
@@ -208,33 +211,89 @@ private fun DemoCard(ui: UiState, actions: RestMateActions) {
             Switch(
                 checked = ui.demoMode,
                 onCheckedChange = actions::setDemoMode,
-                colors = SwitchDefaults.colors(checkedThumbColor = RM.onAmber, checkedTrackColor = RM.amber),
+                colors = SwitchDefaults.colors(checkedThumbColor = RM.onAccent, checkedTrackColor = RM.amber),
             )
         }
-        if (ui.demoMode) DemoControls(ui, actions)
+        AutoDemoControls(ui, actions)
+        // 자동 시연 중에는 손으로 누르는 시연 조작을 숨긴다 (대본과 엇갈리지 않게)
+        if (ui.demoMode && ui.auto == null) DemoControls(ui, actions)
     }
+}
+
+/** 자동 시연: 네 이야기(온타임·픽업·롱웨이·레스트)를 한 번에, 또는 하나씩. 진행 중이면 몇 번째 장면인지와 다음·멈추기 */
+@Composable
+private fun AutoDemoControls(ui: UiState, actions: RestMateActions) {
+    val auto = ui.auto
+    if (auto == null) {
+        ActionButton(
+            "자동 시연 시작",
+            { actions.startAutoDemo(null) },
+            Modifier.fillMaxWidth(),
+            Tone.AMBER,
+            minHeight = 60.dp,
+            textSize = 20.sp,
+            sub = "온타임 → 픽업 → 롱웨이 → 레스트 · 약 4분 40초",
+        )
+        // 이야기 넷: 두 줄로 (옆 칸이 좁아 한 줄에 넷이면 글자가 꺾인다)
+        for (row in AutoChapter.entries.chunked(2)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (chapter in row) {
+                    SmallButton(chapter.label, { actions.startAutoDemo(chapter) }, Modifier.weight(1f))
+                }
+            }
+        }
+        return
+    }
+    StatusLine(
+        "자동 시연",
+        "${auto.scene} / ${auto.total} · ${auto.chapter?.label ?: "인사"}",
+        chapterColor(auto.chapter),
+    )
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        SmallButton("다음 장면", actions::nextAutoScene, Modifier.weight(1f))
+        SmallButton("멈추기", actions::stopAutoDemo, Modifier.weight(1f))
+    }
+    Caption("자동 시연 중에는 시연 조작 버튼을 숨겨요. 멈추면 그 자리에서 손으로 이어 갈 수 있어요.", RM.textFaint)
 }
 
 @Composable
 private fun DemoControls(ui: UiState, actions: RestMateActions) {
     val trip = ui.demoTrip
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        for (t in DemoTrips.ALL) {
-            ActionButton(
-                t.title.substringBefore(" ·"),
-                { actions.selectDemoTrip(t.id) },
-                Modifier.weight(1f),
-                if (trip?.id == t.id) Tone.AMBER else Tone.NEUTRAL,
-                minHeight = 50.dp,
-                textSize = 17.sp,
-                sub = t.title.substringAfter("· ", ""),
-            )
+    // 출발 상황 셋과 '직접 해 보기': 두 줄로 (옆 칸이 좁아 한 줄에 셋이면 아랫줄 글자가 꺾인다)
+    val free = trip?.id == DemoTrips.FREE_ID
+    for (row in (DemoTrips.ALL + listOf(null)).chunked(2)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            for (t in row) {
+                if (t == null) {
+                    // 출발지를 고르고, 목적지·도착 시각은 화면에서 실제 내비처럼 정한다. 가상 시계는 지금 시각부터.
+                    ActionButton(
+                        "직접 해 보기",
+                        { actions.openPlaceSearch(PlacePurpose.DEMO_START) },
+                        Modifier.weight(1f),
+                        if (free) Tone.AMBER else Tone.NEUTRAL,
+                        minHeight = 50.dp,
+                        textSize = 17.sp,
+                        sub = if (free) "${trip?.startName ?: "고른 곳"}에서" else "출발지 고르기",
+                    )
+                    continue
+                }
+                ActionButton(
+                    t.title.substringBefore(" ·"),
+                    { actions.selectDemoTrip(t.id) },
+                    Modifier.weight(1f),
+                    if (trip?.id == t.id) Tone.AMBER else Tone.NEUTRAL,
+                    minHeight = 50.dp,
+                    textSize = 17.sp,
+                    sub = t.title.substringAfter("· ", ""),
+                )
+            }
+            if (row.size == 1) Spacer(Modifier.weight(1f))
         }
     }
     val scale = trip?.timeScale?.roundToInt() ?: 1
     StatusLine(
         "가상 시계",
-        if (ui.demoClockHeld) "×$scale · 출발 전이라 멈춤" else "×$scale · 1초에 ${scale}초씩",
+        if (ui.demoClockHeld) "×$scale · D단으로 서 있어 멈춤" else "×$scale · 1초에 ${scale}초씩",
         if (ui.demoClockHeld) RM.textDim else RM.amber,
     )
     val speed = ui.core.speedKmh?.roundToInt() ?: 0
@@ -261,7 +320,9 @@ private fun DemoControls(ui: UiState, actions: RestMateActions) {
         }
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        SmallButton("출발 · 주행", actions::demoDrive, Modifier.weight(1f))
+        // 직접 해 보기는 목적지를 정해야 달린다 (목적지 없이 달리면 모의 차가 한쪽으로 끝없이 간다)
+        val needsDestination = trip?.autoProfile == true && ui.route == null
+        SmallButton("출발 · 주행", actions::demoDrive, Modifier.weight(1f), enabled = !needsDestination)
         SmallButton("P단 주차", actions::demoPark, Modifier.weight(1f))
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

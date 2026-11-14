@@ -2,6 +2,7 @@ package kr.contest.pleosapp.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -31,7 +32,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kr.contest.pleosapp.app.AutoCue
 import kr.contest.pleosapp.app.RestMateActions
+import kr.contest.pleosapp.app.RestMateController
 import kr.contest.pleosapp.app.UiState
 import kr.contest.pleosapp.core.CheckInAnswer
 import kr.contest.pleosapp.core.DriveMode
@@ -70,9 +73,11 @@ fun RestMateScreen(ui: UiState, actions: RestMateActions) {
         }
         val mainWidth = maxWidth - sideWidth - 72.dp
         // 미니맵은 남는 높이를 채운다 (머리말·아래 버튼·여백을 뺀 만큼, 280~640dp)
+        // 자동 시연 해설이 떠 있으면 그만큼 미니맵을 낮춘다
+        val narration = if (ui.auto != null) NARRATION_HEIGHT else 0.dp
         val screen = ScreenSize(
             wide = mainWidth >= 840.dp,
-            mapHeight = (maxHeight - 560.dp).coerceIn(280.dp, 640.dp),
+            mapHeight = (maxHeight - 560.dp - narration).coerceIn(280.dp, 640.dp),
             compact = mainWidth < 1100.dp,
         )
         CompositionLocalProvider(LocalScreenSize provides screen) {
@@ -82,7 +87,11 @@ fun RestMateScreen(ui: UiState, actions: RestMateActions) {
                     .padding(24.dp),
                 horizontalArrangement = Arrangement.spacedBy(24.dp),
             ) {
-                MainPanel(ui, actions, Modifier.weight(1f).fillMaxHeight())
+                // 장소 찾기·도착 시각 고르기 창은 왼쪽 화면 위에 띄운다 (오른쪽 차 상태·시연 조작은 그대로)
+                Box(Modifier.weight(1f).fillMaxHeight()) {
+                    MainPanel(ui, actions, Modifier.fillMaxSize())
+                    ui.sheet?.let { InputSheetOverlay(it, ui, actions, Modifier.fillMaxSize()) }
+                }
                 SidePanel(ui, actions, Modifier.width(sideWidth).fillMaxHeight())
             }
         }
@@ -95,6 +104,7 @@ fun RestMateScreen(ui: UiState, actions: RestMateActions) {
 private fun MainPanel(ui: UiState, actions: RestMateActions, modifier: Modifier) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Header(ui)
+        AutoNarrationSlot(ui)
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -137,7 +147,7 @@ private fun Header(ui: UiState) {
             // 출발 전에는 가상 시계가 멈춰 있음을 보여 준다 (시각이 왜 안 가는지 알 수 있게)
             val scale = ui.demoTrip?.timeScale?.roundToInt()
             val text = when {
-                ui.demoClockHeld -> "시연 · 출발 전 시계 멈춤"
+                ui.demoClockHeld -> "시연 · 서 있어 시계 멈춤"
                 scale != null -> "시연 · 시계 ×$scale"
                 else -> "시연 모드"
             }
@@ -700,8 +710,18 @@ private fun WakeUpPanel(wokeAt: Long, rest: RestSession, ui: UiState) {
         }
         val elapsed = if (wake <= 0) 1f else (ui.core.now - wokeAt).toFloat() / wake.toFloat()
         Bar(elapsed, if (ready) RM.sky else RM.amber)
-        for (item in WAKE_CHECKLIST) Body("· $item")
+        for (item in wakeChecklist(ui)) Body("· $item")
     }
+}
+
+/** 깬 뒤 할 일. 실내 환경은 차량이 연결돼 실제로 바꿀 때만 '넣었어요'라고 쓴다 (연결 안 되면 바꾸지 않으므로). */
+private fun wakeChecklist(ui: UiState): List<String> {
+    val cabin = when {
+        !ui.env.enabled -> null
+        ui.connection.vehicle == RestMateController.CONNECTED -> "무드등을 밝히고 시원한 바깥 바람을 넣었어요"
+        else -> "차량이 연결되면 무드등을 밝히고 바깥 바람을 넣어요"
+    }
+    return listOfNotNull(cabin) + WAKE_CHECKLIST
 }
 
 @Composable
@@ -716,7 +736,7 @@ private fun RestEnvironmentPanel(ui: UiState, actions: RestMateActions) {
             Switch(
                 checked = env.enabled,
                 onCheckedChange = { actions.setRestEnvironment(env.copy(enabled = it)) },
-                colors = SwitchDefaults.colors(checkedThumbColor = RM.onSky, checkedTrackColor = RM.sky),
+                colors = SwitchDefaults.colors(checkedThumbColor = RM.onAccent, checkedTrackColor = RM.sky),
             )
         }
         if (env.enabled) {
@@ -850,25 +870,27 @@ private fun CabinPanel(extras: VehicleExtras) {
 @Composable
 private fun BottomAction(ui: UiState, actions: RestMateActions) {
     val s = ui.core
+    // 자동 시연이 이 버튼을 누르려고 짚는 중
+    val cue = Modifier.cueRing(ui.cueing(AutoCue.BOTTOM))
     when (s.phase) {
         Phase.DRIVING ->
-            BigButton("레스트 모드", "졸리면 눌러요 · 가까운 휴게소·졸음쉼터·주차장으로 바로 안내해요", Tone.AMBER, actions::pressDrowsy)
+            BigButton("레스트 모드", "졸리면 눌러요 · 가까운 휴게소·졸음쉼터·주차장으로 바로 안내해요", Tone.AMBER, actions::pressDrowsy, cue)
         Phase.TO_REST_AREA ->
-            BigButton("더 빨리 쉴래요", "더 빨리 닿는 곳이 있으면 바꿔서 안내해요", Tone.AMBER, actions::pressDrowsy)
+            BigButton("더 빨리 쉴래요", "더 빨리 닿는 곳이 있으면 바꿔서 안내해요", Tone.AMBER, actions::pressDrowsy, cue)
         Phase.RESTING -> {
             val rest = s.rest
             when {
                 // 늦기 시작해서 울리는 알람: 출발하면 알람도 꺼진다 (못 떠나면 위의 +5분·+10분이나 '알람 끄기')
                 rest?.alarmRinging == true && (rest.kind != RestKind.NAP || rest.lateWarnedAt != null) ->
-                    BigButton("출발할게요", "알람도 함께 꺼져요", Tone.AMBER, actions::departNow)
+                    BigButton("출발할게요", "알람도 함께 꺼져요", Tone.AMBER, actions::departNow, cue)
                 rest?.alarmRinging == true ->
-                    BigButton("알람 끄기", null, Tone.AMBER, actions::stopAlarm)
+                    BigButton("알람 끄기", null, Tone.AMBER, actions::stopAlarm, cue)
                 rest != null && rest.kind != RestKind.NAP ->
-                    BigButton("출발할게요", "D단으로 바꾸면 자동으로 출발로 알아봐요", Tone.SKY, actions::departNow)
+                    BigButton("출발할게요", "D단으로 바꾸면 자동으로 출발로 알아봐요", Tone.SKY, actions::departNow, cue)
                 rest?.wakeStartedAt == null ->
-                    BigButton("일어났어요", "알람 전에 깼다면 깨우기를 시작해요", Tone.SKY, actions::wakeUp)
+                    BigButton("일어났어요", "알람 전에 깼다면 깨우기를 시작해요", Tone.SKY, actions::wakeUp, cue)
                 else ->
-                    BigButton("출발할게요", "D단으로 바꾸면 자동으로 출발로 알아봐요", Tone.SKY, actions::departNow)
+                    BigButton("출발할게요", "D단으로 바꾸면 자동으로 출발로 알아봐요", Tone.SKY, actions::departNow, cue)
             }
         }
     }
@@ -891,7 +913,6 @@ private fun AreaName(area: RestArea) {
 private val REST_OPTIONS = listOf(15, 20, 30)
 
 private val WAKE_CHECKLIST = listOf(
-    "무드등을 밝히고 시원한 바깥 바람을 넣었어요",
     "차에서 내려 2~3분 걷거나 스트레칭해요",
     "물 한 잔 마시고 밝은 곳을 봐요",
 )

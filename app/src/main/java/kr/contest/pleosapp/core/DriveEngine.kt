@@ -74,6 +74,18 @@ class DriveEngine(
     private var waitShortSince: Long? = null
     /** 목적지 가까이(150m 안)에 들어온 시각 */
     private var nearDestinationSince: Long? = null
+    /** 픽업 알림: 도착 3분 전 문자를 보냈는지 (드라이브마다 한 번) */
+    private var approachSent = false
+    /** 픽업 알림: 마지막으로 '세운 곳'을 보낸 위치 (같은 자리에서 두 번 보내지 않게) */
+    private var parkedNoticeAt: LatLng? = null
+    /** '자리 없음'으로 돌기 시작한 시각과 한 바퀴에 걸린다고 본 시간 */
+    private var circleSince: Long? = null
+    private var circleLoopMs = 0L
+    /** '자리 없음'으로 돌다 목적지 가까이(150m)를 벗어난 적이 있는지 */
+    private var circleLeftNear = false
+    /** 차가 달리는 방향 (위치가 15m 넘게 바뀔 때마다 잡는다). '자리 없음'에서 한 바퀴 돌 쪽을 정할 때 쓴다 */
+    private var travelBearing: Double? = null
+    private var bearingFrom: LatLng? = null
 
     fun drainEffects(): List<DriveEffect> {
         if (effects.isEmpty()) return emptyList()
@@ -113,6 +125,13 @@ class DriveEngine(
     }
 
     fun onLocation(now: Long, position: LatLng) {
+        val from = bearingFrom
+        if (from == null) {
+            bearingFrom = position
+        } else if (Geo.distanceMeters(from, position) >= BEARING_STEP_METERS) {
+            travelBearing = Geo.bearingDegrees(from, position)
+            bearingFrom = position
+        }
         state = state.copy(now = now, position = position)
         if (state.step == DriveStep.ACTIVE) track(now)
     }
@@ -171,27 +190,140 @@ class DriveEngine(
             )
             return
         }
+        if (state.circling) {
+            // '자리 없음'으로 도는 길의 경유지를 지났다: 이제 픽업할 곳으로 다시 간다.
+            state = state.copy(viaCleared = true)
+            setMessage(now, "한 바퀴 돌았어요. ${DriveText.toward(state.destination?.name ?: "목적지")} 다시 가요.")
+            return
+        }
         // 경유지를 지나는 것은 고른 코스대로 가는 것이라, 일찍 닿을 것 같으면 바로 '조금 더 돌기'를 권할 수 있다.
         state = state.copy(viaCleared = true)
         extendCheckedAt = Long.MIN_VALUE / 2
         setMessage(now, "경유지를 지났어요. 이제 목적지로 가요.")
     }
 
-    /** 쉬다 가는 코스에서 지금 쉴 곳에 와 있으면 그곳. 아니면 null (앱이 주차를 보고 휴식을 시작할 때 쓴다) */
+    /**
+     * 쉬다 가는 코스에서 지금 쉴 곳에 와 있으면 그곳. 아니면 null (앱이 주차를 보고 휴식을 시작할 때 쓴다).
+     * 쉴 곳 바로 옆(150m)이 아니면서 목적지가 더 가까우면 쉴 곳을 건너뛰고 목적지에 온 것으로 본다
+     * (기다릴 곳이 학원에서 350m 떨어져 있는데 학원 앞에 세운 것).
+     */
     fun restStopHere(position: LatLng?): RestArea? {
         if (state.step != DriveStep.ACTIVE || !state.viaActive || state.paused) return null
         val option = state.chosen ?: return null
         if (option.kind != CourseKind.REST_STOP) return null
         val area = option.restArea ?: return null
         val at = position ?: return null
-        return area.takeIf { Geo.distanceMeters(at, it.position) <= REST_STOP_NEAR_METERS }
+        val meters = Geo.distanceMeters(at, area.position)
+        if (meters > REST_STOP_NEAR_METERS) return null
+        if (meters <= REST_STOP_AT_METERS) return area
+        val dest = state.destination ?: return area
+        return area.takeIf { Geo.distanceMeters(at, dest.position) >= meters }
     }
 
     /** 쉬다 가는 코스에서 어떻게 쉬는지 (기본: 그냥 기다리기) */
     val plannedRestKind: RestKind get() = state.chosen?.restKind ?: RestKind.WAIT
 
     fun onDestinationArrived(now: Long) {
-        if (state.step == DriveStep.ACTIVE) arrive(now)
+        // 내비가 경로를 끝낸 것이라, 남은 경유지를 빼는 경로 요청은 하지 않는다 (닿은 곳으로 안내를 다시 시작하지 않게).
+        if (state.step == DriveStep.ACTIVE) arrive(now, naviFinished = true)
+    }
+
+    /**
+     * P단으로 세웠을 때. 픽업 알림이 켜진 온타임 모드에서 픽업할 곳 가까이(300m 안)면 세운 곳을 보낸다.
+     * 아직 도착으로 보지 않았으면 여기서 도착으로 본다 (목적지 조금 앞 빈 곳에 세운 것, '자리 없음'으로 돌다 빈자리를 찾은 것,
+     * 기다릴 곳을 건너뛰고 학원 앞에 세운 것). 이때는 '곧 도착' 대신 세운 곳 한 통만 보낸다.
+     * 쉬다 가는 코스의 기다릴 곳에 세운 것, 쉬는 중(레스트 모드), 고른 경유지(돌아가는 길)가 아직 남았을 때
+     * (학원 앞을 지나 경유지로 가다 잠깐 세움)는 아니다. 같은 자리(30m 안)에서 다시 세우면 또 보내지 않는다.
+     *
+     * @return 픽업할 곳에 세운 것이면 true. 앱은 레스트 모드에도 도착을 알려 '주차하셨네요'를 묻지 않게 한다
+     *   (시간 모드가 목적지 150m 안에서 먼저 도착으로 봐서 내비의 도착 안내가 아직 없을 때도).
+     */
+    fun onParked(now: Long): Boolean {
+        if (state.mode != DriveMode.ON_TIME) return false
+        val to = state.pickupTo ?: return false
+        val dest = state.destination ?: return false
+        val at = state.position ?: return false
+        val meters = Geo.distanceMeters(at, dest.position)
+        if (meters > config.pickupParkMeters || state.paused) return false
+        when (state.step) {
+            DriveStep.ACTIVE -> {
+                if (restStopHere(at) != null) return false
+                val waitCourse = state.chosen?.kind == CourseKind.REST_STOP
+                if (state.viaActive && !state.circling && !waitCourse) return false
+                approachSent = true
+                arrive(now)
+            }
+            DriveStep.ARRIVED -> Unit
+            else -> return false
+        }
+        val last = parkedNoticeAt
+        if (last == null || Geo.distanceMeters(last, at) >= PARKED_RESEND_METERS) {
+            parkedNoticeAt = at
+            send(now, PickupNoticeKind.PARKED, PickupText.parked(dest.name, meters, at), at)
+            speak(Say.NOTICE, "${to}에게 보낼 세운 곳 문자를 띄웠어요.")
+        }
+        return true
+    }
+
+    /**
+     * '자리 없음' (픽업 알림이 켜진 온타임 모드): 도착했는데 세울 곳이 없으면 주변을 한 바퀴(약 3분) 돌아 다시 온다.
+     * 한 바퀴 도는 지점을 경유지로 넣고, 픽업할 사람에게 몇 시쯤 다시 오는지 알린다.
+     * 목표 시각은 그대로 두어 늦어지면 늦는 만큼 보여 주되, 도는 동안은 늦어도 길을 줄이지 않는다 (세울 곳이 없어 도는 것이라).
+     */
+    fun circleForSpot(now: Long) {
+        if (state.mode != DriveMode.ON_TIME) return
+        val to = state.pickupTo ?: return
+        val dest = state.destination ?: return
+        val here = state.position ?: dest.position
+        val near = Geo.distanceMeters(here, dest.position) <= config.pickupParkMeters
+        val ok = state.step == DriveStep.ARRIVED ||
+            (state.step == DriveStep.ACTIVE && near && !state.paused && !state.circling)
+        if (!ok) return
+        val speed = config.fallbackSpeedKmh / 3.6
+        val heading = travelBearing ?: Geo.bearingDegrees(planFrom ?: here, dest.position)
+        val point = TimeFitPlanner.circlePoint(dest.position, heading, config.circleMs, speed, config)
+        val via = Place(CIRCLE_VIA_NAME, point, PlaceKind.WAYPOINT)
+        val loopMs = TimeFitPlanner.pathMs(here, listOf(via), dest.position, speed, config)
+        val backAt = now + loopMs
+        val option = CourseOption(
+            id = "circle",
+            kind = CourseKind.DETOUR,
+            title = "한 바퀴 돌고 다시 오기",
+            reason = "세울 곳이 없어 주변을 약 ${DriveText.minutes(loopMs)}분 돌아요",
+            via = listOf(via),
+            addedMs = loopMs,
+        )
+        lateSince = null
+        lateSteps = 0
+        approachSent = true
+        parkedNoticeAt = null
+        nearDestinationSince = null
+        circleSince = now
+        circleLoopMs = loopMs
+        circleLeftNear = false
+        planFrom = here
+        planDirectMs = null
+        offerMessage = null
+        state = state.copy(
+            now = now,
+            step = DriveStep.ACTIVE,
+            chosen = option,
+            viaCleared = false,
+            circling = true,
+            arrivedAt = null,
+            arrivalEstimate = backAt,
+            status = FitStatus.UNKNOWN,
+            diffMs = null,
+            lateSince = null,
+            extendOffered = false,
+            extendOption = null,
+        )
+        setRoute(now, dest, listOf(via), loopMs)
+        val back = DriveText.clock(backAt)
+        setMessage(now, "세울 곳이 없어 한 바퀴 돌고 ${back}쯤 다시 와요.")
+        speak(Say.VIA, "한 바퀴 돌고 ${DriveText.spokenClock(backAt)}쯤 다시 올게요. ${to}에게 보낼 문자도 띄웠어요.")
+        send(now, PickupNoticeKind.CIRCLING, PickupText.circling(dest.name, back), null)
+        track(now)
     }
 
     /**
@@ -312,9 +444,19 @@ class DriveEngine(
             message = null,
             messageAt = null,
             arrivedAt = null,
+            pickupTo = null,
+            pickupNotices = emptyList(),
+            circling = false,
         )
         if (dest != null) prepareDirect(now, dest)
         if (mode == DriveMode.ON_TIME) state = state.copy(targetAt = defaultTarget(now))
+    }
+
+    /** 온타임 모드: 픽업 알림을 받을 사람 (null이면 끈다). 설정·코스 고르기 화면에서 */
+    fun setPickup(to: String?) {
+        if (state.mode != DriveMode.ON_TIME) return
+        if (state.step != DriveStep.SETUP && state.step != DriveStep.CHOOSE) return
+        state = state.copy(pickupTo = to?.takeIf { it.isNotBlank() })
     }
 
     fun setDestination(now: Long, place: Place) {
@@ -464,7 +606,7 @@ class DriveEngine(
 
     /** '조금 더 돌기'(기다리는 코스면 '기다렸다 가기'): 남는 시간을 채울 코스로 바로 바꾼다 (마음이 바뀌면 '바로 가기'). */
     fun extend(now: Long) {
-        if (state.step != DriveStep.ACTIVE || state.paused) return
+        if (state.step != DriveStep.ACTIVE || state.paused || state.circling) return
         val found = extendCandidates(now)
         if (found == null) {
             withdrawOffer(now)
@@ -499,6 +641,13 @@ class DriveEngine(
             if (longer) return
             state = state.copy(targetAt = target)
             setMessage(now, "도착 목표를 늦췄어요 (${DriveText.clock(target)}).")
+            return
+        }
+        if (state.circling) {
+            // '자리 없음'으로 도는 중: 도는 길은 그대로 두고 목표만 미룬다.
+            state = state.copy(targetAt = target)
+            setMessage(now, "도착 목표를 늦췄어요 (${DriveText.clock(target)}).")
+            track(now)
             return
         }
         val current = state.chosen.takeIf { state.viaActive }
@@ -543,6 +692,8 @@ class DriveEngine(
         val (option, direct) = refill
         applyCourse(now, option, direct)
         lateSteps = 0
+        // 픽업 알림: 코스가 길어져 도착 시각이 바뀌므로 마지막 구간에서 '곧 도착' 문자를 다시 띄운다.
+        approachSent = false
         val route = routePhrase(option)
         if (longer) {
             // 롱웨이 모드는 고른 코스가 걸리는 만큼을 새 예정으로 (근처 지점으로 다 못 채우면 실제로 늘어난 만큼만 알린다)
@@ -596,10 +747,17 @@ class DriveEngine(
     /**
      * 저장한 설정을 한 번에: 모드를 열고, 끝낼 곳·시각을 맞춰 바로 코스를 찾는다.
      * 저장한 시각이 지났으면 12시간 안이면 다음 날로 보고 (자정 넘는 픽업), 아니면 시각만 다시 고르게 한다.
+     *
+     * @param pickupContact 픽업 알림을 켜 둔 설정이면 지금 받는 사람 (저장한 이름이 아니라 지금 차에 맞는 사람으로)
      */
-    fun applySaved(now: Long, trip: SavedTrip) {
+    fun applySaved(now: Long, trip: SavedTrip, pickupContact: String? = trip.pickupTo) {
         openMode(now, trip.mode)
-        state = state.copy(destination = trip.place, directMs = null, directEstimated = false)
+        state = state.copy(
+            destination = trip.place,
+            directMs = null,
+            directEstimated = false,
+            pickupTo = (pickupContact ?: trip.pickupTo).takeIf { trip.mode == DriveMode.ON_TIME && trip.pickupTo != null },
+        )
         prepareDirect(now, trip.place)
         trip.mood?.let { state = state.copy(mood = it) }
         trip.extraMinutes?.let { state = state.copy(extraMinutes = it.coerceIn(5, 180)) }
@@ -643,6 +801,9 @@ class DriveEngine(
 
         /** 도착 */
         ARRIVE,
+
+        /** 픽업 알림을 보냈을 때 (누구에게 무엇을 알렸는지 짧게) */
+        NOTICE,
     }
 
     /**
@@ -873,11 +1034,19 @@ class DriveEngine(
         // 쉬는(기다리는) 중이거나 목적지 바로 옆의 기다릴 곳에 와 있으면 도착이 아니다 (거기서 세워 기다린다).
         val holding = state.paused || restStopHere(position) != null
         val near = position != null && Geo.distanceMeters(position, dest.position) <= config.arriveMeters
-        if (!near) nearDestinationSince = null
+        if (!near) {
+            nearDestinationSince = null
+            if (state.circling) circleLeftNear = true
+        }
         if (!holding && near) {
             // 경유지로 가는 길에 목적지 옆을 지나는 것은 도착이 아니다: 경유지가 남아 있으면 1분 머물러야 도착으로 본다.
+            // '자리 없음'으로 도는 중에는 학원 앞 줄에 1분 넘게 서 있어도 바로 다시 도착으로 보지 않는다.
+            // 도는 길(경유지)을 지났다는 내비 알림이 없어도, 한 번 벗어났다 돌아왔거나 한 바퀴 시간이 지났으면 같은 규칙으로 본다
+            // (다른 골목으로 돌았거나 내비가 경유지를 뺀 경우).
             val since = nearDestinationSince ?: now.also { nearDestinationSince = it }
-            if (!state.viaActive || now - since >= PASSING_BY_MS) {
+            val loopDone = !state.circling || circleLeftNear || now - (circleSince ?: now) >= circleLoopMs
+            val lingered = loopDone && now - since >= PASSING_BY_MS
+            if (!state.viaActive || lingered) {
                 arrive(now)
                 return
             }
@@ -903,17 +1072,47 @@ class DriveEngine(
         val status = statusFor(diff)
         state = state.copy(arrivalEstimate = eta, diffMs = diff, status = status)
         updateStopTimes(now, driving)
+        maybeSendApproach(now, driving, eta)
         if (state.paused || !settled) {
             if (state.lateSince != null) state = state.copy(lateSince = null)
             return
         }
         if (checkWaitStillWorth(now, driving)) return
+        if (state.circling) {
+            // '자리 없음'으로 한 바퀴 도는 중에는 늦어도 길을 줄이거나 더 돌기를 권하지 않는다.
+            lateSince = null
+            if (state.lateSince != null) state = state.copy(lateSince = null)
+            withdrawOffer(now)
+            return
+        }
         if (status == FitStatus.LATE) onLate(now, diff) else lateSince = null
         if (state.lateSince != lateSince) state = state.copy(lateSince = lateSince)
         when {
             status == FitStatus.EARLY -> maybeOfferExtend(now, diff, remain)
             state.extendOffered -> withdrawOffer(now)
         }
+    }
+
+    /**
+     * 픽업 알림: 마지막 구간(남은 경유지 없음)에서 도착까지 3분 남으면 도착 예정 시각·만날 곳·지금 차 위치를 보낸다.
+     * 드라이브마다 한 번이고, 쉬는 중이나 '자리 없음'으로 도는 중에는 보내지 않는다 (도는 동안은 그때 따로 알린다).
+     */
+    private fun maybeSendApproach(now: Long, driving: Long, eta: Long) {
+        val to = state.pickupTo ?: return
+        if (approachSent || state.circling || state.paused || state.viaActive) return
+        if (driving > config.pickupNoticeMs) return
+        val dest = state.destination ?: return
+        approachSent = true
+        send(now, PickupNoticeKind.APPROACH, PickupText.approach(dest.name, DriveText.clock(eta), state.position), state.position)
+        speak(Say.NOTICE, "${to}에게 보낼 도착 문자를 띄웠어요.")
+    }
+
+    /** 픽업 알림 한 통을 남기고 앱에 보내 달라고 한다 (시연: 앱은 화면과 안내 기록에만 남긴다). */
+    private fun send(now: Long, kind: PickupNoticeKind, text: String, position: LatLng?) {
+        val to = state.pickupTo ?: return
+        val notice = PickupNotice(now, kind, to, text, position)
+        state = state.copy(pickupNotices = state.pickupNotices + notice)
+        effects += DriveEffect.SendPickup(notice)
     }
 
     private fun statusFor(diff: Long): FitStatus = when {
@@ -1377,13 +1576,26 @@ class DriveEngine(
         return (plan - (now - routeChangedAt)).coerceAtLeast(0L)
     }
 
-    private fun arrive(now: Long) {
+    /** @param naviFinished 내비가 목적지 도착을 알린 것 (내비 경로가 이미 끝났다) */
+    private fun arrive(now: Long, naviFinished: Boolean = false) {
+        val dest = state.destination
+        // 픽업 알림: 마지막 구간이 짧아(기다리던 곳이 학원 바로 옆 등) '곧 도착' 문자를 아직 못 띄웠으면 도착하면서 띄운다.
+        if (state.pickupTo != null && !approachSent && !state.circling && dest != null) {
+            approachSent = true
+            send(now, PickupNoticeKind.APPROACH, PickupText.approach(dest.name, DriveText.clock(now), state.position), state.position)
+        }
+        // 경유지가 남은 채 도착했으면 (지나가다 1분 머묾, '자리 없음'으로 돌다 빈자리에 세움) 내비 경로에서 경유지를 뺀다.
+        if (state.viaActive && !state.paused && dest != null) {
+            if (!naviFinished) effects += DriveEffect.Route(dest, emptyList())
+            state = state.copy(viaCleared = true)
+        }
         val target = state.targetAt
         val diff = target?.let { now - it }
         // 말하는 분은 화면의 '도착 ○ · 목표 ○' 두 시각의 차이로 (1분 어긋나지 않게)
         val shown = target?.let { DriveText.gapMs(now, it) } ?: 0L
         // 여유(3분)를 두고 맞추므로 목표보다 조금(여유 + 2분 안) 일찍 닿는 것까지 '딱 맞춰'로 본다.
         val message = when {
+            state.circling -> "다시 도착했어요."
             state.mode == DriveMode.LONGER -> "도착했어요."
             diff == null -> "도착했어요."
             diff > config.lateToleranceMs -> "약 ${DriveText.duration(shown)} 늦게 도착했어요."
@@ -1403,6 +1615,7 @@ class DriveEngine(
             stopDepartAt = null,
             message = message,
             messageAt = now,
+            circling = false,
         )
         offerMessage = null
         restoreMood()
@@ -1438,6 +1651,11 @@ class DriveEngine(
         retargetOnSettle = false
         waitShortSince = null
         nearDestinationSince = null
+        approachSent = false
+        parkedNoticeAt = null
+        circleSince = null
+        circleLoopMs = 0L
+        circleLeftNear = false
     }
 
     private fun reset() {
@@ -1499,6 +1717,8 @@ class DriveEngine(
         private const val ROUTE_SETTLE_MS = 20 * SECOND_MS
         private const val ARRIVE_REMAIN_MS = 30 * SECOND_MS
         private const val REST_STOP_NEAR_METERS = 400.0
+        /** 쉴 곳에서 이만큼 안이면 목적지가 더 가까워도 쉴 곳에 세운 것으로 본다 (쉴 곳이 목적지 바로 옆일 때) */
+        private const val REST_STOP_AT_METERS = 150.0
         private const val REST_STOP_LEFT_METERS = 1_200.0
         private const val EXTEND_RECHECK_MS = MINUTE_MS
         /** '조금 더 돌기'는 지금보다 이만큼은 늦게 끝나야 권한다 */
@@ -1521,6 +1741,12 @@ class DriveEngine(
         private const val CHOOSE_MOVED_METERS = 300.0
         private const val DAY_MS = 24 * HOUR_MS
         private const val HALF_DAY_MS = 12 * HOUR_MS
+        /** '자리 없음'으로 한 바퀴 돌 때 거쳐 가는 지점 이름 (내비·미니맵에 보인다) */
+        const val CIRCLE_VIA_NAME = "한 바퀴 도는 길"
+        /** 픽업 알림: 같은 자리에서 다시 P단으로 세우면 '세운 곳'을 또 보내지 않는다 */
+        private const val PARKED_RESEND_METERS = 30.0
+        /** 차가 이만큼 움직일 때마다 달리는 방향을 다시 잡는다 */
+        private const val BEARING_STEP_METERS = 15.0
 
         fun roundUp(ms: Long, step: Long): Long = ((ms + step - 1) / step) * step
 

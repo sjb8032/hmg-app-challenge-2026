@@ -32,7 +32,7 @@ internal fun Logo(modifier: Modifier = Modifier) {
             moveTo(w * 0.24f, h * 0.80f)
             cubicTo(w * 0.24f, h * 0.48f, w * 0.76f, h * 0.62f, w * 0.72f, h * 0.34f)
         }
-        drawPath(road, RM.sky, style = Stroke(w * 0.10f, cap = StrokeCap.Round))
+        drawPath(road, RM.skyBlue, style = Stroke(w * 0.10f, cap = StrokeCap.Round))
         drawCircle(Color.White, w * 0.11f, Offset(w * 0.72f, h * 0.25f))
         drawCircle(RM.hyundaiNavy, w * 0.05f, Offset(w * 0.72f, h * 0.25f))
     }
@@ -162,6 +162,39 @@ internal fun PlayGlyph(color: Color, modifier: Modifier) {
     }
 }
 
+/** 누르기 표시 (자동 시연이 버튼을 짚을 때): 가운데 점과 바깥 고리 */
+@Composable
+internal fun TapGlyph(color: Color, modifier: Modifier) {
+    Canvas(modifier) {
+        val r = size.minDimension / 2f
+        drawCircle(color, radius = r * 0.36f)
+        drawCircle(color, radius = r * 0.84f, style = Stroke(width = r * 0.16f))
+    }
+}
+
+/** 문자: 꼬리 달린 말풍선 */
+@Composable
+internal fun MessageGlyph(color: Color, modifier: Modifier) {
+    Canvas(modifier) {
+        val w = size.width
+        val h = size.height
+        drawRoundRect(
+            color,
+            topLeft = Offset(w * 0.10f, h * 0.14f),
+            size = Size(w * 0.80f, h * 0.56f),
+            cornerRadius = CornerRadius(w * 0.16f),
+            style = Stroke(w * 0.09f),
+        )
+        val tail = Path().apply {
+            moveTo(w * 0.30f, h * 0.66f)
+            lineTo(w * 0.24f, h * 0.90f)
+            lineTo(w * 0.50f, h * 0.66f)
+            close()
+        }
+        drawPath(tail, color)
+    }
+}
+
 /** 안내 기록 종류별 그림과 색 */
 @Composable
 internal fun LogGlyph(kind: LogKind, modifier: Modifier) {
@@ -171,6 +204,7 @@ internal fun LogGlyph(kind: LogKind, modifier: Modifier) {
         LogKind.NAVI -> PinGlyph(color, modifier)
         LogKind.VEHICLE -> CarGlyph(color, modifier)
         LogKind.DEMO -> PlayGlyph(color, modifier)
+        LogKind.MESSAGE -> MessageGlyph(color, modifier)
     }
 }
 
@@ -179,4 +213,5 @@ internal fun logColor(kind: LogKind): Color = when (kind) {
     LogKind.NAVI -> RM.blue
     LogKind.VEHICLE -> RM.sky
     LogKind.DEMO -> RM.textFaint
+    LogKind.MESSAGE -> RM.text
 }

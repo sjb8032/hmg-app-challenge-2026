@@ -23,7 +23,18 @@ class ConsoleSyncTest {
     @Test
     fun firstSyncSetsSpeedThenGear() {
         val writes = ConsoleSync.plan(null, standing, browserActive = true)
-        assertEquals(listOf(Write.Controls(0, 0.0), Write.SetGear(Gear.DRIVE)), writes)
+        assertEquals(listOf(Write.Controls(0, 0.0, ConsoleSync.STAND_BRAKE_PCT), Write.SetGear(Gear.DRIVE)), writes)
+    }
+
+    @Test
+    fun stoppingInDriveHoldsTheBrakeAndDepartingReleasesIt() {
+        // 픽업 장소 앞처럼 D단으로 멈춰 서면 콘솔 화면이 미끄러져 가지 않게 브레이크를 밟는다.
+        assertEquals(
+            listOf(Write.Controls(0, 0.0, ConsoleSync.STAND_BRAKE_PCT)),
+            ConsoleSync.plan(cruising, standing, browserActive = true),
+        )
+        val departing = ConsoleSync.plan(standing, cruising, browserActive = true).single() as Write.Controls
+        assertEquals(0.0, departing.brakePct, 0.0)
     }
 
     @Test
