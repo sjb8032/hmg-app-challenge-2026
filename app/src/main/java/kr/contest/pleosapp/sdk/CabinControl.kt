@@ -178,7 +178,7 @@ class CabinControl(
                 setBrightness(area, fraction = 0.15)
             }
         }
-        change.publishLater()
+        change.arm()
     }
 
     private fun applyWake(env: RestEnvironment) {
@@ -207,7 +207,7 @@ class CabinControl(
                 if (gen == generation) lights.forEach { setBrightness(it, fraction = step.toDouble() / WAKE_LIGHT_STEPS) }
             }, step * WAKE_LIGHT_STEP_MS)
         }
-        change.publishLater()
+        change.arm()
     }
 
     private fun applyPreset(p: MoodPreset) {
@@ -230,7 +230,7 @@ class CabinControl(
             setBrightness(area, fraction = p.brightness)
         }
         moodBrightness = p.brightness
-        change.publishLater()
+        change.arm()
     }
 
     private fun restore(message: String?) {
@@ -250,7 +250,7 @@ class CabinControl(
         changed = false
         moodBrightness = null
         restoredAt = SystemClock.elapsedRealtime()
-        change.publishLater()
+        change.arm()
     }
 
     /**
@@ -283,7 +283,7 @@ class CabinControl(
                 }
             }, step * MOOD_FADE_STEP_MS)
         }
-        change.publishLater()
+        change.arm()
     }
 
     // ---- 휴식 전 설정 읽기 ----
@@ -355,14 +355,14 @@ class CabinControl(
     private fun setTemperature(area: SeatArea, celsius: Float) {
         val value = tempRanges[area]?.let { celsius.coerceIn(it.start, it.endInclusive) } ?: celsius
         control(CabinPart.TEMPERATURE) { change ->
-            vehicle.getHVAC().setHvacTemperature(area, value, TemperatureUnit.CELSIUS, { _, _ -> }, { e -> failed(change, CabinPart.TEMPERATURE, e) })
+            vehicle.getHVAC().setHvacTemperature(area, value, TemperatureUnit.CELSIUS, { _, _ -> settled(change) }, { e -> failed(change, CabinPart.TEMPERATURE, e) })
         }
         verify(CabinPart.TEMPERATURE) { change ->
             vehicle.getHVAC().getHvacTemperature(
                 area,
                 TemperatureUnit.CELSIUS,
-                { v -> number(v)?.let { check(change, CabinPart.TEMPERATURE, Math.abs(it.toFloat() - value) <= TEMP_TOLERANCE_C, "$it°C") } },
-                { e -> warn("verify temperature", e) },
+                { v -> checked(change, CabinPart.TEMPERATURE, number(v)?.let { Math.abs(it.toFloat() - value) <= TEMP_TOLERANCE_C }, v) },
+                { e -> unread(change, CabinPart.TEMPERATURE, e) },
             )
         }
     }
@@ -374,13 +374,13 @@ class CabinControl(
 
     private fun setFanExact(area: SeatArea, speed: Int) {
         control(CabinPart.FAN) { change ->
-            vehicle.getHVAC().setHvacFanSpeed(area, speed, { _, _ -> }, { e -> failed(change, CabinPart.FAN, e) })
+            vehicle.getHVAC().setHvacFanSpeed(area, speed, { _, _ -> settled(change) }, { e -> failed(change, CabinPart.FAN, e) })
         }
         verify(CabinPart.FAN) { change ->
             vehicle.getHVAC().getHvacFanSpeed(
                 area,
-                { v -> number(v)?.let { check(change, CabinPart.FAN, it.toInt() == speed, "$it") } },
-                { e -> warn("verify fan", e) },
+                { v -> checked(change, CabinPart.FAN, number(v)?.let { it.toInt() == speed }, v) },
+                { e -> unread(change, CabinPart.FAN, e) },
             )
         }
     }
@@ -398,48 +398,53 @@ class CabinControl(
             return
         }
         val gen = generation
+        val change = current
+        change?.start()
         off.forEach {
             poweredOn += it
             setPower(it, true)
         }
-        main.postDelayed({ if (gen == generation) block() }, POWER_WAIT_MS)
+        main.postDelayed({
+            if (gen == generation) block()
+            change?.finish()
+        }, POWER_WAIT_MS)
     }
 
     private fun setPower(area: SeatArea, on: Boolean) {
         control(CabinPart.POWER) { change ->
-            vehicle.getHVAC().setHvacPower(area, on, { _, _ -> }, { e -> failed(change, CabinPart.POWER, e) })
+            vehicle.getHVAC().setHvacPower(area, on, { _, _ -> settled(change) }, { e -> failed(change, CabinPart.POWER, e) })
         }
         verify(CabinPart.POWER) { change ->
             vehicle.getHVAC().getHvacPowerState(
                 area,
-                { v -> ((v as Any?) as? Boolean)?.let { check(change, CabinPart.POWER, it == on, "$it") } },
-                { e -> warn("verify power", e) },
+                { v -> checked(change, CabinPart.POWER, ((v as Any?) as? Boolean)?.let { it == on }, v) },
+                { e -> unread(change, CabinPart.POWER, e) },
             )
         }
     }
 
     private fun setRecirculation(area: SeatArea, on: Boolean) {
         control(CabinPart.RECIRCULATION) { change ->
-            vehicle.getHVAC().setHvacRecirculation(area, on, { _, _ -> }, { e -> failed(change, CabinPart.RECIRCULATION, e) })
+            vehicle.getHVAC().setHvacRecirculation(area, on, { _, _ -> settled(change) }, { e -> failed(change, CabinPart.RECIRCULATION, e) })
         }
         verify(CabinPart.RECIRCULATION) { change ->
             vehicle.getHVAC().getHvacRecirculationState(
                 area,
-                { v -> ((v as Any?) as? Boolean)?.let { check(change, CabinPart.RECIRCULATION, it == on, "$it") } },
-                { e -> warn("verify recirculation", e) },
+                { v -> checked(change, CabinPart.RECIRCULATION, ((v as Any?) as? Boolean)?.let { it == on }, v) },
+                { e -> unread(change, CabinPart.RECIRCULATION, e) },
             )
         }
     }
 
     private fun setLightSwitch(area: SeatArea, value: LightSwitch) {
         control(CabinPart.AMBIENT) { change ->
-            vehicle.getLight().setAmbientLightSwitch(area, value, { _, _ -> }, { e -> failed(change, CabinPart.AMBIENT, e) })
+            vehicle.getLight().setAmbientLightSwitch(area, value, { _, _ -> settled(change) }, { e -> failed(change, CabinPart.AMBIENT, e) })
         }
         verify(CabinPart.AMBIENT) { change ->
             vehicle.getLight().getAmbientLightSwitch(
                 area,
-                { v -> ((v as Any?) as? LightSwitch)?.let { check(change, CabinPart.AMBIENT, it == value, "$it") } },
-                { e -> warn("verify ambient switch", e) },
+                { v -> checked(change, CabinPart.AMBIENT, ((v as Any?) as? LightSwitch)?.let { it == value }, v) },
+                { e -> unread(change, CabinPart.AMBIENT, e) },
             )
         }
     }
@@ -452,15 +457,15 @@ class CabinControl(
 
     private fun setBrightnessExact(area: SeatArea, value: Int) {
         control(CabinPart.AMBIENT) { change ->
-            vehicle.getLight().setAmbientLightBrightness(area, value, { _, _ -> }, { e -> failed(change, CabinPart.AMBIENT, e) })
+            vehicle.getLight().setAmbientLightBrightness(area, value, { _, _ -> settled(change) }, { e -> failed(change, CabinPart.AMBIENT, e) })
         }
         // 차종마다 밝기 단계가 달라 읽은 값이 조금 다를 수 있다: 범위의 10%까지는 바뀐 것으로 본다.
         val tolerance = lightRanges[area]?.let { maxOf(1, (it.last - it.first) / 10) } ?: 1
         verify(CabinPart.AMBIENT) { change ->
             vehicle.getLight().getAmbientLightBrightness(
                 area,
-                { v -> number(v)?.let { check(change, CabinPart.AMBIENT, Math.abs(it.toInt() - value) <= tolerance, "$it") } },
-                { e -> warn("verify ambient brightness", e) },
+                { v -> checked(change, CabinPart.AMBIENT, number(v)?.let { Math.abs(it.toInt() - value) <= tolerance }, v) },
+                { e -> unread(change, CabinPart.AMBIENT, e) },
             )
         }
     }
@@ -493,9 +498,10 @@ class CabinControl(
     private fun begin(summary: CabinSummary?, message: String? = null): Change =
         Change(generation, summary, message).also { current = it }
 
-    /** 제어 하나: 실패는 지금 바꾸기에 모은다 (바로 던진 예외도 실패로 친다) */
+    /** 제어 하나: 결과는 지금 바꾸기에 모은다 (바로 던진 예외도 실패로 친다) */
     private inline fun control(part: CabinPart, block: (Change?) -> Unit) {
         val change = current
+        change?.start()
         try {
             block(change)
         } catch (e: Exception) {
@@ -503,9 +509,16 @@ class CabinControl(
         }
     }
 
+    private fun settled(change: Change?) {
+        post { change?.finish() }
+    }
+
     private fun failed(change: Change?, part: CabinPart, e: Any?) {
         warn("control ${part.label}", e)
-        post { change?.fail(part) }
+        post {
+            change?.fail(part)
+            change?.finish()
+        }
     }
 
     /**
@@ -515,43 +528,77 @@ class CabinControl(
      */
     private fun verify(part: CabinPart, read: (Change) -> Unit) {
         val change = current ?: return
+        change.start()
         main.postDelayed({
-            if (change === current) safely("verify ${part.label}") { read(change) }
+            if (change !== current) {
+                change.finish()
+                return@postDelayed
+            }
+            try {
+                read(change)
+            } catch (e: Exception) {
+                unread(change, part, e)
+            }
         }, VERIFY_DELAY_MS)
     }
 
-    private fun check(change: Change, part: CabinPart, applied: Boolean, actual: String) {
-        if (applied) return
-        warn("control ${part.label}", "not applied (still $actual)")
-        post { change.fail(part) }
+    /** 다시 읽은 결과: [applied]가 false면 되지 않은 것 (null이면 알 수 없어 바뀐 것으로 둔다) */
+    private fun checked(change: Change, part: CabinPart, applied: Boolean?, actual: Any?) {
+        if (applied == false) warn("control ${part.label}", "not applied (still $actual)")
+        post {
+            if (applied == false) change.fail(part)
+            change.finish()
+        }
+    }
+
+    private fun unread(change: Change, part: CabinPart, e: Any?) {
+        warn("verify ${part.label}", e)
+        post { change.finish() }
     }
 
     /**
-     * 바꾸기 한 번 (휴식·깨우기·분위기·되돌리기). 제어 결과가 돌아올 때쯤 결과를 한 줄로 한 번 알리고,
-     * 그 뒤에 온 실패는 줄을 고쳐 다시 알린다. 그 사이 다른 단계로 넘어갔으면 알리지 않는다.
+     * 바꾸기 한 번 (휴식·깨우기·분위기·되돌리기). 보낸 제어와 다시 읽기의 결과가 다 오면
+     * (늦어도 [REPORT_TIMEOUT_MS] 뒤에) 결과를 한 줄로 한 번 알린다. 그 뒤에 온 실패는 줄을 고쳐 다시 알린다.
+     * 그 사이 다른 단계로 넘어갔으면 알리지 않는다.
      *
      * @param summary 바꾼 것 (되돌리기는 null)
      * @param message 되돌리기를 알릴 문구 (null이면 알리지 않는다)
      */
     private inner class Change(val gen: Int, val summary: CabinSummary?, val message: String?) {
         private val failed = LinkedHashSet<CabinPart>()
-        private var due = false
+        /** 결과를 기다리는 제어·다시 읽기 수 */
+        private var pending = 0
+        private var armed = false
+        private var published = false
         private var shown: String? = null
+
+        fun start() {
+            pending++
+        }
+
+        fun finish() {
+            pending--
+            if (armed && !published && pending <= 0) publish()
+        }
 
         fun fail(part: CabinPart) {
             if (!failed.add(part)) return
             if (summary != null) unsupported += part
-            if (due) publish()
+            if (published) publish()
         }
 
-        fun publishLater() {
-            main.postDelayed({
-                due = true
+        /** 보낼 제어를 다 보냈다: 결과가 다 오면 알린다 */
+        fun arm() {
+            armed = true
+            if (pending <= 0) {
                 publish()
-            }, REPORT_WAIT_MS)
+                return
+            }
+            main.postDelayed({ if (!published) publish() }, REPORT_TIMEOUT_MS)
         }
 
         private fun publish() {
+            published = true
             if (gen != generation) return
             val text = when {
                 summary != null -> summary.text(failed)
@@ -591,8 +638,8 @@ class CabinControl(
         /** 바꾼 뒤 실제로 바뀌었는지 다시 읽기까지 기다리는 시간 */
         private const val VERIFY_DELAY_MS = 1_000L
 
-        /** 바꾸기 결과를 알리기 전에 기다리는 시간: 전원을 켜고 기다린 뒤 바꾸고 다시 읽을 때까지 */
-        private const val REPORT_WAIT_MS = POWER_WAIT_MS + VERIFY_DELAY_MS + 1_000L
+        /** 결과가 다 오지 않아도 바꾸기 결과를 알리는 시간 */
+        private const val REPORT_TIMEOUT_MS = 6_000L
 
         /** 다시 읽은 온도가 이만큼까지 다르면 바뀐 것으로 본다 (차는 0.5도 단위로 맞추기도 한다) */
         private const val TEMP_TOLERANCE_C = 0.5f
