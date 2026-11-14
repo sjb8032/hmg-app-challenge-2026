@@ -12,6 +12,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -23,10 +24,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import kr.contest.pleosapp.app.AutoChapter
 import kr.contest.pleosapp.app.AutoCue
 import kr.contest.pleosapp.app.AutoStatus
@@ -190,10 +196,19 @@ private fun SceneProgress(scene: Int, total: Int, color: Color) {
 /**
  * 자동 시연이 곧 누를 곳: 흰 테두리가 숨 쉬듯 깜빡인다 (영상에서 어디를 누르는지 보이게).
  * 하늘색 테두리를 한 겹 더 둘러 버튼 색이 무엇이든 눈에 띄게 한다.
+ * 짚는 버튼이 스크롤 아래에 가려 있으면 보이게 끌어온다 (실제 차 화면처럼 세로가 짧고 해설이 떠 있을 때,
+ * 롱웨이의 '+15분 더'가 화면 밖에 있어 누르는 것이 보이지 않았다).
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun Modifier.cueRing(on: Boolean, shape: Shape = ButtonShape): Modifier {
     if (!on) return this
+    val requester = remember { BringIntoViewRequester() }
+    LaunchedEffect(requester) {
+        // 자리를 잡은 뒤에 끌어온다 (막 그려진 순간에는 위치를 아직 모른다)
+        delay(BRING_INTO_VIEW_DELAY_MS)
+        requester.bringIntoView()
+    }
     val pulse = rememberInfiniteTransition(label = "cue")
     val alpha by pulse.animateFloat(
         initialValue = 1f,
@@ -203,6 +218,10 @@ internal fun Modifier.cueRing(on: Boolean, shape: Shape = ButtonShape): Modifier
     )
     // 크기를 바꾸지 않고 버튼 가장자리 위에 그린다 (짚는 동안 화면이 움직이지 않게)
     return this
+        .bringIntoViewRequester(requester)
         .border(7.dp, RM.sky.copy(alpha = alpha * 0.5f), shape)
         .border(3.dp, RM.text.copy(alpha = alpha), shape)
 }
+
+/** 짚는 버튼을 화면 안으로 끌어오기 전에 기다리는 시간 (자리를 잡을 때까지) */
+private const val BRING_INTO_VIEW_DELAY_MS = 80L

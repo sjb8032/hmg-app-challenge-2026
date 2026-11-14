@@ -226,8 +226,9 @@ class VehicleSignals(context: Context, private val sink: Sink) {
             )
         }
         safely("range") {
+            // 남은 주행 거리는 미터로 온다 (차량 표준 속성 RANGE_REMAINING). 에뮬레이터 계기판의 500km가 500000으로 왔다.
             vehicle.getOdometer().getRangeRemainingDistance(
-                { km -> post { updateExtras(extras.copy(rangeKm = ((km as Any?) as? Number)?.toDouble())) } },
+                { meters -> post { updateExtras(extras.copy(rangeKm = ((meters as Any?) as? Number)?.toDouble()?.div(METERS_PER_KM))) } },
                 { e -> warn("range", e) },
             )
         }
@@ -249,6 +250,7 @@ class VehicleSignals(context: Context, private val sink: Sink) {
 
     companion object {
         private const val TAG = "RestMateVehicle"
+        private const val METERS_PER_KM = 1000.0
 
         /**
          * 지켜볼 경고등. 정상 작동 중에도 켜져 있는 표시등(LKA·FCA)은 깜빡이기 시작할 때만 센다.

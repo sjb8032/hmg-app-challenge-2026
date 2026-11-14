@@ -140,10 +140,8 @@ class CabinControl(
     // ---- 단계별 설정 ----
 
     private fun applyRest(env: RestEnvironment) {
-        for (area in hvacAreas()) {
-            setTemperature(area, env.restTemperatureC)
-            setFan(area, fraction = 0.25)
-        }
+        hvacAreas().forEach { setTemperature(it, env.restTemperatureC) }
+        fanAreas().forEach { setFan(it, fraction = 0.25) }
         if (env.freshAir) recircTargets().forEach { setRecirculation(it, false) }
         if (env.dimLight) {
             lightTargets().forEach { area ->
@@ -161,10 +159,8 @@ class CabinControl(
 
     private fun applyWake(env: RestEnvironment) {
         val gen = generation
-        for (area in hvacAreas()) {
-            setTemperature(area, env.restTemperatureC - 2f)
-            setFan(area, fraction = 0.7)
-        }
+        hvacAreas().forEach { setTemperature(it, env.restTemperatureC - 2f) }
+        fanAreas().forEach { setFan(it, fraction = 0.7) }
         recircTargets().forEach { setRecirculation(it, false) }
         val lights = lightTargets()
         lights.forEach { setLightSwitch(it, LightSwitch.ON) }
@@ -178,10 +174,8 @@ class CabinControl(
     }
 
     private fun applyPreset(p: MoodPreset) {
-        for (area in hvacAreas()) {
-            setTemperature(area, p.temperatureC)
-            setFan(area, fraction = p.fan)
-        }
+        hvacAreas().forEach { setTemperature(it, p.temperatureC) }
+        fanAreas().forEach { setFan(it, fraction = p.fan) }
         lightTargets().forEach { area ->
             setLightSwitch(area, LightSwitch.ON)
             setBrightness(area, fraction = p.brightness)
@@ -252,6 +246,8 @@ class CabinControl(
                     { e -> warn("read temperature", e) },
                 )
             }
+        }
+        for (area in fanAreas()) {
             safely("read fan") {
                 vehicle.getHVAC().getHvacFanSpeed(
                     area,
@@ -334,6 +330,13 @@ class CabinControl(
     // ---- 도움 함수 ----
 
     private fun hvacAreas(): List<SeatArea> = tempRanges.keys.toList().ifEmpty { listOf(driver) }
+
+    /**
+     * 바람 세기를 바꿀 영역: 차가 알려 준 바람 세기 영역 (온도 영역과 다를 수 있다).
+     * 온도는 운전석·조수석 따로인데 바람은 앞뒤 전체 한 영역인 차(Pleos Connect 에뮬레이터 포함)에서
+     * 온도 영역으로 바람을 바꾸면 '바람 세기 제어가 되지 않았어요'가 났다.
+     */
+    private fun fanAreas(): List<SeatArea> = fanRanges.keys.toList().ifEmpty { hvacAreas() }
 
     private fun recircTargets(): List<SeatArea> = recircAreas.ifEmpty { listOf(driver) }
 
