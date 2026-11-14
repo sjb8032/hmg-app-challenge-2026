@@ -51,8 +51,9 @@ class DrivePickupTest {
         assertEquals(PickupNoticeKind.APPROACH, notice.kind)
         assertEquals("아이", notice.to)
         assertTrue(notice.text, notice.text.startsWith(PickupText.PREFIX))
-        assertTrue(notice.text, "아이 학원 앞에 도착해요" in notice.text)
-        assertTrue(notice.text, DriveText.clock(now + 2 * MINUTE_MS + 50 * SECOND_MS) in notice.text)
+        // 아이에게 보내는 말투: 반말, "아이 학원"은 "학원"으로, 시각은 "4시 47분"처럼
+        assertTrue(notice.text, "곧 도착해!" in notice.text && "학원 앞에서 만나자." in notice.text && "아이 학원" !in notice.text)
+        assertTrue(notice.text, DriveText.spokenClock(now + 2 * MINUTE_MS + 50 * SECOND_MS) + "쯤" in notice.text)
         // 지금 차 위치를 지도 링크로 넣는다
         assertEquals(southKm(8.5), notice.position)
         assertTrue(notice.text, notice.link!! in notice.text)
@@ -109,7 +110,7 @@ class DrivePickupTest {
         assertTrue(e.onParked(at + 10 * SECOND_MS))
         val parked = e.sent().single()
         assertEquals(PickupNoticeKind.PARKED, parked.kind)
-        assertTrue(parked.text, "약 60m 떨어진 곳" in parked.text)
+        assertTrue(parked.text, "60m쯤 떨어진 곳에 차 세웠어" in parked.text)
         assertEquals(nearDest(60.0), parked.position)
 
         // 같은 자리에서 다시 P단이면 또 보내지 않는다
@@ -119,7 +120,7 @@ class DrivePickupTest {
         e.onLocation(at + MINUTE_MS, nearDest(10.0))
         e.onParked(at + MINUTE_MS)
         val moved = e.sent().single()
-        assertTrue(moved.text, "아이 학원 바로 앞에 차를 세웠어요" in moved.text)
+        assertTrue(moved.text, "학원 바로 앞에 차 세웠어. 천천히 나와!" in moved.text)
         assertEquals(2, e.state.pickupNotices.count { it.kind == PickupNoticeKind.PARKED })
     }
 
@@ -135,7 +136,7 @@ class DrivePickupTest {
         assertEquals(DriveStep.ARRIVED, e.state.step)
         val kinds = e.sent().map { it.kind }
         assertTrue(PickupNoticeKind.PARKED in kinds)
-        assertTrue(e.state.pickupNotices.last().text, "약 250m" in e.state.pickupNotices.last().text)
+        assertTrue(e.state.pickupNotices.last().text, "250m쯤" in e.state.pickupNotices.last().text)
     }
 
     @Test
@@ -178,7 +179,7 @@ class DrivePickupTest {
         assertTrue("다시 오는 데 ${back / SECOND_MS}초", back in 2 * MINUTE_MS..4 * MINUTE_MS)
         val circling = effects.filterIsInstance<DriveEffect.SendPickup>().single().notice
         assertEquals(PickupNoticeKind.CIRCLING, circling.kind)
-        assertTrue(circling.text, "한 바퀴 돌고" in circling.text && DriveText.clock(s.arrivalEstimate!!) in circling.text)
+        assertTrue(circling.text, "한 바퀴 돌고" in circling.text && DriveText.spokenClock(s.arrivalEstimate!!) + "쯤 다시 올게." in circling.text)
         assertTrue(effects.filterIsInstance<DriveEffect.Speak>().single().text.startsWith("한 바퀴 돌고"))
 
         // 도는 동안 늦어져도 (내비 10분) 길을 줄이거나 빼지 않는다
@@ -286,7 +287,7 @@ class DrivePickupTest {
         e.onRestPhase(now, Phase.DRIVING)
         assertEquals(DriveStep.ARRIVED, e.state.step)
         assertEquals(listOf(PickupNoticeKind.APPROACH), e.state.pickupNotices.map { it.kind })
-        assertTrue(e.state.pickupNotices.single().text, "아이 학원 앞에 도착해요" in e.state.pickupNotices.single().text)
+        assertTrue(e.state.pickupNotices.single().text, "학원 앞에서 만나자" in e.state.pickupNotices.single().text)
     }
 
     @Test
@@ -507,13 +508,40 @@ class DrivePickupTest {
     fun pickupTextHasLinkAndShortBody() {
         val p = LatLng(37.4946, 127.0576)
         assertEquals("https://map.kakao.com/link/map/DriveMate,37.49460,127.05760", PickupText.mapLink(p))
-        val text = PickupText.approach("아이 학원", "오후 4:47", p)
-        assertEquals("오후 4:47쯤 아이 학원 앞에 도착해요. 아이 학원 앞에서 만나요.", PickupText.body(text))
-        assertTrue(PickupText.parked("아이 학원", 12.0, p).contains("아이 학원 바로 앞에 차를 세웠어요."))
-        assertEquals("아이 학원에서 약 130m 떨어진 곳에 차를 세웠어요.", PickupText.body(PickupText.parked("아이 학원", 126.0, p)))
+        val eta = clockAt(16, 47)
+        val text = PickupText.approach("동승자", "광화문 약속 장소", eta, p)
+        assertEquals("오후 4:47쯤 광화문 약속 장소 앞에 도착해요. 광화문 약속 장소 앞에서 만나요.", PickupText.body(text))
+        assertTrue(text, text.endsWith("지금 차 위치: ${PickupText.mapLink(p)}"))
+        assertTrue(PickupText.parked("동승자", "광화문 약속 장소", 12.0, p).contains("광화문 약속 장소 바로 앞에 차를 세웠어요."))
+        assertEquals("광화문 약속 장소에서 약 130m 떨어진 곳에 차를 세웠어요.", PickupText.body(PickupText.parked("동승자", "광화문 약속 장소", 126.0, p)))
         assertEquals(
-            "아이 학원 앞에 세울 곳이 없어 한 바퀴 돌고 오후 4:53쯤 다시 올게요. 만날 곳은 그대로예요.",
-            PickupText.body(PickupText.circling("아이 학원", "오후 4:53")),
+            "광화문 약속 장소 앞에 세울 곳이 없어 한 바퀴 돌고 오후 4:53쯤 다시 올게요. 만날 곳은 그대로예요.",
+            PickupText.body(PickupText.circling("동승자", "광화문 약속 장소", clockAt(16, 53))),
         )
     }
+
+    /** 아이에게는 부모가 보내듯 반말로: "아이 학원"은 "학원", 시각은 "4시 47분" */
+    @Test
+    fun pickupTextToChildSoundsLikeAParent() {
+        val p = LatLng(37.4946, 127.0576)
+        assertTrue(PickupText.toChild("아이") && PickupText.toChild("우리 아이") && PickupText.toChild("딸"))
+        assertFalse(PickupText.toChild("동승자"))
+        val text = PickupText.approach("아이", "아이 학원", clockAt(16, 47), p)
+        assertEquals("곧 도착해! 4시 47분쯤 학원 앞에서 만나자.", PickupText.body(text))
+        assertTrue(text, text.startsWith(PickupText.PREFIX) && text.endsWith("지금 차 위치: ${PickupText.mapLink(p)}"))
+        assertEquals("학원 바로 앞에 차 세웠어. 천천히 나와!", PickupText.body(PickupText.parked("아이", "아이 학원", 12.0, p)))
+        assertEquals("학원에서 130m쯤 떨어진 곳에 차 세웠어. 지도 보고 천천히 와!", PickupText.body(PickupText.parked("아이", "아이 학원", 126.0, p)))
+        assertEquals(
+            "학원 앞에 차 세울 데가 없어서 한 바퀴 돌고 4시 53분쯤 다시 올게. 만나는 곳은 그대로니까 조금만 기다려 줘!",
+            PickupText.body(PickupText.circling("아이", "아이 학원", clockAt(16, 53))),
+        )
+        // 정각이면 "5시쯤", '아이 '로 시작하지 않는 장소는 그대로
+        assertEquals("곧 도착해! 5시쯤 수영장 앞에서 만나자.", PickupText.body(PickupText.approach("아이", "수영장", clockAt(17, 0), null)))
+    }
+
+    /** 오늘 [hour]:[minute] (기본 시간대, DriveText와 같은 기준) */
+    private fun clockAt(hour: Int, minute: Int): Long = java.util.Calendar.getInstance().apply {
+        set(2026, java.util.Calendar.NOVEMBER, 14, hour, minute, 0)
+        set(java.util.Calendar.MILLISECOND, 0)
+    }.timeInMillis
 }
