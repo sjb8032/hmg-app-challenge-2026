@@ -49,6 +49,7 @@ import kr.contest.pleosapp.core.DriveState
 import kr.contest.pleosapp.core.DriveStep
 import kr.contest.pleosapp.core.DriveText
 import kr.contest.pleosapp.core.FitStatus
+import kr.contest.pleosapp.core.Gear
 import kr.contest.pleosapp.core.MINUTE_MS
 import kr.contest.pleosapp.core.Mood
 import kr.contest.pleosapp.core.OnTimeStyle
@@ -640,7 +641,7 @@ private fun CourseCard(
                 val note = if (option.kind == CourseKind.DIRECT) "" else fitNote(arrival, target)
                 Text(
                     "${DriveText.clock(arrival)} 도착 예상$note",
-                    color = kindColor(option.kind),
+                    color = fitColor(arrival, target),
                     fontSize = 17.sp,
                     fontWeight = FontWeight.SemiBold,
                     style = NumStyle,
@@ -667,6 +668,17 @@ private fun fitNote(arrival: Long, target: Long?): String {
         early < -30 * SECOND_MS -> " · 약 ${DriveText.duration(early)} 늦어요"
         early > (MARGIN_MINUTES + 2) * MINUTE_MS -> " · ${DriveText.duration(early)} 일찍"
         else -> ""
+    }
+}
+
+/** 코스 카드의 도착 예상 색: 목표에 맞으면 하늘색, 다 못 채워 일찍이면 샌드, 늦으면 호박색 (롱웨이는 마감이 없어 샌드) */
+private fun fitColor(arrival: Long, target: Long?): Color {
+    if (target == null) return RM.sand
+    val early = -DriveText.gapMs(arrival, target)
+    return when {
+        early < -30 * SECOND_MS -> RM.amber
+        early > (MARGIN_MINUTES + 2) * MINUTE_MS -> RM.sand
+        else -> RM.sky
     }
 }
 
@@ -796,6 +808,9 @@ private fun CourseStops(ui: UiState) {
         val arriveAt = d.stopArriveAt
         val departAt = d.stopDepartAt
         val detail = when {
+            // '바로 가기'로 빼거나 늦지 않게 뺀 경유지는 지난 것이 아니다
+            passed && !d.viaReached -> "들르지 않았어요"
+            passed && isRest -> "들렀다 왔어요"
             passed -> "지났어요"
             isRest && arriveAt != null && departAt != null ->
                 "${DriveText.clock(arriveAt)} 도착 → ${DriveText.clock(departAt)} 출발"
@@ -899,8 +914,9 @@ private fun DriveArrived(ui: UiState, actions: RestMateActions) {
                 }
             }
             CourseStops(ui)
-            if (d.pickupOn()) {
-                // 픽업: 세울 곳이 없으면 한 바퀴 돌고 다시 오기 (픽업할 사람에게 다시 오는 시각을 알린다)
+            // 픽업: 세울 곳이 없으면 한 바퀴 돌고 다시 오기 (픽업할 사람에게 다시 오는 시각을 알린다).
+            // 이미 P단으로 세웠으면 자리를 찾은 것이라 묻지 않는다 (옮기려고 D단으로 바꾸면 다시 보인다)
+            if (d.pickupOn() && ui.core.gear != Gear.PARK) {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     ActionButton(
                         "자리 없음",

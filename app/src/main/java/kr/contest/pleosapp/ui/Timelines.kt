@@ -131,8 +131,7 @@ private fun Explain(ui: UiState) {
             val how = if (extend.kind == CourseKind.REST_STOP) "들렀다 기다리기" else "조금 더 돌기"
             "${DriveText.duration(gap)} 일찍 닿을 것 같아요 · 남는 시간은 '$how'로 채울 수 있어요." to RM.sand
         }
-        d.mode == DriveMode.LONGER ->
-            "${d.extraMinutes}분 더 달리는 코스예요. 예정보다 많이 늦어지면 짧은 코스로 바꿔요." to RM.textDim
+        d.mode == DriveMode.LONGER -> longerExplain(d) to RM.textDim
         d.viaActive && d.chosen?.kind == CourseKind.REST_STOP && stopDepart != null && restName != null ->
             "${restName}에서 기다렸다 ${DriveText.clock(stopDepart)}에 출발하면 목표 ${MARGIN_MINUTES}분 전에 닿아요." to RM.textDim
         // 경치 코스가 남는 시간을 다 못 채웠으면 '맞춰요'라고 하지 않는다 (위 칩의 'N분 일찍'과 같은 말로)
@@ -146,6 +145,31 @@ private fun Explain(ui: UiState) {
     }
     Caption(text, color)
 }
+
+/**
+ * 롱웨이 모드 한 줄: 고른 코스가 실제로 더 달리는 시간 (바란 시간과 다르면 둘 다 쓴다).
+ * 경유지를 지났거나 '바로 집으로'로 뺐으면 코스 이야기 대신 지금 어디로 가는지.
+ */
+private fun longerExplain(d: DriveState): String {
+    val dest = DriveText.toward(d.destination?.name ?: "목적지")
+    val chosen = d.chosen
+    return when {
+        d.viaActive && chosen != null -> {
+            val added = DriveText.minutes(chosen.addedMs)
+            val lead = if (abs(added - d.extraMinutes) <= LONGER_CLOSE_MINUTES) {
+                "${d.extraMinutes}분 더 달리는 코스예요."
+            } else {
+                "약 ${added}분 더 달리는 코스예요 (바란 시간 ${d.extraMinutes}분)."
+            }
+            "$lead 예정보다 많이 늦어지면 짧은 코스로 바꿔요."
+        }
+        d.viaReached -> "경유지를 지나 $dest 가요. 더 달리고 싶으면 '+15분 더'를 눌러요."
+        else -> "$dest 바로 가요. 더 달리고 싶으면 '+15분 더'를 눌러요."
+    }
+}
+
+/** 롱웨이 코스가 바란 시간과 이만큼(분) 안이면 바란 시간 그대로 말한다 */
+private const val LONGER_CLOSE_MINUTES = 3
 
 /**
  * 늦을 것 같아 지켜보는 중: 잠깐 막힌 것에 흔들리지 않게 1분 30초 지켜본 뒤 길을 바꾼다.
@@ -312,7 +336,7 @@ internal fun RestTrack(ui: UiState) {
     if (arrive != null) segments += Segment(depart, arrive, "주행", RM.blue)
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Label("쉬는 시간표", modifier = Modifier.weight(1f))
+            Label(if (rest.kind == RestKind.NAP) "쉬는 시간표" else "기다리는 시간표", modifier = Modifier.weight(1f))
             if (target != null && arrive != null) {
                 val gap = DriveText.gapMs(arrive, target)
                 val text = when {

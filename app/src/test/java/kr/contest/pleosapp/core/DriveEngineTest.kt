@@ -106,6 +106,26 @@ class DriveEngineTest {
         assertTrue(e.drainEffects().filterIsInstance<DriveEffect.Route>().single().via.isEmpty())
     }
 
+    /** 코스 목록이 '지났어요'와 '들르지 않았어요'를 가를 수 있게, 경유지에 실제로 닿았는지 따로 둔다 */
+    @Test
+    fun viaReachedOnlyWhenTheWaypointIsActuallyReached() {
+        val skipped = engine().planOnTime()
+        skipped.choose(t0 + 1_000, skipped.state.options.first { it.kind == CourseKind.SCENIC })
+        assertFalse(skipped.state.viaReached)
+        skipped.goDirect(t0 + 2_000)
+        assertTrue(skipped.state.viaCleared)
+        assertFalse(skipped.state.viaReached)
+
+        val passed = engine().planOnTime()
+        passed.choose(t0 + 1_000, passed.state.options.first { it.kind == CourseKind.SCENIC })
+        passed.onWaypointArrived(t0 + 10 * MINUTE_MS)
+        assertTrue(passed.state.viaCleared)
+        assertTrue(passed.state.viaReached)
+        // 처음 화면으로 돌아가면 지운다
+        passed.finish(t0 + 11 * MINUTE_MS)
+        assertFalse(passed.state.viaReached)
+    }
+
     /** 남는 시간이 없으면 설정 화면의 '바로 가기'로 후보 화면을 거치지 않고 바로 출발한다 */
     @Test
     fun goDirectFromSetupWhenThereIsNoSpareTime() {

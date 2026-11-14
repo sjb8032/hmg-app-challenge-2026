@@ -180,6 +180,7 @@ class DriveEngine(
         if (option?.kind == CourseKind.REST_STOP) {
             // 쉬다 가는 곳: 주차해서 쉬기 시작할 때까지 경유지로 남겨 둔다.
             restStopReached = true
+            state = state.copy(viaReached = true)
             setMessage(
                 now,
                 if (option.restKind == RestKind.NAP) {
@@ -192,12 +193,12 @@ class DriveEngine(
         }
         if (state.circling) {
             // '자리 없음'으로 도는 길의 경유지를 지났다: 이제 픽업할 곳으로 다시 간다.
-            state = state.copy(viaCleared = true)
+            state = state.copy(viaCleared = true, viaReached = true)
             setMessage(now, "한 바퀴 돌았어요. ${DriveText.toward(state.destination?.name ?: "목적지")} 다시 가요.")
             return
         }
         // 경유지를 지나는 것은 고른 코스대로 가는 것이라, 일찍 닿을 것 같으면 바로 '조금 더 돌기'를 권할 수 있다.
-        state = state.copy(viaCleared = true)
+        state = state.copy(viaCleared = true, viaReached = true)
         extendCheckedAt = Long.MIN_VALUE / 2
         setMessage(now, "경유지를 지났어요. 이제 목적지로 가요.")
     }
@@ -309,6 +310,7 @@ class DriveEngine(
             step = DriveStep.ACTIVE,
             chosen = option,
             viaCleared = false,
+            viaReached = false,
             circling = true,
             arrivedAt = null,
             arrivalEstimate = backAt,
@@ -368,7 +370,7 @@ class DriveEngine(
                 restFatigue = rest?.fatigue == true
                 if (restFatigue) restedThisDrive = true
                 restAtStop = isPlannedStop(rest?.area)
-                if (restAtStop) state = state.copy(viaCleared = true)
+                if (restAtStop) state = state.copy(viaCleared = true, viaReached = true)
                 withdrawOffer(now)
             }
             Phase.DRIVING -> {
@@ -434,6 +436,7 @@ class DriveEngine(
             options = emptyList(),
             chosen = null,
             viaCleared = false,
+            viaReached = false,
             arrivalEstimate = null,
             status = FitStatus.UNKNOWN,
             diffMs = null,
@@ -541,6 +544,7 @@ class DriveEngine(
             chosen = option,
             options = emptyList(),
             viaCleared = option.via.isEmpty(),
+            viaReached = false,
             targetAt = target,
             status = FitStatus.UNKNOWN,
             diffMs = null,
@@ -1352,7 +1356,7 @@ class DriveEngine(
         waitShortSince = null
         viaChangedAt = now
         setRoute(now, dest, option.via, directMs + option.addedMs - option.stayMs)
-        state = state.copy(chosen = option, viaCleared = option.via.isEmpty())
+        state = state.copy(chosen = option, viaCleared = option.via.isEmpty(), viaReached = false)
         withdrawOffer(now)
     }
 
@@ -1395,6 +1399,7 @@ class DriveEngine(
         val d = Geo.distanceMeters(position, area.position)
         if (d <= REST_STOP_NEAR_METERS) {
             restStopReached = true
+            if (!state.viaReached) state = state.copy(viaReached = true)
         } else if (restStopReached && d > REST_STOP_LEFT_METERS) {
             restStopReached = false
             viaChangedAt = now

@@ -603,7 +603,8 @@ private fun DepartPanel(rest: RestSession, ui: UiState, actions: RestMateActions
             }
             else -> {
                 val left = rest.alarmAt - now
-                Text(if (left > 0) clock(left) else "시간이 됐어요", color = RM.text, fontSize = 72.sp, fontWeight = FontWeight.SemiBold, style = NumStyle)
+                // '14:08'만 쓰면 오후 2시 8분으로 읽혀서 눈 붙이기 화면처럼 '남음'을 붙인다
+                Text(if (left > 0) "${clock(left)} 남음" else "시간이 됐어요", color = RM.text, fontSize = 72.sp, fontWeight = FontWeight.SemiBold, style = NumStyle)
                 Caption("${DriveText.clock(rest.alarmAt)}에 알려 드려요 · 깨우는 알람은 울리지 않아요")
             }
         }
