@@ -230,7 +230,7 @@ NaviHelper에는 장소 검색 API가 없어서(차 내비의 검색 화면을 �
 
 ## 데이터 출처
 
-- 휴게소·졸음쉼터 위치: © OpenStreetMap contributors, [ODbL](https://opendatacommons.org/licenses/odbl/1-0/). 가공 방법은 `app/src/main/assets/rest_areas_LICENSE.txt`에 있습니다. 앱이 읽을 때 퀵서비스·주유소·정비소처럼 쉴 수 없는 항목과 도심에 잘못 찍힌 휴게소를 거르고(1,119곳 중 68곳), 같은 곳이 두 번 올라 있으면 하나로 합칩니다(58곳). 회사 이름·지역 이름뿐인 항목은 300m 안에 제대로 된 이름의 같은 곳이 있으면 뺍니다(2곳). 그래서 991곳을 씁니다 (`core/RestAreaCleaner.kt`).
+- 휴게소·졸음쉼터 위치: © OpenStreetMap contributors, [ODbL](https://opendatacommons.org/licenses/odbl/1-0/). 가공 방법은 `app/src/main/assets/rest_areas_LICENSE.txt`에 있습니다. 앱이 읽을 때 퀵서비스·주유소·정비소처럼 쉴 수 없는 항목과 도심에 잘못 찍힌 휴게소를 거르고(1,119곳 중 68곳), 같은 곳이 두 번 올라 있으면 하나로 합칩니다(57곳). 이름에 상행·하행만 있는 휴게소는 서울 쪽을 상행으로 보고 방향을 붙여, 마주 보는 두 휴게소를 따로 두고 진행 방향 쪽으로 안내합니다. 회사 이름·지역 이름뿐인 항목은 300m 안에 제대로 된 이름의 같은 곳이 있으면 뺍니다(2곳). 그래서 992곳을 씁니다 (`core/RestAreaCleaner.kt`).
 - 경치 지점·시내 쉴 곳: 팀이 고른 시연용 표본 (`app/src/main/java/kr/contest/pleosapp/data/CourseCatalog.kt`).
 - 미니맵 경로 모양: OSRM 길찾기 서버(OpenStreetMap 데이터). [이용 정책](https://github.com/Project-OSRM/osrm-backend/wiki/API%20Usage%20Policy)에 따라 앱 이름을 밝힌 User-Agent로 1초에 한 번까지만 묻고, 받은 길은 기기에 저장해 다시 묻지 않으며, 지도에 출처를 표시합니다(`ui/RoadRoutes.kt`).
 - 장소 검색: © OpenStreetMap contributors (Nominatim). [이용 정책](https://operations.osmfoundation.org/policies/nominatim/)에 따라 앱 이름을 밝힌 User-Agent로 '검색'을 누를 때만 1초에 한 번까지 묻고, 같은 검색은 기억해 다시 묻지 않으며, 검색 창 아래에 출처를 표시합니다(`data/PlaceSearchClient.kt`). 카카오 키를 넣으면 카카오 로컬 결과를 씁니다.

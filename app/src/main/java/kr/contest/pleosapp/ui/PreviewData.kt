@@ -119,7 +119,7 @@ internal object PreviewSamples {
         demoMode = true,
         demoTrip = DemoTrips.CITY,
         connection = ConnectionStatus(RestMateController.CONNECTED, RestMateController.CONNECTED),
-        restAreaCount = 1004,
+        restAreaCount = 1005,
         speechAvailable = false,
         saved = saved,
         origin = nonhyeon,

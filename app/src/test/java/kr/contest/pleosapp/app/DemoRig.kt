@@ -324,8 +324,15 @@ class DemoRig(highwayAreas: List<RestArea> = loadHighwayAreas()) : AutoDemoHost 
     /** 시연 중 모의 내비 */
     val navi: DemoNavi? get() = demo?.navi
 
-    /** '직접 해 보기'로 [start]에서 출발 */
-    fun startFree(start: LatLng, name: String) = startDemo(DemoTrips.free(start, name))
+    /** 지금 시연 출발 상황 */
+    val trip: DemoTrip? get() = demo?.trip
+
+    /** 출발 전이라 가상 시계를 멈춘 중 */
+    val clockHeld: Boolean get() = demo?.clock?.held == true
+
+    /** '직접 해 보기'로 [start]에서 출발. [timeOfDayMs]를 주면 그 시각에서 시작 (없으면 0시: 실제 앱은 지금 시각) */
+    fun startFree(start: LatLng, name: String, timeOfDayMs: Long? = null) =
+        startDemo(DemoTrips.free(start, name).copy(startTimeOfDayMs = timeOfDayMs))
 
     /** 처음 화면의 '목적지 검색'으로 고른 곳을 내비 목적지로 */
     fun setNaviDestination(place: Place) {
@@ -434,8 +441,11 @@ class DemoRig(highwayAreas: List<RestArea> = loadHighwayAreas()) : AutoDemoHost 
             set(2026, Calendar.NOVEMBER, 14, 0, 0, 0)
         }.timeInMillis
 
-        /** assets/rest_areas.json을 org.json 없이 읽는다 (항목이 평평한 객체라 정규식으로 충분) */
-        fun loadHighwayAreas(): List<RestArea> {
+        /** assets/rest_areas.json을 읽어 앱처럼 거른다 */
+        fun loadHighwayAreas(): List<RestArea> = RestAreaCleaner.clean(loadHighwayAreasRaw())
+
+        /** assets/rest_areas.json을 org.json 없이 거르기 전 그대로 읽는다 (항목이 평평한 객체라 정규식으로 충분) */
+        fun loadHighwayAreasRaw(): List<RestArea> {
             val file = listOf("src/main/assets/rest_areas.json", "app/src/main/assets/rest_areas.json")
                 .map(::File).firstOrNull { it.exists() } ?: error("rest_areas.json 없음")
             val text = file.readText(Charsets.UTF_8)
@@ -458,7 +468,7 @@ class DemoRig(highwayAreas: List<RestArea> = loadHighwayAreas()) : AutoDemoHost 
                     onExpressway = f["e"] == "1",
                 )
             }.toList()
-            return RestAreaCleaner.clean(out)
+            return out
         }
     }
 }
