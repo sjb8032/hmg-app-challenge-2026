@@ -460,7 +460,7 @@ object AutoDemoScript {
             title = "학원으로 아이를 데리러",
             act = { it.selectDemoTrip("pickup") },
             text = { v ->
-                "오후 ${spoken(v.now)}, 논현역이에요. 매일 4시 50분에 대치동 학원에서 아이를 태워요. " +
+                "밤 ${spoken(v.now)}, 논현역이에요. 매일 밤 9시 50분에 대치동 학원에서 아이를 태워요. " +
                     "하원 시간의 학원 앞은 차가 몰려 세울 곳을 찾기 어려워요."
             },
             readMs = 7_000L,
@@ -855,7 +855,7 @@ object AutoDemoScript {
         return DriveEngine.targetChoices(v.now, direct).getOrNull(1)
     }
 
-    /** 픽업 시연의 목표: 시각 칩 첫 번째 (학원 픽업은 오후 4시 30분 출발이라 4:50, 바로 가면 10분쯤 일찍 닿는다) */
+    /** 픽업 시연의 목표: 시각 칩 첫 번째 (학원 픽업은 밤 9시 30분 출발이라 9:50, 바로 가면 10분쯤 일찍 닿는다) */
     private fun pickupTarget(v: AutoView): Long? {
         val direct = v.drive.directMs ?: return null
         return DriveEngine.targetChoices(v.now, direct).firstOrNull()
