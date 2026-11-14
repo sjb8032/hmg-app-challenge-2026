@@ -32,7 +32,8 @@ import kr.contest.pleosapp.core.RestEnvironment
 class CabinControl(
     private val vehicle: Vehicle,
     private val isConnected: () -> Boolean,
-    private val report: (String) -> Unit,
+    /** 결과 문구와, 바꾸기 결과면 이 차에서 되지 않은 제어 (연결 안 됨·되돌리기 문구는 null) */
+    private val report: (String, Set<CabinPart>?) -> Unit,
 ) {
     private val main = Handler(Looper.getMainLooper())
     private val driver = SeatArea(SeatValue.ROW_1_LEFT)
@@ -101,7 +102,7 @@ class CabinControl(
     /** @param departing 출발해서 되돌리는지 (아니면 쉬는 방식을 바꿔 휴식 환경만 끈 것) */
     fun apply(mode: CabinMode, env: RestEnvironment, departing: Boolean = true) {
         if (!isConnected()) {
-            report("차량이 연결되지 않아 실내 환경은 바꾸지 않았어요.")
+            report("차량이 연결되지 않아 실내 환경은 바꾸지 않았어요.", null)
             return
         }
         val gen = ++generation
@@ -133,7 +134,7 @@ class CabinControl(
             return
         }
         if (!isConnected()) {
-            report("차량이 연결되지 않아 분위기는 바꾸지 않았어요.")
+            report("차량이 연결되지 않아 분위기는 바꾸지 않았어요.", null)
             return
         }
         val gen = ++generation
@@ -607,7 +608,7 @@ class CabinControl(
             }
             if (text != null && text != shown) {
                 shown = text
-                report(text)
+                report(text, if (summary != null) failed.toSet() else null)
             }
         }
     }

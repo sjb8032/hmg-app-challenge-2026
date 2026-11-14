@@ -13,6 +13,7 @@ import kr.contest.pleosapp.BuildConfig
 import kr.contest.pleosapp.audio.AlarmPlayer
 import kr.contest.pleosapp.audio.Speaker
 import kr.contest.pleosapp.core.CabinMode
+import kr.contest.pleosapp.core.CabinPart
 import kr.contest.pleosapp.core.CheckInAnswer
 import kr.contest.pleosapp.core.CourseFlavor
 import kr.contest.pleosapp.core.CourseOption
@@ -91,6 +92,8 @@ data class UiState(
     val naviNote: String? = null,
     /** 실내 환경 제어 결과 */
     val cabinNote: String? = null,
+    /** 마지막 실내 환경 바꾸기에서 이 차에서 되지 않은 제어 (깬 뒤 할 일에 창문 열기를 넣을지 정한다) */
+    val cabinFailed: Set<CabinPart> = emptySet(),
     val env: RestEnvironment = RestEnvironment(),
     val config: RestMateConfig = RestMateConfig(),
     /** 자주 쓰는 설정 (처음 화면 칩, 최대 4개) */
@@ -1204,9 +1207,9 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
         publish()
     }
 
-    override fun onCabinNote(message: String) {
+    override fun onCabinNote(message: String, failed: Set<CabinPart>?) {
         addLog(message, LogKind.VEHICLE)
-        _ui.update { it.copy(cabinNote = message, log = log.toList()) }
+        _ui.update { it.copy(cabinNote = message, cabinFailed = failed ?: it.cabinFailed, log = log.toList()) }
     }
 
     // ---- 내비 신호 ----

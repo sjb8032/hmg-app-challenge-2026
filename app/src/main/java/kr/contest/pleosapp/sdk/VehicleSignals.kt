@@ -17,6 +17,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import kr.contest.pleosapp.core.CabinPart
 import kr.contest.pleosapp.core.Gear
 import kr.contest.pleosapp.core.VehicleEvent
 
@@ -48,8 +49,8 @@ class VehicleSignals(context: Context, private val sink: Sink) {
         fun onExtras(extras: VehicleExtras)
         /** 경고등에서 읽은 사건 (새로 켜지거나 깜빡이기 시작한 경고만) */
         fun onVehicleEvent(event: VehicleEvent)
-        /** 실내 환경 제어 결과 문구 */
-        fun onCabinNote(message: String)
+        /** 실내 환경 제어 결과 문구. [failed]는 바꾸기 결과일 때 이 차에서 되지 않은 제어 (아니면 null) */
+        fun onCabinNote(message: String, failed: Set<CabinPart>?)
     }
 
     private val vehicle = Vehicle(context.applicationContext)
@@ -62,7 +63,7 @@ class VehicleSignals(context: Context, private val sink: Sink) {
     private val telltaleCounts = HashMap<TelltaleType, Int>()
 
     /** 휴식 모드·깨우기용 실내 환경 제어 */
-    val cabin = CabinControl(vehicle, { connected }, { message -> sink.onCabinNote(message) })
+    val cabin = CabinControl(vehicle, { connected }, { message, failed -> sink.onCabinNote(message, failed) })
 
     private val extrasPoll = object : Runnable {
         override fun run() {
