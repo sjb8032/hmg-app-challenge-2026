@@ -57,6 +57,16 @@ jobs:
           path: app/build/outputs/apk/**/*.apk
           if-no-files-found: error
 
+      # (임시) 제출용 release APK를 작업 기록에 남긴다. 아티팩트를 내려받을 수 없는 곳에서 꺼내 apk/에 넣은 뒤 지운다.
+      - name: Print release APK
+        run: |
+          f=app/build/outputs/apk/release/app-release.apk
+          ls -l "$f"
+          sha256sum "$f"
+          echo "===SNAPSHOT-BEGIN app-release.apk==="
+          base64 -w 120 "$f"
+          echo "===SNAPSHOT-END==="
+
   # 화면 캡처: 표본 상태(PreviewSamples)를 실제 Compose 코드로 그려 PNG로 남긴다.
   # 빌드 설정은 이 작업 안에서만 바꾼다 (.github/scripts/enable_paparazzi.py). 실패해도 APK 빌드에는 영향이 없다.
   snapshots:
