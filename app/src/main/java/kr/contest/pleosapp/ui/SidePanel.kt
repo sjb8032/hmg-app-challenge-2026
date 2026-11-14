@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kr.contest.pleosapp.app.AutoChapter
+import kr.contest.pleosapp.app.AutoDemoScript
 import kr.contest.pleosapp.app.LogKind
 import kr.contest.pleosapp.app.PlacePurpose
 import kr.contest.pleosapp.app.RestMateActions
@@ -232,7 +233,7 @@ private fun AutoDemoControls(ui: UiState, actions: RestMateActions) {
             Tone.AMBER,
             minHeight = 60.dp,
             textSize = 20.sp,
-            sub = "온타임 → 픽업 → 롱웨이 → 레스트 · 약 4분 40초",
+            sub = "온타임 → 픽업 → 롱웨이 → 레스트 · ${AutoDemoScript.lengthLabel}",
         )
         // 이야기 넷: 두 줄로 (옆 칸이 좁아 한 줄에 넷이면 글자가 꺾인다)
         for (row in AutoChapter.entries.chunked(2)) {
@@ -339,7 +340,7 @@ private fun DemoControls(ui: UiState, actions: RestMateActions) {
             "휴식 건너뛰기",
             actions::demoSkipRest,
             Modifier.weight(1f),
-            enabled = ui.core.phase == Phase.RESTING && ui.core.rest?.wakeStartedAt == null && ui.core.rest?.remindedAt == null,
+            enabled = ui.core.phase == Phase.RESTING && ui.core.rest?.alarmPending == true,
         )
         SmallButton("처음부터", actions::demoRestart, Modifier.weight(1f))
     }

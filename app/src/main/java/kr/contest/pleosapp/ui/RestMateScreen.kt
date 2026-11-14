@@ -808,8 +808,9 @@ private fun ArrivalPanel(rest: RestSession, ui: UiState) {
             Label("도착 예상")
             Text("지금 출발하면 ${DriveText.clock(now + route)} 도착", color = RM.text, fontSize = 26.sp, fontWeight = FontWeight.SemiBold)
         } else {
-            // 출발 시각을 따로 정한 계획(깨운 뒤 기다렸다 출발)과 헷갈리지 않게 '깨자마자 출발하면'이라고 쓴다.
-            Label("깨자마자 출발하면 (휴식 시간별 도착 예상)")
+            // 출발 시각을 따로 정한 계획(깨운 뒤 기다렸다 출발)과 헷갈리지 않게 '바로 출발하면'이라고 쓴다.
+            // 몸을 깨우는 시간은 더한다 (아래 설명). '깨자마자'라고 쓰면 깨우는 시간을 더한 것과 어긋난다.
+            Label("몸 깨우고 바로 출발하면 (휴식 시간별 도착 예상)")
             val options = (REST_OPTIONS + rest.plannedMinutes).distinct().sorted()
             for (m in options) {
                 val wakeMs = RestTiming.wakeMsFor(m * MINUTE_MS, ui.config.wakeUpMs)

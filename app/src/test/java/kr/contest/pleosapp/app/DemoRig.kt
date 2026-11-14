@@ -305,19 +305,29 @@ class DemoRig(highwayAreas: List<RestArea> = loadHighwayAreas()) : AutoDemoHost 
 
     override fun demoSkip(minutes: Int) {
         val d = demo ?: return
-        repeat(minutes * 2) {
-            d.clock.shift(30 * SECOND_MS)
-            stepDemo()
-            val t = now()
-            shareDeadline()
-            engine.onTick(t)
-            drive.onTick(t)
-            checkRestStopParking(t)
-            publish()
-        }
+        repeat(minutes * 2) { skipStep(d, 30 * SECOND_MS) }
     }
 
-    override fun demoSkipRest() = act { engine.skipToAlarm(it) }
+    private fun skipStep(d: Session, ms: Long) {
+        d.clock.shift(ms)
+        stepDemo()
+        val t = now()
+        shareDeadline()
+        engine.onTick(t)
+        drive.onTick(t)
+        checkRestStopParking(t)
+        publish()
+    }
+
+    /** 앱과 같이: 알람(출발 알림)이 울릴 때까지 가상 시계를 30초씩 돌린다 */
+    override fun demoSkipRest() {
+        val d = demo ?: return
+        var steps = 0
+        while (steps++ < 6 * 120) {
+            val rest = engine.state.rest?.takeIf { engine.state.phase == Phase.RESTING && it.alarmPending } ?: break
+            skipStep(d, (rest.alarmAt - now()).coerceIn(SECOND_MS, 30 * SECOND_MS))
+        }
+    }
 
     // ---- 직접 해 보기 (컨트롤러의 출발지 고르기·목적지 검색과 같게) ----
 

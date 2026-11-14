@@ -214,7 +214,10 @@ data class RestSession(
     val sawStill: Boolean = false,
     /** 깨우기를 시작한 시각 (알람이 울렸거나 '일어났어요'를 누름). null이면 아직 쉬는 중 */
     val wakeStartedAt: Long? = null,
-)
+) {
+    /** 알람(기다리기·머물기는 출발 알림)이 아직 안 울렸는지. 시연의 '휴식 건너뛰기'는 이때만 쓴다 */
+    val alarmPending: Boolean get() = !alarmRinging && !alarmDone && wakeStartedAt == null && remindedAt == null
+}
 
 data class RecoveryCheck(
     val restStartedAt: Long,

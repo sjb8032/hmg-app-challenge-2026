@@ -131,6 +131,10 @@ class JourneySnapshots {
         rig.demoDrive()
         j.advance(40_000)
         shot("8_driving", j.ui())
+        // 경치 코스가 남는 시간을 다 못 채웠으면, 경유지를 지난 뒤 더 채울 곳을 화면으로 권한다
+        j.advanceUntil { rig.drive.state.extendOffered }
+        j.advance(1_000)
+        shot("8b_extendOffer", j.ui())
         j.advanceUntil { rig.drive.state.step == DriveStep.ARRIVED }
         j.advance(2_000)
         shot("9_arrived", j.ui())

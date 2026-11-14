@@ -535,15 +535,7 @@ class RestMateEngine(
     }
 
     // ---- 시연용 ----
-
-    /** 시연용: 알람(알림) 시각을 지금으로 당긴다. 쉰 시간도 알람 시각까지 쉰 것으로 친다 (깨우는 시간이 그만큼 정해짐). */
-    fun skipToAlarm(now: Long) {
-        advance(now)
-        val rest = state.rest ?: return
-        val shift = (rest.alarmAt - now).coerceAtLeast(0L)
-        state = state.copy(rest = rest.copy(startedAt = rest.startedAt - shift, alarmAt = now, alarmDone = false))
-        evaluate(now)
-    }
+    // '휴식 건너뛰기'는 앱이 가상 시계를 알람 시각까지 돌려서 한다 (쉰 시간·알람 시각이 시계와 맞게). [RestSession.alarmPending]
 
     /** 시연용: 연속 주행 시간을 더한다. */
     fun addDrivingTime(now: Long, ms: Long) {

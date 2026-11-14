@@ -135,8 +135,12 @@ private fun Explain(ui: UiState) {
             "${d.extraMinutes}분 더 달리는 코스예요. 예정보다 많이 늦어지면 짧은 코스로 바꿔요." to RM.textDim
         d.viaActive && d.chosen?.kind == CourseKind.REST_STOP && stopDepart != null && restName != null ->
             "${restName}에서 기다렸다 ${DriveText.clock(stopDepart)}에 출발하면 목표 ${MARGIN_MINUTES}분 전에 닿아요." to RM.textDim
+        // 경치 코스가 남는 시간을 다 못 채웠으면 '맞춰요'라고 하지 않는다 (위 칩의 'N분 일찍'과 같은 말로)
+        d.viaActive && viaName != null && d.status == FitStatus.EARLY ->
+            "${DriveText.withObject(viaName)} 거쳐 가도 약 ${DriveText.duration(gap)} 일찍 닿아요. 지나고 나서 더 채울 곳이 있으면 권할게요." to RM.textDim
         d.viaActive && viaName != null ->
             "${DriveText.withObject(viaName)} 거쳐 남는 시간을 채우고, 목표 ${MARGIN_MINUTES}분 전에 닿게 맞춰요." to RM.textDim
+        d.status == FitStatus.EARLY -> "목표보다 약 ${DriveText.duration(gap)} 일찍 닿아요." to RM.textDim
         gap <= 30 * SECOND_MS -> "목표 시각 안에 도착해요. 길이 막히면 바로 다시 맞춰요." to RM.textDim
         else -> "약 ${DriveText.duration(gap)} 늦을 수 있어요." to RM.amber
     }

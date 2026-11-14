@@ -305,7 +305,13 @@ private fun TimeBudget(now: Long, direct: Long, target: Long) {
     val margin = MARGIN_MINUTES * MINUTE_MS
     val spare = total - direct - margin
     if (total <= 0L || spare < 0L || direct <= 0L) {
-        Caption("바로 가도 목표 시각에 맞추기 빠듯해요.", RM.amber)
+        // 왼쪽 목표 칸과 같은 기준·같은 말로 (늦으면 몇 분 늦는지, 아니면 남는 시간이 없다고)
+        val late = now + direct - target
+        if (late > 30 * SECOND_MS) {
+            Caption("바로 가도 약 ${DriveText.duration(late)} 늦어요.", RM.amber)
+        } else {
+            Caption("바로 가면 시간에 거의 딱 맞아요. 남는 시간이 없어요.", RM.textDim)
+        }
         return
     }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

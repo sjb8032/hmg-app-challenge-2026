@@ -150,6 +150,8 @@ class AutoDemoRunner(private val host: AutoDemoHost) {
     private var actedAt = 0L
     private var acted = false
     private var lastRepeatAt = 0L
+    /** 지금 장면의 해설을 읽을 시간 (장면에 정한 시간과 글자 수로 잰 시간 중 긴 쪽) */
+    private var readMs = 0L
     private var start: AutoView? = null
     private var promptSince: Long? = null
 
@@ -206,7 +208,7 @@ class AutoDemoRunner(private val host: AutoDemoHost) {
         if (elapsed >= scene.timeoutMs && !done) {
             timedOut += scene.title
             advance(realNow)
-        } else if (elapsed >= scene.readMs && done) {
+        } else if (elapsed >= readMs && done) {
             advance(realNow)
         }
     }
@@ -241,6 +243,7 @@ class AutoDemoRunner(private val host: AutoDemoHost) {
         actedAt = realNow
         lastRepeatAt = realNow
         val text = scene.text(host.view())
+        readMs = AutoDemoScript.readMsFor(text, scene.readMs)
         transcript += "${scene.title} — $text"
         status = status?.copy(text = text, cue = null, cueLabel = null)
     }
@@ -269,6 +272,28 @@ class AutoDemoRunner(private val host: AutoDemoHost) {
 object AutoDemoScript {
     const val READ_MS = 7_000L
     const val TIMEOUT_MS = 30_000L
+
+    /**
+     * 해설을 읽는 빠르기 (공백을 뺀 글자 수/초). 긴 해설은 이 빠르기로 다 읽을 때까지 넘기지 않는다.
+     * 화면 변화도 같이 봐야 해서 자막 읽기보다 느리게 잡는다.
+     */
+    const val READ_CHARS_PER_SECOND = 7.5
+
+    /** [text]를 읽을 시간: [atLeast](장면에 정한 시간)와 글자 수로 잰 시간 중 긴 쪽 */
+    fun readMsFor(text: String, atLeast: Long): Long {
+        val chars = text.count { !it.isWhitespace() }
+        return maxOf(atLeast, (chars * 1_000.0 / READ_CHARS_PER_SECOND).toLong())
+    }
+
+    /** 네 이야기를 처음부터 끝까지 도는 길이 (실제 초). 대본을 고치면 시험이 실제로 돌린 길이와 견준다 */
+    const val LENGTH_SECONDS = 297
+
+    /** 시연 카드에 쓰는 길이: "약 5분", "약 4분 50초" (10초 단위로 반올림) */
+    val lengthLabel: String
+        get() {
+            val s = (LENGTH_SECONDS + 5) / 10 * 10
+            return if (s % 60 == 0) "약 ${s / 60}분" else "약 ${s / 60}분 ${s % 60}초"
+        }
 
     /** 고속도로 이야기에서 졸리기 전에 달려 둘 시간 (가상) */
     private const val HIGHWAY_DRIVEN_MS = 50 * MINUTE_MS
@@ -631,7 +656,7 @@ object AutoDemoScript {
             title = "바로 집에 가기 아쉬운 퇴근길",
             act = { it.selectDemoTrip("city") },
             text = { v ->
-                "다시 저녁 ${spoken(v.now)}, 논현역이에요. 이번엔 집으로 가는 길에 30분쯤 더 달리며 머리를 식히고 싶어요."
+                "다른 날 저녁 ${spoken(v.now)}, 논현역이에요. 이번엔 집으로 가는 길에 30분쯤 더 달리며 머리를 식히고 싶어요."
             },
             readMs = 6_500L,
         ),
@@ -695,16 +720,15 @@ object AutoDemoScript {
             },
             until = { _, v -> v.drive.step == DriveStep.ACTIVE },
         ),
+        // 출발 해설은 짧게: '+15분 더'를 출발하고 곧 눌러야 더 달릴 코스가 나온다
+        // (시연 길에서는 출발 뒤 실제 8초쯤까지만 15분짜리 코스가 맞는다. 길게 읽으면 코스가 없다고 나온다)
         AutoScene(
             chapter = AutoChapter.LONGER,
             title = "출발",
             tag = "시연 조작 · 출발 · 주행",
             act = { it.demoDrive() },
-            text = {
-                "혼자 쉬는 분위기에서는 경로가 바뀔 때만 짧게 말하고, 데이트 분위기면 말없이 화면으로만 알려요. " +
-                    "차가 연결되면 분위기에 맞춰 무드등과 공조도 바꿔요."
-            },
-            readMs = 7_000L,
+            text = { "출발했어요. 그런데 오늘은 좀 더 달리고 싶네요." },
+            readMs = 3_000L,
         ),
         AutoScene(
             chapter = AutoChapter.LONGER,
@@ -719,6 +743,15 @@ object AutoDemoScript {
                     append(d.message ?: "15분 더 달려요.")
                     d.targetAt?.let { append(" 집에는 ${spoken(it)}쯤 닿아요.") }
                 }
+            },
+            readMs = 7_000L,
+        ),
+        AutoScene(
+            chapter = AutoChapter.LONGER,
+            title = "분위기에 맞춰 안내",
+            text = {
+                "혼자 쉬는 분위기에서는 경로가 바뀔 때만 짧게 말하고, 데이트 분위기면 말없이 화면으로만 알려요. " +
+                    "차가 연결되면 분위기에 맞춰 무드등과 공조도 바꿔요."
             },
             readMs = 7_000L,
         ),
