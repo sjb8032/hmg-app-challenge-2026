@@ -25,8 +25,9 @@ import kr.contest.pleosapp.core.RestEnvironment
  * - 롱웨이 모드 분위기: 데이트·혼자 쉬기에 맞춘 무드등 밝기와 온도. 도착하면 무드등은 천천히 되돌림
  *
  * 제어할 수 있는 영역과 범위는 차량마다 달라 시작할 때 capability로 읽는다.
- * 제어가 실패해도 앱 흐름은 멈추지 않는다. 결과는 제어 결과가 돌아올 때쯤 한 줄로 알리고,
- * 이 차에서 되지 않는 제어(예: 에뮬레이터의 바람 세기)는 그 줄에서 빼고 짧게 덧붙인다 ([CabinSummary]).
+ * 제어가 실패해도 앱 흐름은 멈추지 않는다. 바꾼 뒤 조금 있다 다시 읽어 실제로 바뀌었는지도 본다
+ * (Pleos Connect 에뮬레이터는 공조 전원·내외기를 성공으로 답하고도 값은 그대로였다).
+ * 결과는 한 줄로 알리고, 이 차에서 되지 않은 제어는 그 줄에서 빼고 짧게 덧붙인다 ([CabinSummary]).
  */
 class CabinControl(
     private val vehicle: Vehicle,
@@ -356,6 +357,14 @@ class CabinControl(
         control(CabinPart.TEMPERATURE) { change ->
             vehicle.getHVAC().setHvacTemperature(area, value, TemperatureUnit.CELSIUS, { _, _ -> }, { e -> failed(change, CabinPart.TEMPERATURE, e) })
         }
+        verify(CabinPart.TEMPERATURE) { change ->
+            vehicle.getHVAC().getHvacTemperature(
+                area,
+                TemperatureUnit.CELSIUS,
+                { v -> number(v)?.let { check(change, CabinPart.TEMPERATURE, Math.abs(it.toFloat() - value) <= TEMP_TOLERANCE_C, "$it°C") } },
+                { e -> warn("verify temperature", e) },
+            )
+        }
     }
 
     private fun setFan(area: SeatArea, fraction: Double) {
@@ -367,15 +376,23 @@ class CabinControl(
         control(CabinPart.FAN) { change ->
             vehicle.getHVAC().setHvacFanSpeed(area, speed, { _, _ -> }, { e -> failed(change, CabinPart.FAN, e) })
         }
+        verify(CabinPart.FAN) { change ->
+            vehicle.getHVAC().getHvacFanSpeed(
+                area,
+                { v -> number(v)?.let { check(change, CabinPart.FAN, it.toInt() == speed, "$it") } },
+                { e -> warn("verify fan", e) },
+            )
+        }
     }
 
     /**
      * 공조 전원이 꺼져 있으면 켠 뒤에 [block]을 한다 (꺼진 공조에 온도·바람만 바꿔 두면 쉬는 동안 바람이 나오지 않는다).
-     * 꺼져 있는지 모르는 영역은 건드리지 않는다. Pleos Connect 에뮬레이터는 전원은 켜지지만 바람 세기는
-     * 켠 뒤에도 바꿀 수 없다('HVAC_FAN_SPEED … error code 2'). 그런 제어는 결과 줄에 짧게 덧붙는다.
+     * 꺼져 있는지 모르는 영역은 건드리지 않는다. 앞서 켜지지 않았으면 다시 켜 본다 (이번 결과 줄에도 그대로 남도록).
+     * Pleos Connect 에뮬레이터는 켜기를 성공으로 답하고도 꺼진 채였고, 그래서 바람 세기도 바꿀 수 없었다
+     * ('HVAC_FAN_SPEED … error code 2'). 그런 제어는 결과 줄에 짧게 덧붙는다.
      */
     private fun withHvacOn(block: () -> Unit) {
-        val off = powerAreas.filter { savedPower[it] == false && it !in poweredOn }
+        val off = powerAreas.filter { savedPower[it] == false && (it !in poweredOn || CabinPart.POWER in unsupported) }
         if (off.isEmpty()) {
             block()
             return
@@ -392,17 +409,38 @@ class CabinControl(
         control(CabinPart.POWER) { change ->
             vehicle.getHVAC().setHvacPower(area, on, { _, _ -> }, { e -> failed(change, CabinPart.POWER, e) })
         }
+        verify(CabinPart.POWER) { change ->
+            vehicle.getHVAC().getHvacPowerState(
+                area,
+                { v -> ((v as Any?) as? Boolean)?.let { check(change, CabinPart.POWER, it == on, "$it") } },
+                { e -> warn("verify power", e) },
+            )
+        }
     }
 
     private fun setRecirculation(area: SeatArea, on: Boolean) {
         control(CabinPart.RECIRCULATION) { change ->
             vehicle.getHVAC().setHvacRecirculation(area, on, { _, _ -> }, { e -> failed(change, CabinPart.RECIRCULATION, e) })
         }
+        verify(CabinPart.RECIRCULATION) { change ->
+            vehicle.getHVAC().getHvacRecirculationState(
+                area,
+                { v -> ((v as Any?) as? Boolean)?.let { check(change, CabinPart.RECIRCULATION, it == on, "$it") } },
+                { e -> warn("verify recirculation", e) },
+            )
+        }
     }
 
     private fun setLightSwitch(area: SeatArea, value: LightSwitch) {
         control(CabinPart.AMBIENT) { change ->
             vehicle.getLight().setAmbientLightSwitch(area, value, { _, _ -> }, { e -> failed(change, CabinPart.AMBIENT, e) })
+        }
+        verify(CabinPart.AMBIENT) { change ->
+            vehicle.getLight().getAmbientLightSwitch(
+                area,
+                { v -> ((v as Any?) as? LightSwitch)?.let { check(change, CabinPart.AMBIENT, it == value, "$it") } },
+                { e -> warn("verify ambient switch", e) },
+            )
         }
     }
 
@@ -415,6 +453,15 @@ class CabinControl(
     private fun setBrightnessExact(area: SeatArea, value: Int) {
         control(CabinPart.AMBIENT) { change ->
             vehicle.getLight().setAmbientLightBrightness(area, value, { _, _ -> }, { e -> failed(change, CabinPart.AMBIENT, e) })
+        }
+        // 차종마다 밝기 단계가 달라 읽은 값이 조금 다를 수 있다: 범위의 10%까지는 바뀐 것으로 본다.
+        val tolerance = lightRanges[area]?.let { maxOf(1, (it.last - it.first) / 10) } ?: 1
+        verify(CabinPart.AMBIENT) { change ->
+            vehicle.getLight().getAmbientLightBrightness(
+                area,
+                { v -> number(v)?.let { check(change, CabinPart.AMBIENT, Math.abs(it.toInt() - value) <= tolerance, "$it") } },
+                { e -> warn("verify ambient brightness", e) },
+            )
         }
     }
 
@@ -459,6 +506,24 @@ class CabinControl(
     private fun failed(change: Change?, part: CabinPart, e: Any?) {
         warn("control ${part.label}", e)
         post { change?.fail(part) }
+    }
+
+    /**
+     * 바꾼 뒤 [VERIFY_DELAY_MS] 있다가 다시 읽어 본다. 그 사이 다른 바꾸기가 시작됐으면 건너뛴다.
+     * 차가 명령을 성공으로 답하고도 값을 바꾸지 않을 수 있다 (Pleos Connect 에뮬레이터의 공조 전원·내외기).
+     * 다시 읽지 못하는 값(에뮬레이터의 온도)은 확인하지 않는다.
+     */
+    private fun verify(part: CabinPart, read: (Change) -> Unit) {
+        val change = current ?: return
+        main.postDelayed({
+            if (change === current) safely("verify ${part.label}") { read(change) }
+        }, VERIFY_DELAY_MS)
+    }
+
+    private fun check(change: Change, part: CabinPart, applied: Boolean, actual: String) {
+        if (applied) return
+        warn("control ${part.label}", "not applied (still $actual)")
+        post { change.fail(part) }
     }
 
     /**
@@ -523,8 +588,14 @@ class CabinControl(
         /** 공조 전원을 켠 뒤(또는 끄기 전) 다른 설정이 먹을 때까지 기다리는 시간 */
         private const val POWER_WAIT_MS = 500L
 
-        /** 바꾸기 결과를 알리기 전에 제어 결과를 기다리는 시간 (전원을 켜고 기다리는 시간보다 길게) */
-        private const val REPORT_WAIT_MS = POWER_WAIT_MS + 1_000L
+        /** 바꾼 뒤 실제로 바뀌었는지 다시 읽기까지 기다리는 시간 */
+        private const val VERIFY_DELAY_MS = 1_000L
+
+        /** 바꾸기 결과를 알리기 전에 기다리는 시간: 전원을 켜고 기다린 뒤 바꾸고 다시 읽을 때까지 */
+        private const val REPORT_WAIT_MS = POWER_WAIT_MS + VERIFY_DELAY_MS + 1_000L
+
+        /** 다시 읽은 온도가 이만큼까지 다르면 바뀐 것으로 본다 (차는 0.5도 단위로 맞추기도 한다) */
+        private const val TEMP_TOLERANCE_C = 0.5f
         private const val RESNAPSHOT_GUARD_MS = 5_000L
         private const val WAKE_LIGHT_STEPS = 5
         private const val WAKE_LIGHT_STEP_MS = 4_000L
