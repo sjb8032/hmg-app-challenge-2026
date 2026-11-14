@@ -36,7 +36,6 @@ import kr.contest.pleosapp.app.AutoCue
 import kr.contest.pleosapp.app.RestMateActions
 import kr.contest.pleosapp.app.RestMateController
 import kr.contest.pleosapp.app.UiState
-import kr.contest.pleosapp.core.CabinPart
 import kr.contest.pleosapp.core.CheckInAnswer
 import kr.contest.pleosapp.core.DriveMode
 import kr.contest.pleosapp.core.DriveState
@@ -719,18 +718,11 @@ private fun WakeUpPanel(wokeAt: Long, rest: RestSession, ui: UiState) {
 }
 
 /**
- * 깬 뒤 할 일. 차가 바깥 바람을 넣지 못했으면(휴식 환경을 껐거나, 연결이 안 됐거나, 이 차에서 공조를 바꿀 수 없으면)
+ * 깬 뒤 할 일. 차가 바깥 바람을 넣지 못하면(휴식 환경을 껐거나, 연결이 안 됐거나, 이 차에서 공조를 바꿀 수 없으면)
  * 창문을 열어 달라고 한다. 차가 바꾼 것은 휴식 환경 아래 결과 줄에 따로 나온다.
  */
-private fun wakeChecklist(ui: UiState): List<String> {
-    val airDone = ui.env.enabled &&
-        ui.connection.vehicle == RestMateController.CONNECTED &&
-        ui.cabinFailed.none { it in WAKE_AIR_PARTS }
-    return listOfNotNull(if (airDone) null else "창문을 조금 열어 바깥 공기를 넣어요") + WAKE_CHECKLIST
-}
-
-/** 깨울 때 바깥 바람을 넣는 데 필요한 제어 */
-private val WAKE_AIR_PARTS = setOf(CabinPart.POWER, CabinPart.FAN, CabinPart.RECIRCULATION)
+private fun wakeChecklist(ui: UiState): List<String> =
+    listOfNotNull(if (ui.core.cabinWakes) null else "창문을 조금 열어 바깥 공기를 넣어요") + WAKE_CHECKLIST
 
 @Composable
 private fun RestEnvironmentPanel(ui: UiState, actions: RestMateActions) {

@@ -86,6 +86,23 @@ class RestMateEngineTest {
     }
 
     @Test
+    fun wakeSpeechAsksToOpenTheWindowWhenTheCarCannotFreshenTheAir() {
+        val e = engine()
+        e.onLocation(t0, origin, null)
+        e.onSpeed(t0, 0.0)
+        e.onGear(t0, Gear.PARK)
+        e.onTick(t0 + 60_000)
+        e.setCabinWakes(false)
+        e.pressDrowsy(t0 + 61_000)
+        e.drainEffects()
+        e.wakeUp(t0 + 20 * 60_000)
+
+        val speech = e.drainEffects().filterIsInstance<Effect.Speak>().joinToString(" ") { it.text }
+        assertTrue(speech, speech.contains("창문을 조금 열어 바깥 공기를 넣어 주세요"))
+        assertFalse(speech, speech.contains("무드등을 밝히고"))
+    }
+
+    @Test
     fun drowsyWithoutLocationReportsFailure() {
         val e = engine()
         e.onGear(t0, Gear.DRIVE)

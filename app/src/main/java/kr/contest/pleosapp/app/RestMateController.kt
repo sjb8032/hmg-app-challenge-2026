@@ -14,6 +14,7 @@ import kr.contest.pleosapp.audio.AlarmPlayer
 import kr.contest.pleosapp.audio.Speaker
 import kr.contest.pleosapp.core.CabinMode
 import kr.contest.pleosapp.core.CabinPart
+import kr.contest.pleosapp.core.WAKE_AIR_PARTS
 import kr.contest.pleosapp.core.CheckInAnswer
 import kr.contest.pleosapp.core.CourseFlavor
 import kr.contest.pleosapp.core.CourseOption
@@ -357,6 +358,7 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
         vehicle.start()
         navi.start()
         main.post(ticker)
+        engine.setCabinWakes(cabinWakesNow())
         publish()
     }
 
@@ -690,6 +692,7 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
         this.env = env
         saveEnvironment(env)
         _ui.update { it.copy(env = env) }
+        syncCabinWakes()
         val rest = engine.state.rest ?: return
         // 쉬는 중에 바꾸면 바로 반영한다. 끄면 원래 설정으로 돌린다.
         when {
@@ -1027,6 +1030,7 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
         val t = now()
         engine = RestMateEngine(finder, RestMateConfig.forDemo(trip.timeScale))
         engine.setOnExpressway(trip.expressway)
+        engine.setCabinWakes(cabinWakesNow())
         // 출발 직전: D단으로 서 있는 상태 ('주행'을 누르면 움직인다)
         engine.onGear(t, Gear.DRIVE)
         engine.onSpeed(t, 0.0)
@@ -1048,6 +1052,7 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
         demo = null
         console.stop()
         engine = RestMateEngine(finder)
+        engine.setCabinWakes(cabinWakesNow())
         replayRealSignals()
         _ui.update { it.copy(demoMode = false, demoTrip = null, lastMessage = null, naviNote = null, sheet = null) }
         publish()
@@ -1173,6 +1178,7 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
 
     override fun onVehicleConnection(connected: Boolean, message: String?) {
         _ui.update { it.copy(connection = it.connection.copy(vehicle = if (connected) CONNECTED else "실패: $message")) }
+        syncCabinWakes()
     }
 
     override fun onGear(gear: Gear) {
@@ -1210,6 +1216,19 @@ class RestMateController(context: Context) : RestMateActions, AutoDemoHost, Vehi
     override fun onCabinNote(message: String, failed: Set<CabinPart>?) {
         addLog(message, LogKind.VEHICLE)
         _ui.update { it.copy(cabinNote = message, cabinFailed = failed ?: it.cabinFailed, log = log.toList()) }
+        syncCabinWakes()
+    }
+
+    /** 깨울 때 차가 바깥 바람을 넣을 수 있는지: 휴식 환경을 켰고, 차가 연결됐고, 이 차에서 공조를 바꿀 수 있을 때 */
+    private fun cabinWakesNow(): Boolean {
+        val ui = _ui.value
+        return env.enabled && ui.connection.vehicle == CONNECTED && ui.cabinFailed.none { it in WAKE_AIR_PARTS }
+    }
+
+    /** 엔진에 알려 준다 (깨우는 말과 깬 뒤 할 일이 실내 환경 결과 줄과 같게) */
+    private fun syncCabinWakes() {
+        engine.setCabinWakes(cabinWakesNow())
+        publish()
     }
 
     // ---- 내비 신호 ----

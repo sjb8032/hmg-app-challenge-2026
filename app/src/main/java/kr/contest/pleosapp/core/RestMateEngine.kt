@@ -191,6 +191,11 @@ class RestMateEngine(
         }
     }
 
+    /** 깨울 때 차가 무드등·바깥 바람을 바꿀 수 있는지 ([RestMateState.cabinWakes]) */
+    fun setCabinWakes(can: Boolean) {
+        if (state.cabinWakes != can) state = state.copy(cabinWakes = can)
+    }
+
     /** 시연용으로 고속도로 주행 여부를 직접 정한다. */
     fun setOnExpressway(on: Boolean?) {
         state = state.copy(onExpressway = on)
@@ -837,7 +842,8 @@ class RestMateEngine(
             wakeMs > 0 -> "깬 직후에는 멍할 수 있으니 ${RestMateText.duration(wakeMs)} 정도 몸을 깨운 뒤 출발해 주세요."
             else -> "준비되면 천천히 출발해 주세요."
         }
-        effects += Effect.Speak("$opening 무드등을 밝히고 시원한 바람을 넣을게요. $tail")
+        val cabin = if (state.cabinWakes) "무드등을 밝히고 시원한 바람을 넣을게요." else "창문을 조금 열어 바깥 공기를 넣어 주세요."
+        effects += Effect.Speak("$opening $cabin $tail")
     }
 
     /** 기다리기·머물기: 출발할 때가 다가왔다고 알린다 (기다리기는 출발 2분 전, 머물기는 출발할 때쯤). */

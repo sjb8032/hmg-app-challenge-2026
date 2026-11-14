@@ -252,6 +252,11 @@ data class RestMateState(
     val quiet: Boolean = false,
     val rest: RestSession? = null,
     val recovery: RecoveryCheck? = null,
+    /**
+     * 깨울 때 차가 무드등을 밝히고 바깥 바람을 넣을 수 있는지. 휴식 환경을 껐거나, 차가 연결되지 않았거나,
+     * 이 차에서 공조를 바꿀 수 없으면 false: 깨우는 말과 깬 뒤 할 일에서 창문을 열어 달라고 한다.
+     */
+    val cabinWakes: Boolean = true,
 )
 
 data class RestMateConfig(

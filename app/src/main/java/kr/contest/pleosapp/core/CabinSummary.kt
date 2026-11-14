@@ -9,6 +9,9 @@ enum class CabinPart(val label: String) {
     AMBIENT("무드등"),
 }
 
+/** 깨울 때 바깥 바람을 넣는 데 필요한 제어 (하나라도 안 되면 창문을 열어 달라고 한다) */
+val WAKE_AIR_PARTS: Set<CabinPart> = setOf(CabinPart.POWER, CabinPart.FAN, CabinPart.RECIRCULATION)
+
 /**
  * 실내 환경을 바꾼 결과 한 줄: "휴식 모드: 23°C · 약한 바람 · 바깥 공기 · 무드등 은은하게".
  *
