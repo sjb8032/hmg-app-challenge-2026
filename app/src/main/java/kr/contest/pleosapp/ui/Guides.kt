@@ -157,7 +157,7 @@ internal fun demoHint(ui: UiState): String? {
         Phase.RESTING -> {
             val rest = s.rest
             if (rest != null && rest.kind == RestKind.NAP && rest.wakeStartedAt == null) {
-                "'휴식 시간 건너뛰기'로 알람과 깨우기를 바로 보여 줄 수 있어요."
+                "'휴식 건너뛰기'로 시계를 알람 시각까지 돌려 알람과 깨우기를 바로 볼 수 있어요."
             } else {
                 "'출발 · 주행'을 누르면 다시 출발해요."
             }
