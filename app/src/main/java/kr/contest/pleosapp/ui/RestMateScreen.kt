@@ -41,6 +41,7 @@ import kr.contest.pleosapp.core.DriveMode
 import kr.contest.pleosapp.core.DriveState
 import kr.contest.pleosapp.core.DriveStep
 import kr.contest.pleosapp.core.DriveText
+import kr.contest.pleosapp.core.Gear
 import kr.contest.pleosapp.core.MINUTE_MS
 import kr.contest.pleosapp.core.Phase
 import kr.contest.pleosapp.core.Prompt
@@ -716,15 +717,12 @@ private fun WakeUpPanel(wokeAt: Long, rest: RestSession, ui: UiState) {
     }
 }
 
-/** 깬 뒤 할 일. 실내 환경은 차량이 연결돼 실제로 바꿀 때만 '넣었어요'라고 쓴다 (연결 안 되면 바꾸지 않으므로). */
-private fun wakeChecklist(ui: UiState): List<String> {
-    val cabin = when {
-        !ui.env.enabled -> null
-        ui.connection.vehicle == RestMateController.CONNECTED -> "무드등을 밝히고 시원한 바깥 바람을 넣었어요"
-        else -> "차량이 연결되면 무드등을 밝히고 바깥 바람을 넣어요"
-    }
-    return listOfNotNull(cabin) + WAKE_CHECKLIST
-}
+/**
+ * 깬 뒤 할 일. 차가 바깥 바람을 넣지 못하면(휴식 환경을 껐거나, 연결이 안 됐거나, 이 차에서 공조를 바꿀 수 없으면)
+ * 창문을 열어 달라고 한다. 차가 바꾼 것은 휴식 환경 아래 결과 줄에 따로 나온다.
+ */
+private fun wakeChecklist(ui: UiState): List<String> =
+    listOfNotNull(if (ui.core.cabinWakes) null else "창문을 조금 열어 바깥 공기를 넣어요") + WAKE_CHECKLIST
 
 @Composable
 private fun RestEnvironmentPanel(ui: UiState, actions: RestMateActions) {
@@ -876,8 +874,12 @@ private fun BottomAction(ui: UiState, actions: RestMateActions) {
     // 자동 시연이 이 버튼을 누르려고 짚는 중
     val cue = Modifier.cueRing(ui.cueing(AutoCue.BOTTOM))
     when (s.phase) {
-        Phase.DRIVING ->
+        // P단으로 세워 두었으면 쉼터로 보내지 않고 그 자리에서 쉰다
+        Phase.DRIVING -> if (s.gear == Gear.PARK) {
+            BigButton("레스트 모드", "지금 세운 곳에서 바로 눈 붙여요 · 알람으로 깨워 드려요", Tone.AMBER, actions::pressDrowsy, cue)
+        } else {
             BigButton("레스트 모드", "졸리면 눌러요 · 가까운 휴게소·졸음쉼터·주차장으로 바로 안내해요", Tone.AMBER, actions::pressDrowsy, cue)
+        }
         Phase.TO_REST_AREA ->
             BigButton("더 빨리 쉴래요", "더 빨리 닿는 곳이 있으면 바꿔서 안내해요", Tone.AMBER, actions::pressDrowsy, cue)
         Phase.RESTING -> {

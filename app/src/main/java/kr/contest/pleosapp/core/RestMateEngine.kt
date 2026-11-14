@@ -191,6 +191,11 @@ class RestMateEngine(
         }
     }
 
+    /** 깨울 때 차가 무드등·바깥 바람을 바꿀 수 있는지 ([RestMateState.cabinWakes]) */
+    fun setCabinWakes(can: Boolean) {
+        if (state.cabinWakes != can) state = state.copy(cabinWakes = can)
+    }
+
     /** 시연용으로 고속도로 주행 여부를 직접 정한다. */
     fun setOnExpressway(on: Boolean?) {
         state = state.copy(onExpressway = on)
@@ -248,11 +253,19 @@ class RestMateEngine(
 
     // ---- 운전자 조작 ----
 
-    /** '레스트 모드'(졸려요) 버튼. 묻지 않고 바로 쉼터 안내로 넘어간다. */
+    /**
+     * '레스트 모드'(졸려요) 버튼. 묻지 않고 바로 쉼터 안내로 넘어간다.
+     * 이미 P단으로 세워 두었으면 쉼터로 보내지 않고 그 자리에서 바로 눈 붙이기를 시작한다
+     * (예전에는 쉼터 안내를 요청한 직후 '주차 확인'으로 그 자리 휴식이 시작돼, 쉬는 동안 내비가 쉼터로 안내하고 있었다).
+     */
     fun pressDrowsy(now: Long) {
         advance(now)
         when (state.phase) {
-            Phase.DRIVING -> guideToBest(now, announce = true)
+            Phase.DRIVING -> if (state.gear == Gear.PARK) {
+                startRest(now, RestKind.NAP, area = null, drowsy = true)
+            } else {
+                guideToBest(now, announce = true)
+            }
             Phase.TO_REST_AREA -> findFasterStop(now, Hurry.BUTTON)
             Phase.RESTING -> Unit
         }
@@ -329,8 +342,9 @@ class RestMateEngine(
      *
      * @param kind 졸음·레스트 모드 버튼으로 왔으면 눈 붙이기, 쉬다 가는 코스면 그냥 기다리기
      * @param area 쉬는 곳. 기본값은 안내하던 쉼터 (그 쉼터에서 멀리 세웠으면 '지금 있는 곳')
+     * @param drowsy 세워 둔 채 '레스트 모드'(졸려요)를 눌러 쉬는지 (쉼터 안내를 거쳐 온 것처럼 졸려서 쉬는 것으로 본다)
      */
-    fun startRest(now: Long, kind: RestKind = RestKind.NAP, area: RestArea? = guidedAreaHere()) {
+    fun startRest(now: Long, kind: RestKind = RestKind.NAP, area: RestArea? = guidedAreaHere(), drowsy: Boolean = false) {
         advance(now)
         if (state.phase == Phase.RESTING) return
         val fromGuidance = state.phase == Phase.TO_REST_AREA
@@ -352,7 +366,7 @@ class RestMateEngine(
             strictTarget = d?.strict == true,
             remainingRouteMs = remaining,
             remainingRouteEstimated = d?.remainingMs == null && navRemaining == null && remaining != null,
-            fatigue = fromGuidance || warned,
+            fatigue = fromGuidance || warned || drowsy,
             warned = warned,
             stopPosition = state.position.takeIf { still },
         )
@@ -833,7 +847,8 @@ class RestMateEngine(
             wakeMs > 0 -> "깬 직후에는 멍할 수 있으니 ${RestMateText.duration(wakeMs)} 정도 몸을 깨운 뒤 출발해 주세요."
             else -> "준비되면 천천히 출발해 주세요."
         }
-        effects += Effect.Speak("$opening 무드등을 밝히고 시원한 바람을 넣을게요. $tail")
+        val cabin = if (state.cabinWakes) "무드등을 밝히고 시원한 바람을 넣을게요." else "창문을 조금 열어 바깥 공기를 넣어 주세요."
+        effects += Effect.Speak("$opening $cabin $tail")
     }
 
     /** 기다리기·머물기: 출발할 때가 다가왔다고 알린다 (기다리기는 출발 2분 전, 머물기는 출발할 때쯤). */
@@ -1240,10 +1255,10 @@ class RestMateEngine(
             else -> ""
         }
         val d = deadline
-        // 시간 모드로 달리는 중이면 어느 길로 가는지는 시간 모드가 알린다.
+        // 시간 모드로 달리는 중이면 어느 길로 가는지는 시간 모드가 알린다. 목적지 없이 쉬었으면 되돌아갈 길이 없다.
         val tail = when {
             config.compareAfterRest -> " 처음 ${RestMateText.duration(config.afterWindowMs)} 동안 휴식 전과 주행을 비교해 볼게요."
-            d != null || destNear -> ""
+            d != null || destNear || state.destination == null -> ""
             else -> " 원래 가던 길로 다시 안내할게요."
         }
         if ((d?.quiet == true || destNear) && caution.isEmpty() && tail.isEmpty()) return

@@ -350,7 +350,8 @@ private fun DemoControls(ui: UiState, actions: RestMateActions) {
 private fun consoleText(c: ConsoleStatus): Pair<String, Color> = when (c.state) {
     ConsoleLinkState.OFF -> "꺼짐" to RM.textDim
     ConsoleLinkState.CONNECTING -> "연결 중…" to RM.textDim
-    ConsoleLinkState.UNREACHABLE -> "연결 안 됨 (adb forward 확인)" to RM.amber
+    // 계기판·콘솔 연동은 고르는 기능이라 경고 색을 쓰지 않는다 (시연 영상에 오류처럼 보이지 않게)
+    ConsoleLinkState.UNREACHABLE -> "연결 안 됨 (adb forward 확인)" to RM.textDim
     ConsoleLinkState.ON -> {
         val gear = c.gear?.let { gearLabel(it) } ?: "—"
         "연동 중 · $gear · ${c.speedKmh ?: 0} km/h" to RM.sky

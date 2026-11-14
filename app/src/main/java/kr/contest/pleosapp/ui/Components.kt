@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -140,11 +141,15 @@ internal fun ActionButton(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            // 글자 색은 버튼 색에 맞춰 직접 준다. 앱 기본 글자 스타일에 색(RM.text)이 있어,
+            // 주지 않으면 실제 기기에서는 하늘색·샌드 버튼 위 글자가 어두운 남색으로 나온다 (캡처 도구에서는 흰색이라 놓치기 쉽다).
+            val color = LocalContentColor.current
             // 현대 제품 화면의 버튼 글자 굵기(500)
-            Text(text, fontSize = textSize, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center)
+            Text(text, color = color, fontSize = textSize, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center)
             if (sub != null) {
                 Text(
                     sub,
+                    color = color,
                     fontSize = 15.sp,
                     textAlign = TextAlign.Center,
                     maxLines = 2,

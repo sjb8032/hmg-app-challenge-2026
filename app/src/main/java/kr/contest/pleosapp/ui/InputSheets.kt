@@ -135,7 +135,8 @@ private fun FindPlaceSheet(sheet: InputSheet.FindPlace, ui: UiState, actions: Re
                 modifier = Modifier.weight(1f),
                 singleLine = true,
                 textStyle = TextStyle(fontSize = 24.sp, color = RM.text),
-                placeholder = { Text(sheet.purpose.hint, fontSize = 22.sp) },
+                // 안내 글은 흐리게 (입력한 글자와 헷갈리지 않게. 색을 주지 않으면 기기에서 진한 글자로 나온다)
+                placeholder = { Text(sheet.purpose.hint, color = RM.textFaint, fontSize = 22.sp) },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { actions.searchPlaces(text) }),
                 shape = ButtonShape,
@@ -417,7 +418,12 @@ private fun PickTimeSheet(ui: UiState, actions: RestMateActions) {
     val tooEarly = at < earliest
     Column(Modifier.fillMaxSize().padding(4.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         SheetHeader("도착 목표 시각", d.destination?.let { "${it.name}에 몇 시에 닿을까요?" }, actions::closeSheet)
-        Row(horizontalArrangement = Arrangement.spacedBy(24.dp), modifier = Modifier.weight(1f)) {
+        // 남는 높이 가운데에 둔다 (위에 붙으면 아래가 크게 비어 보인다)
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(24.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f),
+        ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Label("날짜")
                 Segmented(listOf("오늘", "내일"), day) { day = it }

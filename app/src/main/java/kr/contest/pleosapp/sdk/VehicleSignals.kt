@@ -2,9 +2,7 @@ package kr.contest.pleosapp.sdk
 
 import ai.pleos.playground.vehicle.Vehicle
 import ai.pleos.playground.vehicle.api.model.telltale.Telltales
-import ai.pleos.playground.vehicle.api.model.area.SeatArea
 import ai.pleos.playground.vehicle.api.model.area.WindowArea
-import ai.pleos.playground.vehicle.constant.area.SeatValue
 import ai.pleos.playground.vehicle.constant.area.TurnSignalValue
 import ai.pleos.playground.vehicle.constant.area.WindowValue
 import ai.pleos.playground.vehicle.constant.control.VehicleGear
@@ -19,6 +17,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import kr.contest.pleosapp.core.CabinPart
 import kr.contest.pleosapp.core.Gear
 import kr.contest.pleosapp.core.VehicleEvent
 
@@ -50,8 +49,8 @@ class VehicleSignals(context: Context, private val sink: Sink) {
         fun onExtras(extras: VehicleExtras)
         /** 경고등에서 읽은 사건 (새로 켜지거나 깜빡이기 시작한 경고만) */
         fun onVehicleEvent(event: VehicleEvent)
-        /** 실내 환경 제어 결과 문구 */
-        fun onCabinNote(message: String)
+        /** 실내 환경 제어 결과 문구. [failed]는 바꾸기 결과일 때 이 차에서 되지 않은 제어 (아니면 null) */
+        fun onCabinNote(message: String, failed: Set<CabinPart>?)
     }
 
     private val vehicle = Vehicle(context.applicationContext)
@@ -64,7 +63,7 @@ class VehicleSignals(context: Context, private val sink: Sink) {
     private val telltaleCounts = HashMap<TelltaleType, Int>()
 
     /** 휴식 모드·깨우기용 실내 환경 제어 */
-    val cabin = CabinControl(vehicle, { connected }, { message -> sink.onCabinNote(message) })
+    val cabin = CabinControl(vehicle, { connected }, { message, failed -> sink.onCabinNote(message, failed) })
 
     private val extrasPoll = object : Runnable {
         override fun run() {
@@ -214,7 +213,7 @@ class VehicleSignals(context: Context, private val sink: Sink) {
         }
         safely("recirculation") {
             vehicle.getHVAC().getHvacRecirculationState(
-                SeatArea(SeatValue.ROW_1_LEFT),
+                cabin.recirculationArea(),
                 { on -> post { updateExtras(extras.copy(recirculationOn = (on as Any?) as? Boolean)) } },
                 { e -> warn("recirculation", e) },
             )
@@ -226,8 +225,9 @@ class VehicleSignals(context: Context, private val sink: Sink) {
             )
         }
         safely("range") {
+            // 남은 주행 거리는 미터로 온다 (차량 표준 속성 RANGE_REMAINING). 에뮬레이터 계기판의 500km가 500000으로 왔다.
             vehicle.getOdometer().getRangeRemainingDistance(
-                { km -> post { updateExtras(extras.copy(rangeKm = ((km as Any?) as? Number)?.toDouble())) } },
+                { meters -> post { updateExtras(extras.copy(rangeKm = ((meters as Any?) as? Number)?.toDouble()?.div(METERS_PER_KM))) } },
                 { e -> warn("range", e) },
             )
         }
@@ -249,6 +249,7 @@ class VehicleSignals(context: Context, private val sink: Sink) {
 
     companion object {
         private const val TAG = "RestMateVehicle"
+        private const val METERS_PER_KM = 1000.0
 
         /**
          * 지켜볼 경고등. 정상 작동 중에도 켜져 있는 표시등(LKA·FCA)은 깜빡이기 시작할 때만 센다.
