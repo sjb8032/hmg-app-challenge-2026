@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/logo.png" alt="드라이브메이트(DriveMate) 로고" width="280"></p>
+
 # 드라이브메이트
 
 > 도착 시각에 맞춰 달리고, 졸리면 쉬었다 가는 Pleos Connect 앱

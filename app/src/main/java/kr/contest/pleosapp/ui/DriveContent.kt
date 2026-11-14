@@ -1,5 +1,6 @@
 package kr.contest.pleosapp.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -29,12 +30,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kr.contest.pleosapp.R
 import kr.contest.pleosapp.app.AutoCue
 import kr.contest.pleosapp.app.PlacePurpose
 import kr.contest.pleosapp.app.RestMateActions
@@ -209,11 +212,13 @@ private fun ModeCard(mode: DriveMode, examples: String, modifier: Modifier, onCl
                 .background(accent, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            if (mode == DriveMode.ON_TIME) {
-                ClockGlyph(RM.hyundaiNavy, Modifier.size(40.dp))
-            } else {
-                RoadGlyph(RM.hyundaiNavy, Modifier.size(40.dp))
-            }
+            // 모드 아이콘(온타임: 시계와 차, 롱웨이: 굽이진 길). 그림의 남색 테두리가 남색 카드에 묻히지 않게
+            // 모드 색 바탕 원이 가장자리에 3dp 테두리로 남도록 조금 작게 얹는다
+            Image(
+                painter = painterResource(if (mode == DriveMode.ON_TIME) R.drawable.ic_mode_ontime else R.drawable.ic_mode_longway),
+                contentDescription = null,
+                modifier = Modifier.size(66.dp),
+            )
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(mode.title, color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Medium, letterSpacing = (-0.5).sp)

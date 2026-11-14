@@ -1,14 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 임시 런처 아이콘. 앱 이름이 정해지면 교체한다. -->
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <path
-        android:fillColor="#1F3A5F"
-        android:pathData="M24,14h60a10,10 0 0 1 10,10v60a10,10 0 0 1 -10,10h-60a10,10 0 0 1 -10,-10v-60a10,10 0 0 1 10,-10z" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M32,64l7,-18h30l7,18v12h-7v-5h-30v5h-7z" />
-</vector>
+<!--
+  런처 아이콘: 흰 바탕 위 드라이브메이트 마크 (docs/logo.png와 같은 그림).
+  앞면(ic_launcher_foreground)은 108dp 칸 가운데 지름 66dp 안전 영역 안에 마크를 맞춰 그려서
+  런처가 원·둥근 사각형 어느 모양으로 잘라도 마크가 잘리지 않는다.
+  monochrome은 테마 아이콘(Android 13+)에서 같은 마크를 한 색으로 쓴다.
+-->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@android:color/white" />
+    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+    <monochrome android:drawable="@drawable/ic_launcher_foreground" />
+</adaptive-icon>
