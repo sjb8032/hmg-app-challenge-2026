@@ -1,11 +1,14 @@
 package kr.contest.pleosapp.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -20,11 +23,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kr.contest.pleosapp.R
 import kr.contest.pleosapp.app.AutoChapter
 import kr.contest.pleosapp.app.AutoDemoScript
 import kr.contest.pleosapp.app.LogKind
@@ -82,6 +88,23 @@ private fun Brand() {
             Text("드라이브메이트", color = RM.text, fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
             Caption("도착 시각에 맞춰 달리고, 졸리면 쉬었다 가요")
         }
+    }
+}
+
+/** 앱 표시: 런처 아이콘과 같은 흰 바탕 위 드라이브메이트 마크 (밤 화면에서도 같은 모양) */
+@Composable
+private fun Logo(modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(percent = 22)
+    Box(
+        modifier.clip(shape).background(Color.White).border(1.dp, RM.border, shape),
+        contentAlignment = Alignment.Center,
+    ) {
+        // 아이콘 앞면 그림은 108dp 칸 중 가운데 72dp가 보이도록 그려져 있어, 런처와 같은 비율(1.5배)로 키워 그린다
+        Image(
+            painter = painterResource(R.drawable.ic_launcher_foreground),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize().scale(1.5f),
+        )
     }
 }
 
