@@ -748,11 +748,14 @@ private fun DriveActive(ui: UiState, actions: RestMateActions) {
                         minHeight = 58.dp,
                         textSize = 19.sp,
                     )
-                    // 실내 분위기는 차량이 연결돼 실제로 바꿀 때만 '맞췄어요'라고 쓴다
-                    val cabin = if (ui.connection.vehicle == RestMateController.CONNECTED) {
-                        "${d.mood.label} 분위기로 무드등·공조를 맞췄어요. 도착하거나 끝내면 원래대로 돌려요."
-                    } else {
-                        "차량이 연결되면 ${d.mood.label} 분위기로 무드등·공조를 맞춰요."
+                    // 실내 분위기는 차량이 연결돼 실제로 바꿨을 때만 '맞췄어요'라고 쓴다.
+                    // 이 차에서 바뀌지 않은 것이 있으면 실내 환경 결과 줄을 그대로 보여 준다 (에뮬레이터는 공조·무드등이 바뀌지 않는다).
+                    val cabin = when {
+                        ui.connection.vehicle != RestMateController.CONNECTED ->
+                            "차량이 연결되면 ${d.mood.label} 분위기로 무드등·공조를 맞춰요."
+                        ui.cabinFailed.isEmpty() ->
+                            "${d.mood.label} 분위기로 무드등·공조를 맞췄어요. 도착하거나 끝내면 원래대로 돌려요."
+                        else -> ui.cabinNote ?: "${d.mood.label} 분위기로 다 바꾸지는 못했어요."
                     }
                     Caption(cabin, modifier = Modifier.weight(1f))
                 } else {
