@@ -78,8 +78,8 @@
 
 ## 6. 제출용 release APK
 
-1. `./gradlew assembleRelease`를 실행합니다.
-2. `app/build/outputs/apk/release/app-release.apk`를 `apk/팀명_앱이름_release.apk`로 복사합니다.
+1. `./gradlew assembleRelease`를 실행합니다. `local.properties`에 카카오 키가 있으면 APK 안에 들어가므로 빼고 빌드합니다.
+2. `app/build/outputs/apk/release/app-release.apk`를 `apk/wheeling_드라이브메이트_release.apk`(공모전 규칙 `팀명_앱이름_release.apk`)로 복사합니다.
 
 서명은 프로젝트 루트에 `keystore.properties`가 있으면 그 키로, 없으면 debug 키로 합니다. debug 키로도 설치·실행은 됩니다. 팀 공용 키를 쓰려면 `keystore.properties.example`을 참고하고, 키 파일과 `keystore.properties`는 절대 커밋하지 않습니다.
 
