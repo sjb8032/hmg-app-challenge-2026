@@ -37,10 +37,13 @@ class CabinControl(
     private var fanRanges: Map<SeatArea, IntRange> = emptyMap()
     private var lightRanges: Map<SeatArea, IntRange> = emptyMap()
     private var recircAreas: List<SeatArea> = emptyList()
+    /** 공조 전원을 켜고 끌 수 있는 영역. 모르면 비워 두고 전원은 건드리지 않는다 */
+    private var powerAreas: List<SeatArea> = emptyList()
 
     private val savedTemp = HashMap<SeatArea, Float>()
     private val savedFan = HashMap<SeatArea, Int>()
     private val savedRecirc = HashMap<SeatArea, Boolean>()
+    private val savedPower = HashMap<SeatArea, Boolean>()
     private val savedLightSwitch = HashMap<SeatArea, LightSwitch>()
     private val savedBrightness = HashMap<SeatArea, Int>()
     private var changed = false
@@ -64,6 +67,12 @@ class CabinControl(
             vehicle.getHVAC().checkHvacFanSpeedCapabilities(
                 { bounds -> post { fanRanges = intRanges(bounds) } },
                 { e -> warn("fan range", e) },
+            )
+        }
+        safely("power areas") {
+            vehicle.getHVAC().checkHvacPowerCapabilities(
+                { areas -> post { powerAreas = areas?.filterNotNull().orEmpty() } },
+                { e -> warn("power areas", e) },
             )
         }
         safely("recirculation areas") {
@@ -140,9 +149,11 @@ class CabinControl(
     // ---- 단계별 설정 ----
 
     private fun applyRest(env: RestEnvironment) {
-        hvacAreas().forEach { setTemperature(it, env.restTemperatureC) }
-        fanAreas().forEach { setFan(it, fraction = 0.25) }
-        if (env.freshAir) recircTargets().forEach { setRecirculation(it, false) }
+        withHvacOn {
+            hvacAreas().forEach { setTemperature(it, env.restTemperatureC) }
+            fanAreas().forEach { setFan(it, fraction = 0.25) }
+            if (env.freshAir) recircTargets().forEach { setRecirculation(it, false) }
+        }
         if (env.dimLight) {
             lightTargets().forEach { area ->
                 setLightSwitch(area, LightSwitch.ON)
@@ -159,9 +170,11 @@ class CabinControl(
 
     private fun applyWake(env: RestEnvironment) {
         val gen = generation
-        hvacAreas().forEach { setTemperature(it, env.restTemperatureC - 2f) }
-        fanAreas().forEach { setFan(it, fraction = 0.7) }
-        recircTargets().forEach { setRecirculation(it, false) }
+        withHvacOn {
+            hvacAreas().forEach { setTemperature(it, env.restTemperatureC - 2f) }
+            fanAreas().forEach { setFan(it, fraction = 0.7) }
+            recircTargets().forEach { setRecirculation(it, false) }
+        }
         val lights = lightTargets()
         lights.forEach { setLightSwitch(it, LightSwitch.ON) }
         // 무드등을 몇 단계에 걸쳐 밝힌다 (해 뜨는 것처럼).
@@ -174,8 +187,10 @@ class CabinControl(
     }
 
     private fun applyPreset(p: MoodPreset) {
-        hvacAreas().forEach { setTemperature(it, p.temperatureC) }
-        fanAreas().forEach { setFan(it, fraction = p.fan) }
+        withHvacOn {
+            hvacAreas().forEach { setTemperature(it, p.temperatureC) }
+            fanAreas().forEach { setFan(it, fraction = p.fan) }
+        }
         lightTargets().forEach { area ->
             setLightSwitch(area, LightSwitch.ON)
             setBrightness(area, fraction = p.brightness)
@@ -185,12 +200,19 @@ class CabinControl(
     }
 
     private fun restore(message: String?) {
-        generation++
+        val gen = ++generation
         savedTemp.forEach { (area, value) -> setTemperature(area, value) }
         savedFan.forEach { (area, value) -> setFanExact(area, value) }
         savedRecirc.forEach { (area, value) -> setRecirculation(area, value) }
         savedBrightness.forEach { (area, value) -> setBrightnessExact(area, value) }
         savedLightSwitch.forEach { (area, value) -> setLightSwitch(area, value) }
+        // 공조 전원은 마지막에 (꺼 두었던 차는 다시 끈다). 온도·바람을 되돌린 뒤에 끄도록 조금 기다린다.
+        val power = HashMap(savedPower)
+        if (power.values.any { !it }) {
+            main.postDelayed({
+                if (gen == generation) power.forEach { (area, on) -> if (!on) setPower(area, false) }
+            }, POWER_WAIT_MS)
+        }
         changed = false
         moodBrightness = null
         restoredAt = SystemClock.elapsedRealtime()
@@ -235,8 +257,18 @@ class CabinControl(
         savedTemp.clear()
         savedFan.clear()
         savedRecirc.clear()
+        savedPower.clear()
         savedLightSwitch.clear()
         savedBrightness.clear()
+        for (area in powerAreas) {
+            safely("read power") {
+                vehicle.getHVAC().getHvacPowerState(
+                    area,
+                    { value -> ((value as Any?) as? Boolean)?.let { v -> post { savedPower[area] = v } } },
+                    { e -> warn("read power", e) },
+                )
+            }
+        }
         for (area in hvacAreas()) {
             safely("read temperature") {
                 vehicle.getHVAC().getHvacTemperature(
@@ -300,6 +332,27 @@ class CabinControl(
     private fun setFanExact(area: SeatArea, speed: Int) {
         safely("set fan") {
             vehicle.getHVAC().setHvacFanSpeed(area, speed, { _, _ -> }, { e -> failed("바람 세기", e) })
+        }
+    }
+
+    /**
+     * 공조 전원이 꺼져 있으면 켠 뒤에 [block]을 한다. 전원이 꺼진 차에서는 바람 세기를 바꿀 수 없다
+     * (에뮬레이터에서 'HVAC_FAN_SPEED … error code 2'(쓸 수 없음)로 실패했다). 켤 수 있는 영역을 모르면 그대로 한다.
+     */
+    private fun withHvacOn(block: () -> Unit) {
+        val off = powerAreas.filter { savedPower[it] != true }
+        if (off.isEmpty()) {
+            block()
+            return
+        }
+        val gen = generation
+        off.forEach { setPower(it, true) }
+        main.postDelayed({ if (gen == generation) block() }, POWER_WAIT_MS)
+    }
+
+    private fun setPower(area: SeatArea, on: Boolean) {
+        safely("set power") {
+            vehicle.getHVAC().setHvacPower(area, on, { _, _ -> }, { e -> failed("공조 전원", e) })
         }
     }
 
@@ -376,6 +429,9 @@ class CabinControl(
     companion object {
         private const val TAG = "RestMateCabin"
         private const val SNAPSHOT_WAIT_MS = 800L
+
+        /** 공조 전원을 켠 뒤(또는 끄기 전) 다른 설정이 먹을 때까지 기다리는 시간 */
+        private const val POWER_WAIT_MS = 500L
         private const val RESNAPSHOT_GUARD_MS = 5_000L
         private const val WAKE_LIGHT_STEPS = 5
         private const val WAKE_LIGHT_STEP_MS = 4_000L
