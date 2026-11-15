@@ -68,7 +68,9 @@ import kotlin.math.roundToInt
  */
 @Composable
 fun RestMateScreen(ui: UiState, actions: RestMateActions) {
-    BoxWithConstraints(Modifier.fillMaxSize()) {
+    // Pleos 아래 바가 앱 창을 덮고 있으면 그만큼 비워 아래 버튼·패널이 바에 가리지 않게 한다 (보통은 0)
+    val bottomBarOverlap = rememberBottomBarOverlap()
+    BoxWithConstraints(Modifier.fillMaxSize().padding(bottom = bottomBarOverlap)) {
         val sideWidth = when {
             maxWidth >= 1500.dp -> 400.dp
             maxWidth >= 1200.dp -> 320.dp
