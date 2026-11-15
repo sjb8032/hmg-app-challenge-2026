@@ -131,7 +131,7 @@ NaviHelper에는 장소 검색 API가 없어서(차 내비의 검색 화면을 �
 2. APK를 설치합니다.
 
    ```bash
-   adb install -r apk/팀명_앱이름_release.apk
+   adb install -r apk/wheeling_드라이브메이트_release.apk
    ```
 
 3. 런처에서 '드라이브메이트'를 실행합니다.
@@ -255,16 +255,17 @@ NaviHelper에는 장소 검색 API가 없어서(차 내비의 검색 화면을 �
 
 ## APK 위치
 
-- `apk/팀명_앱이름_release.apk`
-- 용량이 커서 저장소에 못 올리면 GitHub Releases 링크로 대체합니다.
+- [`apk/wheeling_드라이브메이트_release.apk`](apk/wheeling_드라이브메이트_release.apk) (버전 0.1.0, release 빌드, 약 22MB)
+- GitHub Actions에서 키 없이 빌드했습니다. 서명은 debug 키이고, 카카오 키가 들어 있지 않아 장소 검색은 OpenStreetMap(Nominatim)을 씁니다.
 
 ## 팀
 
-심사 자료 안내(공유 링크·첨부에 개발자 실명을 쓰지 않음)에 따라 이름 대신 역할만 적습니다. 팀원 정보는 참가신청서에 있습니다.
+팀 이름은 **wheeling**입니다. 심사 자료 안내(공유 링크·첨부에 개발자 실명을 쓰지 않음)에 따라 이름 대신 역할만 적습니다. 팀원 정보는 참가신청서에 있습니다.
 
 | 팀원 | 역할 |
 | --- | --- |
-| A | PM(일정 관리, 회의, 제출), 개발 |
-| B | 개발, 운전자 관점 피드백·아이디어 |
-| C | PT 자료, 교통 기반 아이디어 |
-| D | PT 자료, 교통 기반 아이디어 |
+| A | PM, 개발, 아이디어 |
+| B | 기획서, 기능 구체화, PT 자료 |
+| C | 디자인, 아이디어 제안, PT 자료 |
+| D | 개발, 아이디어 피드백 |
+| E | PT 자료·발표, 아이디어 피드백 |
